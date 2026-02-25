@@ -27,7 +27,11 @@ export default function HomePage() {
   const [selectedExam, setSelectedExam] = useState(null);
   const [mode, setMode] = useState(null);
 
-  // סטייט חדש לתמונות
+  // סטייטים חדשים לניהול שאלות בנפרד (Lazy Loading)
+  const [examQuestionsData, setExamQuestionsData] = useState([]); 
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+
+  // סטייט לתמונות
   const [examImages, setExamImages] = useState({});
 
   const [userAnswers, setUserAnswers] = useState({});
@@ -40,7 +44,6 @@ export default function HomePage() {
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
-  // --- פונקציה חמודה לברכה לפי שעות היממה ---
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return "בוקר טוב! ☀️";
@@ -59,20 +62,41 @@ export default function HomePage() {
     });
   }, []);
 
-  // --- 2. טעינת תמונות כשנבחר מבחן ---
+  // --- 2. טעינת שאלות ותמונות כשנבחר מבחן (Lazy Loading) ---
   useEffect(() => {
     if (selectedExam?.id) {
+      setLoadingQuestions(true);
+      
+      // א. טעינת שאלות
+      if (selectedExam.questions && selectedExam.questions.length > 0) {
+          setExamQuestionsData(selectedExam.questions);
+          setLoadingQuestions(false);
+      } else {
+          // משיכה מ-exam_contents
+          get(ref(db, `exam_contents/${selectedExam.id}`))
+            .then((snapshot) => {
+                setExamQuestionsData(snapshot.val() || []);
+                setLoadingQuestions(false);
+            })
+            .catch(err => {
+                console.error("Error loading questions:", err);
+                setLoadingQuestions(false);
+            });
+      }
+
+      // ב. טעינת תמונות
       const imagesRef = ref(db, `exam_images/${selectedExam.id}`);
       onValue(imagesRef, (snapshot) => {
         setExamImages(snapshot.val() || {});
       });
+
     } else {
       setExamImages({});
+      setExamQuestionsData([]);
     }
   }, [selectedExam]);
 
-  // --- 3. ניהול היסטוריה חכם (Back & Forward) ---
-
+  // --- 3. ניהול היסטוריה ---
   const updateStateAndHistory = (changes) => {
     const newState = {
       year: changes.hasOwnProperty('year') ? changes.year : selectedYear,
@@ -81,7 +105,6 @@ export default function HomePage() {
       exam: changes.hasOwnProperty('exam') ? changes.exam : selectedExam,
       mode: changes.hasOwnProperty('mode') ? changes.mode : mode,
     };
-
     window.history.pushState(newState, "", "");
     applyState(newState);
   };
@@ -92,30 +115,22 @@ export default function HomePage() {
     setSelectedCourse(state.course || null);
     setSelectedExam(state.exam || null);
     setMode(state.mode || null);
-    
-    // סגירת מודאלים בניווט
     setShowScoreModal(false);
     setIsSidebarOpen(false);
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
     const onPopState = (event) => {
-      if (event.state) {
-        applyState(event.state);
-      } else {
-        applyState({});
-      }
+      if (event.state) applyState(event.state);
+      else applyState({});
     };
-
     window.addEventListener('popstate', onPopState);
     window.history.replaceState({ year: null, semester: null, course: null, exam: null, mode: null }, "", "");
-
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  // --- לוגיקה לאיפוס מבחן ---
+  // --- איפוס בעת יציאה ממבחן ---
   useEffect(() => {
     if (selectedExam && mode) {
       setUserAnswers({});
@@ -128,7 +143,6 @@ export default function HomePage() {
     }
   }, [selectedExam, mode]);
 
-  // --- פתיחת נספחים (תומך גם ב-Base64 מ-Upload וגם ב-URL מ-Edit) ---
   const handleOpenAppendices = async () => {
     setShowAppendices(true);
     if (!appendicesData) {
@@ -138,15 +152,15 @@ export default function HomePage() {
         if (snapshot.exists()) {
           const data = snapshot.val();
           if (data.fileUrl) {
-            setAppendicesData(data.fileUrl); // נשמר מ-Storage
+            setAppendicesData(data.fileUrl); 
           } else if (data.fileData) {
-            setAppendicesData(`data:application/pdf;base64,${data.fileData}`); // נשמר מ-Cloud Function
+            setAppendicesData(`data:application/pdf;base64,${data.fileData}`); 
           } else {
              alert("קובץ הנספחים פגום.");
              setShowAppendices(false);
           }
         } else {
-          alert("לא נמצא קובץ נספחים (אולי נמחק מהשרת?)");
+          alert("לא נמצא קובץ נספחים");
           setShowAppendices(false);
         }
       } catch (e) {
@@ -170,7 +184,6 @@ export default function HomePage() {
             const yearA = parseInt(a.examYear) || 0;
             const yearB = parseInt(b.examYear) || 0;
             if (yearB !== yearA) return yearB - yearA;
-            
             const getMoedPriority = (m) => {
                 if (!m) return 99;
                 if (m.includes("א'")) return 1;
@@ -187,11 +200,11 @@ export default function HomePage() {
   };
 
   const calculateScore = () => {
-    const scorableQuestions = selectedExam.questions.filter(q => q.type !== 'open_ended' && !q.isCanceled);
+    const scorableQuestions = examQuestionsData.filter(q => q.type !== 'open_ended' && !q.isCanceled);
     const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
 
     const perfectCount = scorableQuestions.filter((q) => {
-      const originalIndex = selectedExam.questions.indexOf(q);
+      const originalIndex = examQuestionsData.indexOf(q);
       return userAnswers[originalIndex] === 'perfect';
     }).length;
 
@@ -236,7 +249,9 @@ export default function HomePage() {
   };
 
   const getSidebarButtonColor = (index) => {
-    const q = selectedExam.questions[index];
+    if (!examQuestionsData || !examQuestionsData[index]) return "bg-slate-50";
+    
+    const q = examQuestionsData[index];
     const status = userAnswers[index];
     const isSubmitted = finalScore !== null;
 
@@ -258,8 +273,8 @@ export default function HomePage() {
     return "bg-slate-50 border-slate-200 text-slate-400";
   };
 
-  const scorableQuestionsForModal = selectedExam ? selectedExam.questions.filter(q => q.type !== 'open_ended' && !q.isCanceled) : [];
-  const perfectCount = finalScore !== null ? scorableQuestionsForModal.filter(q => userAnswers[selectedExam.questions.indexOf(q)] === 'perfect').length : 0;
+  const scorableQuestionsForModal = examQuestionsData.filter(q => q.type !== 'open_ended' && !q.isCanceled);
+  const perfectCount = finalScore !== null ? scorableQuestionsForModal.filter(q => userAnswers[examQuestionsData.indexOf(q)] === 'perfect').length : 0;
   const isPass = finalScore >= 60;
   const isSubmitted = finalScore !== null;
 
@@ -282,7 +297,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {selectedExam && mode && (
+      {selectedExam && mode && !loadingQuestions && (
         <>
            <button onClick={() => setIsSidebarOpen(true)} className="fixed top-24 left-4 z-40 bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition"><MenuIcon /></button>
            {isSidebarOpen && <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm transition-opacity" />}
@@ -293,7 +308,7 @@ export default function HomePage() {
              </div>
              <div className="flex-1 overflow-y-auto p-4">
                <div className="grid grid-cols-4 gap-3">
-                 {selectedExam.questions.map((_, i) => (
+                 {examQuestionsData.map((_, i) => (
                    <button key={i} onClick={() => scrollToQuestion(i)} className={`aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}>{i + 1}</button>
                  ))}
                </div>
@@ -359,7 +374,7 @@ export default function HomePage() {
           <div className="animate-fade-in-up">
             <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">{selectedCourse.name}</h2>
             <p className="text-slate-500 text-center mb-8">יש לבחור שחזור לתרגול</p>
-            {relevantExams.length === 0 ? <p className="text-center text-slate-400">אין מבחנים.</p> : <div className="grid grid-cols-1 gap-3">{relevantExams.map((exam, index) => { const showYearHeader = index === 0 || relevantExams[index-1].examYear !== exam.examYear; return (<div key={exam.id}>{showYearHeader && <div className="text-xs font-bold text-slate-400 mt-4 mb-2 mr-2">{exam.examYear || "שונות"}</div>}<button onClick={() => updateStateAndHistory({ exam, mode: null })} className="w-full bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition flex justify-between items-center"><div className="flex items-center gap-3"><span className="font-bold text-slate-800 text-lg">{exam.title}</span>{exam.hasAppendices && <span className="bg-indigo-100 text-indigo-700 p-1 rounded"><PaperclipIcon /></span>}</div><span className="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 font-medium">{exam.questions?.length} שאלות</span></button></div>);})}</div>}
+            {relevantExams.length === 0 ? <p className="text-center text-slate-400">אין מבחנים.</p> : <div className="grid grid-cols-1 gap-3">{relevantExams.map((exam, index) => { const showYearHeader = index === 0 || relevantExams[index-1].examYear !== exam.examYear; return (<div key={exam.id}>{showYearHeader && <div className="text-xs font-bold text-slate-400 mt-4 mb-2 mr-2">{exam.examYear || "שונות"}</div>}<button onClick={() => updateStateAndHistory({ exam, mode: null })} className="w-full bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition flex justify-between items-center"><div className="flex items-center gap-3"><span className="font-bold text-slate-800 text-lg">{exam.title}</span>{exam.hasAppendices && <span className="bg-indigo-100 text-indigo-700 p-1 rounded"><PaperclipIcon /></span>}</div><span className="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 font-medium">{exam.questionCount ? `${exam.questionCount} שאלות` : 'כניסה למבחן'}</span></button></div>);})}</div>}
           </div>
         )}
 
@@ -392,25 +407,40 @@ export default function HomePage() {
                </div>
              </div>
 
-             {selectedExam.questions.map((q, i) => (
-                <div key={i} id={`question-${i}`} className="scroll-mt-36">
-                  <QuestionCard 
-                    question={q} 
-                    index={i} 
-                    mode={mode} 
-                    onAnswer={handleAnswerUpdate} 
-                    isSubmitted={isSubmitted} 
-                    examId={selectedExam.id} 
-                    imageUrl={examImages[i]} 
-                  />
-                </div>
-             ))}
+             {loadingQuestions ? (
+                 <div className="text-center py-20">
+                     <div className="text-2xl animate-bounce mb-2">🤔</div>
+                     <div className="text-slate-500 font-bold">טוען שאלות...</div>
+                 </div>
+             ) : (
+                <>
+                {examQuestionsData.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400">לא נמצאו שאלות במבחן זה.</div>
+                ) : (
+                    examQuestionsData.map((q, i) => (
+                        <div key={i} id={`question-${i}`} className="scroll-mt-36">
+                        <QuestionCard 
+                            question={q} 
+                            index={i} 
+                            mode={mode} 
+                            onAnswer={handleAnswerUpdate} 
+                            isSubmitted={isSubmitted} 
+                            examId={selectedExam.id} 
+                            imageUrl={examImages[i]} 
+                        />
+                        </div>
+                    ))
+                )}
+                </>
+             )}
 
-             <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4">
-               {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 transition">הגש מבחן 🏆</button>}
-               {isSubmitted && <button onClick={() => setShowScoreModal(true)} className="bg-green-100 text-green-700 px-8 py-3 rounded-full font-bold">הצג שוב ציון 📊</button>}
-               <button onClick={handleBackToList} className="text-slate-500 font-bold hover:text-slate-800 underline underline-offset-4">חזור לרשימת המבחנים</button>
-             </div>
+             {!loadingQuestions && examQuestionsData.length > 0 && (
+                <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4">
+                {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 transition">הגש מבחן 🏆</button>}
+                {isSubmitted && <button onClick={() => setShowScoreModal(true)} className="bg-green-100 text-green-700 px-8 py-3 rounded-full font-bold">הצג שוב ציון 📊</button>}
+                <button onClick={handleBackToList} className="text-slate-500 font-bold hover:text-slate-800 underline underline-offset-4">חזור לרשימת המבחנים</button>
+                </div>
+             )}
           </div>
         )}
       </main>
@@ -424,8 +454,6 @@ export default function HomePage() {
             </p>
         </footer>
 
-      {/* ----------------------------------------------------------- */}
-      {/* פוטר 2: צף (Fixed) - תמיד מופיע בתחתית המסך (מחוץ למבחן) */}
       {!(selectedExam && mode) && (
         <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex flex-col items-center px-4 max-w-md mx-auto gap-0.5">
@@ -436,7 +464,6 @@ export default function HomePage() {
             ⚠️ שימו לב: המערכת נמצאת בשלב הרצה (פיילוט). ייתכנו אי-דיוקים או שגיאות בתשובות, וישנה אפשרות שהפרויקט לא יתוחזק בעתיד. ט.ל.ח.
             </span>
             
-            {/* כפתור הגישה לניהול */}
             <button onClick={() => navigate('/admin')} className="text-slate-300 hover:text-blue-500 transition-colors flex items-center justify-center gap-1 mx-auto mt-0.5 text-[10px] font-bold opacity-50 hover:opacity-100">
               <LockIcon /> כניסת מנהל
             </button>
