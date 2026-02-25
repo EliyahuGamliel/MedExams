@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-// שינוי קריטי: החלפנו את get ב-onValue לטיפול בזמן אמת
-import { ref, get, set, onValue, push, update, remove } from "firebase/database";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+// הוספנו את get לייבוא
+import { ref, set, onValue, push, update, get } from "firebase/database";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
 
-// --- אייקונים (ללא שינוי) ---
+// --- אייקונים ---
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
@@ -17,15 +17,14 @@ const FileTextIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" he
 const ImageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
 const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+// --- תוספת: אייקון דיווח ---
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
-const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
 
 export default function AdminPage() {
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null); 
-  const [isAdminLogin, setIsAdminLogin] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
-  const [allUsers, setAllUsers] = useState([]); 
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
@@ -52,100 +51,39 @@ export default function AdminPage() {
   const [status, setStatus] = useState('idle');
   const [debugLog, setDebugLog] = useState(""); 
 
+  // --- States לעריכת קורס ---
   const [editingCourseOldData, setEditingCourseOldData] = useState(null);
   const [editCourseName, setEditCourseName] = useState("");
   const [editCourseYear, setEditCourseYear] = useState("");
   const [editCourseSemester, setEditCourseSemester] = useState("");
 
+  // --- תוספת: State לדיווחים ---
   const [reportsList, setReportsList] = useState([]);
 
   const addLog = (msg) => setDebugLog(prev => prev + "\n" + msg);
 
-  // --- 1. ניהול הרשאות והתחברות (גרסת Realtime Listener) ---
-  // השינוי הגדול: פיצלנו ל-2 אפקטים. אחד בודק גוגל, השני מאזין ל-DB בזמן אמת.
-  
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (!currentUser) {
-        setUserData(null);
-        setIsAdminLogin(false);
-        setAuthLoading(false);
-      }
-      // אם יש משתמש, אנחנו נחכה לאפקט השני שיטפל בטעינת הנתונים
+      setAuthLoading(false);
     });
-    return () => unsubscribeAuth();
+    return () => unsubscribe();
   }, []);
 
-  // אפקט 2: מאזין לשינויים ב-DB עבור המשתמש הנוכחי
   useEffect(() => {
-    if (!user) return; // לא מריצים אם אין משתמש
-
-    setAuthLoading(true); // מתחילים טעינה
-    const userRef = ref(db, `users/${user.uid}`);
-
-    // onValue פותח ערוץ האזנה קבוע
-    const unsubscribeDB = onValue(userRef, async (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        setUserData(data);
-        
-        // בדיקת הרשאות בזמן אמת
-        if (data.role === 'super_admin' || data.role === 'editor') {
-          setIsAdminLogin(true);
-          
-          if (data.role === 'editor' && data.allowed_years) {
-            const firstAllowed = Object.keys(data.allowed_years)[0];
-            if (firstAllowed) setSelectedStudentYear(firstAllowed);
-          }
-        } else {
-          setIsAdminLogin(false); // קיים אבל לא מורשה (Guest)
-        }
-      } else {
-        // המשתמש מחובר בגוגל אבל לא קיים במסד הנתונים -> יוצרים אותו כ-Guest
-        // בגלל שאנחנו בתוך onValue, הפעולה הזו תקרה פעם אחת,
-        // ואז ה-Listener יופעל שוב עם הנתונים החדשים ויעדכן את המסך
-        await set(userRef, {
-          email: user.email,
-          role: 'guest',
-          createdAt: new Date().toISOString()
-        });
-        // לא צריך לעדכן ידנית state, ה-onValue ירוץ שוב לבד מיד
-      }
-      
-      setAuthLoading(false); // סיימנו לטעון
-    });
-
-    return () => unsubscribeDB(); // מחיקת המאזין כשיוצאים
-  }, [user]); // רץ בכל פעם שה-user משתנה
-
-  // --- 2. טעינת משתמשים (רק למנהל) ---
-  useEffect(() => {
-    if (userData?.role === 'super_admin') {
-        onValue(ref(db, 'users'), (snapshot) => {
-            const data = snapshot.val();
-            setAllUsers(data ? Object.entries(data).map(([uid, val]) => ({ uid, ...val })) : []);
-        });
-    }
-  }, [userData]);
-
-  // --- 3. טעינת נתונים (חסכונית בנתונים - קריאה חד פעמית) ---
-  useEffect(() => {
-    // קורסים - קריאה חד פעמית
-    get(ref(db, 'courses')).then((snap) => setCoursesList(snap.val() || {}));
-    
-    // מבחנים - קריאה חד פעמית (חוסך המון תעבורה!)
-    get(ref(db, 'uploaded_exams')).then((snap) => {
+    onValue(ref(db, 'courses'), (snap) => setCoursesList(snap.val() || {}));
+    onValue(ref(db, 'uploaded_exams'), (snap) => {
       const data = snap.val();
       setExamsList(data ? Object.values(data) : []);
     });
     
-    // דיווחים - נשאיר onValue כי זה קריטי וקטן
+    // --- תוספת: משיכת הדיווחים מ-Firebase ---
     onValue(ref(db, 'reported_errors'), (snap) => {
       const data = snap.val();
       if (data) {
         const reportsArr = Object.entries(data).map(([id, val]) => ({id, ...val}));
+        // מיון כך שהחדשים ביותר למעלה
         reportsArr.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
         setReportsList(reportsArr);
       } else {
@@ -154,71 +92,33 @@ export default function AdminPage() {
     });
   }, []);
 
-  const canEditYear = (yearToCheck) => {
-    if (!userData) return false;
-    if (userData.role === 'super_admin') return true;
-    if (userData.role === 'editor' && userData.allowed_years && userData.allowed_years[yearToCheck]) {
-      return true;
-    }
-    return false;
-  };
-  
-  const allowedStudentYears = studentYears.filter(y => canEditYear(y));
-
-  // --- פעולות ניהול משתמשים ---
-  const handleUpdateUserRole = async (targetUid, newRole) => {
-      try {
-          await update(ref(db, `users/${targetUid}`), { role: newRole });
-          if (newRole !== 'editor') {
-              await update(ref(db, `users/${targetUid}`), { allowed_years: null });
-          }
-      } catch (e) { alert("שגיאה: " + e.message); }
-  };
-
-  const handleToggleUserYear = async (targetUid, year, currentStatus) => {
-      try {
-          const updates = {};
-          if (currentStatus) updates[`users/${targetUid}/allowed_years/${year}`] = null; 
-          else updates[`users/${targetUid}/allowed_years/${year}`] = true; 
-          await update(ref(db), updates);
-      } catch (e) { alert("שגיאה: " + e.message); }
-  };
-
-  const handleDeleteUser = async (targetUid) => {
-      if (!window.confirm("למחוק משתמש זה?")) return;
-      try { await remove(ref(db, `users/${targetUid}`)); } catch (e) { alert("שגיאה: " + e.message); }
-  };
-
-  // --- התחברות עם גוגל ---
-  const handleGoogleLogin = async () => {
-    const auth = getAuth();
-    const provider = new GoogleAuthProvider();
+  const handleLogin = async (e) => {
+    e.preventDefault();
     try {
-      await signInWithPopup(auth, provider);
+      const auth = getAuth();
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      console.error(error);
-      alert("שגיאה בהתחברות עם גוגל: " + error.message);
+      alert("שגיאה בהתחברות: " + error.message);
     }
   };
 
   const handleLogout = async () => {
     const auth = getAuth();
     await signOut(auth);
-    window.location.reload();
   };
 
-  // --- פונקציות קורסים והעלאה ---
   const handleAddCourse = async () => {
     if (!newCourseName) return alert("נא לכתוב שם קורס");
-    if (!canEditYear(selectedStudentYear)) return alert("אין לך הרשאה לשנה זו");
     try {
       const path = `courses/${selectedStudentYear}/${selectedSemester}`;
-      await set(push(ref(db, path)), { name: newCourseName, createdAt: new Date().toISOString() });
+      const newCourseRef = push(ref(db, path));
+      await set(newCourseRef, { name: newCourseName, createdAt: new Date().toISOString() });
       alert(`הקורס "${newCourseName}" נוסף בהצלחה!`);
       setNewCourseName(""); 
     } catch (e) { alert("שגיאה: " + e.message); }
   };
 
+  // --- הפונקציות החדשות לעריכת קורסים ---
   const startEditingCourse = (year, sem, id, name) => {
     setEditingCourseOldData({ year, sem, id });
     setEditCourseName(name);
@@ -228,121 +128,221 @@ export default function AdminPage() {
 
   const handleUpdateCourse = async () => {
     if (!editCourseName) return alert("נא לכתוב שם קורס");
-    if (!canEditYear(editingCourseOldData.year) || !canEditYear(editCourseYear)) return alert("אין הרשאה לערוך בשנים אלו");
     try {
       setStatus('processing');
       const { year: oldYear, sem: oldSem, id: courseId } = editingCourseOldData;
+
+      // 1. קבלת הנתונים הישנים של הקורס
       const oldCourseSnap = await get(ref(db, `courses/${oldYear}/${oldSem}/${courseId}`));
       const courseData = oldCourseSnap.val() || { createdAt: new Date().toISOString() };
       courseData.name = editCourseName;
+
+      // 2. הכנת אובייקט של עדכונים גורפים
       const updates = {};
+
+      // טיפול בקורס: אם המיקום (שנה/סמסטר) השתנה, מוחקים ישן ויוצרים חדש
       if (oldYear !== editCourseYear || oldSem !== editCourseSemester) {
-        updates[`courses/${oldYear}/${oldSem}/${courseId}`] = null; 
-        updates[`courses/${editCourseYear}/${editCourseSemester}/${courseId}`] = courseData; 
-      } else { updates[`courses/${oldYear}/${oldSem}/${courseId}`] = courseData; }
-      examsList.filter(e => e.courseId === courseId).forEach(exam => {
+        updates[`courses/${oldYear}/${oldSem}/${courseId}`] = null; // מחיקה מנתיב ישן
+        updates[`courses/${editCourseYear}/${editCourseSemester}/${courseId}`] = courseData; // כתיבה לחדש
+      } else {
+        updates[`courses/${oldYear}/${oldSem}/${courseId}`] = courseData; // רק עדכון השם
+      }
+
+      // 3. טיפול במבחנים: מעדכנים את כל המבחנים ששייכים לקורס הזה!
+      const examsToUpdate = examsList.filter(e => e.courseId === courseId);
+      examsToUpdate.forEach(exam => {
         updates[`uploaded_exams/${exam.id}/course`] = editCourseName;
         updates[`uploaded_exams/${exam.id}/studentYear`] = editCourseYear;
         updates[`uploaded_exams/${exam.id}/semester`] = editCourseSemester;
       });
+
+      // מריצים את כל העדכונים במכה אחת ל-DB
       await update(ref(db), updates);
-      alert("עודכן!"); setEditingCourseOldData(null); setStatus('idle');
-    } catch (e) { alert(e.message); setStatus('idle'); }
+
+      alert(`הקורס "${editCourseName}" וכל המבחנים שלו עודכנו בהצלחה!`);
+      setEditingCourseOldData(null);
+      setStatus('idle');
+    } catch (e) { 
+      alert("שגיאה בעדכון הקורס: " + e.message); 
+      setStatus('idle'); 
+    }
   };
 
+  // --- תוספת: פונקציה למחיקת דיווח שטופל ---
   const handleResolveReport = async (reportId) => {
-    try { await set(ref(db, `reported_errors/${reportId}`), null); } catch(e) {}
+    try {
+      await set(ref(db, `reported_errors/${reportId}`), null);
+    } catch(e) {
+      alert("שגיאה במחיקת הדיווח: " + e.message);
+    }
   };
 
-  const fileToBase64 = (file) => new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(file); });
+  const fileToBase64 = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleUploadExam = async () => {
-    if (!file) return alert("אנא בחר קובץ PDF");
-    if (!selectedCourseId) return alert("אנא בחר קורס");
-    if (!canEditYear(selectedStudentYear)) return alert("אין הרשאה להעלאה לשנה זו");
-
+    if (!file) return alert("אנא בחר קובץ PDF של המבחן");
+    if (!selectedCourseId) return alert("אנא בחר קורס מהרשימה");
     const currentSemesterCourses = coursesList[selectedStudentYear]?.[selectedSemester] || {};
     const courseName = currentSemesterCourses[selectedCourseId]?.name;
-    setStatus('processing'); setDebugLog(`מתחיל...`);
+
+    setStatus('processing');
+    setDebugLog(`מתחיל תהליך עבור: ${courseName} (${examYear} ${examMoed})...`);
     
     try {
+      addLog("1. ממיר קובץ מבחן...");
       const base64Data = await fileToBase64(file);
+      
       let appendicesBase64 = null;
-      if (appendicesFile) appendicesBase64 = await fileToBase64(appendicesFile);
+      if (appendicesFile) {
+        addLog("1.1. ממיר קובץ נספחים...");
+        appendicesBase64 = await fileToBase64(appendicesFile);
+      }
+      
+      addLog("2. שולח לעיבוד בשרת המאובטח (Cloud Functions)...");
+      
       const functions = getFunctions();
-      const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
-      const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
-      const questions = result.data.questions.map((q, idx) => ({ ...q, id: idx, type: q.type || 'multiple_choice', imageNeeded: q.imageNeeded || false, isCanceled: false, appealedIndexes: [] })); 
+      const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', {
+        timeout: 540000 
+      });      
+      const result = await processExamWithGemini({ 
+        fileBase64: base64Data, 
+        parsingMode: parsingMode 
+      });
+
+      const questions = result.data.questions;
+      addLog(`✅ השרת החזיר ${questions.length} שאלות.`);
+
+      const processedQuestions = questions.map((q, idx) => ({ 
+        ...q, 
+        id: idx, 
+        type: q.type || 'multiple_choice',
+        imageNeeded: q.imageNeeded || false,
+        isCanceled: false,
+        appealedIndexes: [] 
+      })); 
+      
+      const missingImagesCount = processedQuestions.filter(q => q.imageNeeded).length;
+
       const examId = `${courseName}_${examYear}_${examMoed}_${Date.now()}`.replace(/\s+/g, '_');
+
       await set(ref(db, 'uploaded_exams/' + examId), {
         id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
         courseId: selectedCourseId, examYear, examMoed, title: `${examYear} - ${examMoed}`,
-        questions: questions, hasAppendices: !!appendicesFile, parsingMode, uploadedAt: new Date().toISOString()
+        questions: processedQuestions, hasAppendices: !!appendicesFile, parsingMode, uploadedAt: new Date().toISOString()
       });
-      if (appendicesFile && appendicesBase64) await set(ref(db, 'exam_appendices/' + examId), { fileData: appendicesBase64 });
-      setStatus('success'); alert(`הועלה בהצלחה`); setFile(null); setAppendicesFile(null);
-    } catch (e) { console.error(e); addLog("שגיאה: " + e.message); setStatus('idle'); }
+
+      if (appendicesFile && appendicesBase64) {
+        await set(ref(db, 'exam_appendices/' + examId), { fileData: appendicesBase64 });
+      }
+
+      addLog("✅✅✅ הצלחה!");
+      setStatus('success');
+      
+      if (missingImagesCount > 0) {
+        alert(`✅ המבחן עלה!\n⚠️ שים לב: Gemini זיהה שחסרות תמונות ב-${missingImagesCount} שאלות. נא להעלות אותן ידנית ב"ניהול קיימים".`);
+      } else {
+        alert(`✅ המבחן עלה בהצלחה!`);
+      }
+      setFile(null); setAppendicesFile(null);
+      
+    } catch (e) { 
+      console.error(e); addLog("❌ שגיאה: " + e.message); setStatus('idle'); 
+    }
   };
 
   const handleUpdateAppendices = async (examId) => {
-    if (!newAppendicesFile) return alert("בחר קובץ");
+    if (!newAppendicesFile) return alert("אנא בחר קובץ נספחים");
     try {
       setStatus('processing');
       const storage = getStorage();
       const fileRef = storageRef(storage, `exam_appendices/${examId}.pdf`);
       await uploadBytes(fileRef, newAppendicesFile);
       const downloadURL = await getDownloadURL(fileRef);
+
       await update(ref(db, `uploaded_exams/${examId}`), { hasAppendices: true });
       await set(ref(db, `exam_appendices/${examId}`), { fileUrl: downloadURL });
-      alert("עודכן!"); setEditingExamId(null); setNewAppendicesFile(null); setStatus('idle');
-    } catch (e) { alert(e.message); setStatus('idle'); }
+
+      alert("הנספחים עודכנו בהצלחה!");
+      setEditingExamId(null);
+      setNewAppendicesFile(null);
+      setStatus('idle');
+    } catch (e) { alert("שגיאה: " + e.message); setStatus('idle'); }
   };
 
   const handleDeleteExam = async (examId) => {
-    if (!window.confirm("למחוק?")) return;
+    if (!window.confirm("האם אתה בטוח שברצונך למחוק את המבחן לצמיתות?")) return;
     try {
       setStatus('processing');
       await set(ref(db, `uploaded_exams/${examId}`), null);
       await set(ref(db, `exam_appendices/${examId}`), null);
       await set(ref(db, `exam_images/${examId}`), null);
-      alert("נמחק."); setStatus('idle');
-    } catch (e) { alert(e.message); setStatus('idle'); }
+      alert("המבחן וכל נתוניו נמחקו בהצלחה.");
+      setStatus('idle');
+    } catch (e) { alert("שגיאה במחיקה: " + e.message); setStatus('idle'); }
   };
 
-  const handleUploadQuestionImage = async (idx, f) => {
+  const handleUploadQuestionImage = async (questionIndex, imageFile) => {
     if (!questionsEditorId) return;
     try {
-        setStatus('processing');
-        const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
-        const compressedFile = await imageCompression(f, options);
-        const storage = getStorage();
-        const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${idx}_${Date.now()}`);
-        await uploadBytes(fileRef, compressedFile);
-        const downloadURL = await getDownloadURL(fileRef);
-        await set(ref(db, `exam_images/${questionsEditorId}/${idx}`), downloadURL);
-        await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${idx}`), { hasImage: true });
-        setExamQuestions(p => { const n=[...p]; n[idx].hasImage=true; return n; });
-        setStatus('idle');
-    } catch(e) { alert(e.message); setStatus('idle'); }
+      setStatus('processing'); 
+      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
+      const compressedFile = await imageCompression(imageFile, options);
+      const storage = getStorage();
+      const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${questionIndex}_${Date.now()}`);
+      await uploadBytes(fileRef, compressedFile);
+      const downloadURL = await getDownloadURL(fileRef);
+      await set(ref(db, `exam_images/${questionsEditorId}/${questionIndex}`), downloadURL);
+      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${questionIndex}`), { hasImage: true });
+      setExamQuestions(prev => {
+        const newQs = [...prev];
+        newQs[questionIndex].hasImage = true;
+        return newQs;
+      });
+      setStatus('idle');
+    } catch (e) { console.error(e); alert("שגיאה בהעלאת תמונה: " + e.message); setStatus('idle'); }
   };
 
-  const handleSetMainCorrect = async (idx, optIdx) => {
-      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${idx}`), { correctIndex: optIdx });
-      setExamQuestions(p => { const n=[...p]; n[idx].correctIndex=optIdx; return n; });
+  const handleSetMainCorrect = async (questionIndex, optionIndex) => {
+    try {
+      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${questionIndex}`), { correctIndex: optionIndex });
+      setExamQuestions(prev => { const n = [...prev]; n[questionIndex].correctIndex = optionIndex; return n; });
+    } catch (e) { alert("שגיאה בעדכון: " + e.message); }
   };
-  const handleToggleAppeal = async (idx, optIdx) => {
-      const q = examQuestions[idx];
-      const cur = q.appealedIndexes || [];
-      const newer = cur.includes(optIdx) ? cur.filter(i=>i!==optIdx) : [...cur, optIdx];
-      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${idx}`), { appealedIndexes: newer });
-      setExamQuestions(p => { const n=[...p]; n[idx].appealedIndexes=newer; return n; });
+
+  const handleToggleAppeal = async (questionIndex, optionIndex) => {
+    try {
+      const q = examQuestions[questionIndex];
+      const currentAppeals = q.appealedIndexes || [];
+      const newAppeals = currentAppeals.includes(optionIndex) 
+        ? currentAppeals.filter(i => i !== optionIndex) 
+        : [...currentAppeals, optionIndex];
+        
+      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${questionIndex}`), { appealedIndexes: newAppeals });
+      setExamQuestions(prev => { const n = [...prev]; n[questionIndex].appealedIndexes = newAppeals; return n; });
+    } catch (e) { alert("שגיאה בעדכון ערעור: " + e.message); }
   };
-  const handleToggleCancel = async (idx) => {
-      const ns = !examQuestions[idx].isCanceled;
-      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${idx}`), { isCanceled: ns });
-      setExamQuestions(p => { const n=[...p]; n[idx].isCanceled=ns; return n; });
+
+  const handleToggleCancel = async (questionIndex) => {
+    try {
+      const q = examQuestions[questionIndex];
+      const newStatus = !q.isCanceled;
+      await update(ref(db, `uploaded_exams/${questionsEditorId}/questions/${questionIndex}`), { isCanceled: newStatus });
+      setExamQuestions(prev => { const n = [...prev]; n[questionIndex].isCanceled = newStatus; return n; });
+    } catch (e) { alert("שגיאה בביטול שאלה: " + e.message); }
   };
-  const openQuestionsEditor = (exam) => { setQuestionsEditorId(exam.id); setExamQuestions(exam.questions || []); setEditingExamId(null); };
+
+  const openQuestionsEditor = (exam) => {
+    setQuestionsEditorId(exam.id);
+    setExamQuestions(exam.questions || []);
+    setEditingExamId(null); 
+  };
+
   const getQuestionStatusColor = (q) => {
     if (q.isCanceled) return "bg-slate-100 border-slate-300 opacity-80";
     if (q.imageNeeded && !q.hasImage) return "bg-red-50 border-red-500 shadow-red-100";
@@ -356,44 +356,20 @@ export default function AdminPage() {
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">בודק הרשאות...</div>;
 
-  // --- UI: מסך כניסה (גוגל בלבד) ---
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6" dir="rtl">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-slate-100">
            <h2 className="text-3xl font-black text-slate-800 mb-2 text-center">כניסה למנהלים</h2>
            <p className="text-center text-slate-400 mb-8 text-sm">הזן פרטי גישה כדי לנהל את המאגר</p>
-           
-           <button 
-             onClick={handleGoogleLogin} 
-             className="w-full bg-white text-slate-700 border border-slate-300 p-4 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition flex items-center justify-center gap-3"
-           >
-             <svg width="24" height="24" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-             התחבר עם Google
-           </button>
-
+           <form onSubmit={handleLogin} className="space-y-4">
+             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 rounded-xl border border-slate-200 outline-none transition bg-slate-50 focus:bg-white" placeholder="אימייל" required />
+             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 rounded-xl border border-slate-200 outline-none transition bg-slate-50 focus:bg-white" placeholder="סיסמה" required />
+             <button type="submit" className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition">התחבר למערכת 🔐</button>
+           </form>
            <div className="mt-6 text-center border-t pt-6">
              <button onClick={() => window.location.href='/'} className="text-slate-400 font-bold text-sm hover:text-slate-600 transition">חזור לאתר הראשי</button>
            </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- UI: מסך המתנה לאישור (Guest) ---
-  if (user && !isAdminLogin) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4 text-center px-4">
-        <div className="text-5xl">⏳</div>
-        <h2 className="text-xl font-bold text-slate-700">הבקשה בבדיקה</h2>
-        <p className="text-slate-500 max-w-md">
-          שלום <b>{user.email}</b>,<br/>
-          חשבונך נוצר בהצלחה!<br/>
-          כעת עליך להמתין שמנהל ראשי יאשר את הרשאותיך.
-        </p>
-        <div className="flex gap-4 mt-4">
-            <button onClick={handleLogout} className="text-slate-500 font-bold border border-slate-300 px-4 py-2 rounded-lg hover:bg-white transition">התנתק</button>
-            <button onClick={() => window.location.href='/'} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition">חזרה לאתר</button>
         </div>
       </div>
     );
@@ -441,8 +417,6 @@ export default function AdminPage() {
        <div className="max-w-2xl mx-auto mb-6 flex justify-between items-center">
         <button onClick={() => window.location.href = '/'} className="text-slate-500 font-bold hover:text-blue-600 transition">חזור לאתר</button>
         <div className="flex items-center gap-3">
-            {userData?.role === 'super_admin' && <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Super Admin</span>}
-            {userData?.role === 'editor' && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">עורך {userData.allowed_years ? Object.keys(userData.allowed_years).join(', ') : ''}</span>}
             <span className="text-xs font-bold text-slate-400 hidden sm:inline">{user.email}</span>
             <button onClick={handleLogout} className="bg-red-50 text-red-500 text-xs font-bold px-3 py-1.5 rounded-full hover:bg-red-100 transition">התנתק</button>
         </div>
@@ -451,86 +425,20 @@ export default function AdminPage() {
       <div className="p-8 max-w-2xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-100">
         <h2 className="text-3xl font-black mb-6 text-slate-800 text-center">ממשק ניהול</h2>
 
-        {/* --- שורת הטאבים --- */}
+        {/* --- תוספת: שורת הטאבים עם overflow-x-auto ו-whitespace-nowrap כדי שלא ישבר בנייד --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
           <button onClick={() => setActiveTab('upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'upload' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה חדשה</button>
           <button onClick={() => setActiveTab('manage_exams')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'manage_exams' ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
           <button onClick={() => setActiveTab('manage_courses')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'manage_courses' ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
           
+          {/* טאב דיווחים החדש */}
           <button onClick={() => setActiveTab('reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'reports' ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}>
             <FlagIcon /> דיווחים
-            {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}
+            {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{reportsList.length}</span>}
           </button>
-
-          {/* טאב ניהול משתמשים (מופיע רק למנהל על) */}
-          {userData?.role === 'super_admin' && (
-             <button onClick={() => setActiveTab('users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'users' ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>
-          )}
         </div>
 
-        {/* --- טאב ניהול משתמשים (חדש!) --- */}
-        {activeTab === 'users' && userData?.role === 'super_admin' && (
-            <div className="animate-fade-in space-y-4">
-                <h3 className="font-bold text-slate-800 text-xl mb-2">ניהול הרשאות</h3>
-                <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-sm text-orange-800 mb-4">
-                    💡 <b>איך זה עובד?</b> משתמשים חדשים שנרשמו יופיעו כאן כ-<b>Guest</b>. כאן תוכל לאשר אותם.
-                </div>
-                
-                {allUsers.length === 0 ? <div className="text-center text-slate-400">אין משתמשים נוספים.</div> : (
-                    <div className="space-y-3">
-                        {allUsers.map(u => (
-                            <div key={u.uid} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
-                                <div className="flex justify-between items-center border-b pb-2 mb-1">
-                                    <div>
-                                        <div className="font-bold text-slate-700">{u.email}</div>
-                                        <div className="text-xs text-slate-400 select-all font-mono">{u.uid}</div>
-                                    </div>
-                                    {u.uid !== user.uid && <button onClick={() => handleDeleteUser(u.uid)} className="text-red-400 hover:text-red-600 p-1"><TrashIcon/></button>}
-                                </div>
-                                
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-slate-500 w-16">תפקיד:</span>
-                                    <select 
-                                        value={u.role || 'guest'} 
-                                        onChange={(e) => handleUpdateUserRole(u.uid, e.target.value)}
-                                        className={`flex-1 p-2 rounded-lg border text-sm font-bold ${u.role==='guest' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' : 'bg-slate-50 border-slate-300'}`}
-                                        disabled={u.uid === user.uid}
-                                    >
-                                        <option value="guest">Guest (ממתין לאישור ⏳)</option>
-                                        <option value="editor">Editor (עורך)</option>
-                                        <option value="super_admin">Super Admin (מנהל על)</option>
-                                    </select>
-                                </div>
-
-                                {u.role === 'editor' && (
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                        <div className="text-xs font-bold text-slate-500 mb-2">שנים מותרות לעריכה:</div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {studentYears.map(year => {
-                                                const isAllowed = u.allowed_years && u.allowed_years[year];
-                                                return (
-                                                    <label key={year} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white p-1 rounded transition">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={!!isAllowed} 
-                                                            onChange={() => handleToggleUserYear(u.uid, year, isAllowed)}
-                                                            className="rounded text-blue-600"
-                                                        />
-                                                        {year}
-                                                    </label>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        )}
-
-        {/* --- טאב דיווחים --- */}
+        {/* --- תוספת: תוכן טאב הדיווחים --- */}
         {activeTab === 'reports' && (
           <div className="space-y-4 animate-fade-in">
             <h3 className="font-bold text-slate-800 text-xl mb-4">דיווחי סטודנטים ({reportsList.length})</h3>
@@ -581,7 +489,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* --- טאב ניהול קורסים --- */}
         {activeTab === 'manage_courses' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
@@ -627,7 +534,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* --- טאב ניהול מבחנים --- */}
         {activeTab === 'manage_exams' && (
           <div className="space-y-6 animate-fade-in">
              <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">

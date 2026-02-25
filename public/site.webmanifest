@@ -1,6 +1,6 @@
 {
-    "name": "MedExams",
-    "short_name": "MedExams",
+    "name": "ExaMed",
+    "short_name": "ExaMed",
     "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
