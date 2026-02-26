@@ -32,52 +32,52 @@ exports.processExamWithGemini = onCall(
 
       if (parsingMode === 'standard') {
         // --- מצב רגיל (טופס 0) ---
-        prompt = `Extract exam questions into a raw JSON array.
-        
-        RULES FOR STANDARD EXAM (Form 0):
-        1. **Single Correct**: The first option is ALWAYS the correct one (index 0).
-        2. **Output**: "correctIndex" MUST be a single INTEGER (0).
-        3. **Type**: Always "multiple_choice".
-        
-        Return ONLY raw JSON.`;
-
+        prompt = `Extract questions from this exam PDF to JSON. 
+        The first option is ALWAYS correct (Form 0 style).
+        CRITICAL FOR IMAGES: Set "imageNeeded": true ONLY IF text explicitly refers to a missing diagram/graph.
+        Return ONLY raw JSON array: [{"id": 1, "text": "Q", "options": ["Correct", "W1", "W2"], "correctIndex": 0, "imageNeeded": false}]`;
       } else {
-        // --- מצב ממוחשב (Moodle) - התיקון נגד פיצול שאלות ---
+        // --- מצב ממוחשב (Moodle) - הפרומפט החדש והגמיש ---
         prompt = `You are parsing a "Review" PDF of a solved Moodle exam.
-        Extract questions into a JSON array.
+        Extract questions into a JSON array. 
+        
+        The exam contains two main types of logical questions. Use your intelligence to detect the type:
 
-        *** CRITICAL INSTRUCTION: GROUPING ***
-        Do NOT split a single "Select all that apply" question into multiple "True/False" questions.
-        If you see a main question text followed by a list of statements/options -> Treat it as **ONE** question with multiple options.
+        TYPE 1: Single Choice (Radio Buttons / Checkboxes)
+        - The user selects ONE answer from a list.
+        - The correct answer is marked with "התשובה הנכונה:", a checkmark (✓/☑), or bold text.
+        - Output format: {"type": "multiple_choice", "text": "Question?", "options": ["Opt1", "Opt2"], "correctIndex": X, "imageNeeded": false}
 
-        ---------------------------------------------------
-        DECISION TREE (Follow in order):
+        TYPE 2: Complex / Multi-Part / Matching / Cloze
+        - DETECT IF: The question asks to match items, fill multiple blanks, or classify items.
+        - EXAMPLES: 
+          * "Match item A to X, item B to Y..."
+          * "Complete the sentence: The heart is {{0}} and the liver is {{1}}..."
+          * A list of sub-questions (1, 2, 3...) where each has its own correct answer displayed.
+        
+        - ACTION for Type 2:
+          1. Consolidate the main question text and the sub-items into one clear string.
+          2. Identify the CORRECT answer for EACH sub-item/blank.
+          3. Replace the correct answers in the text with {{0}}, {{1}}, {{2}}...
+          4. Create a "clozeOptions" array. For each blank/item:
+             - Put the correct answer as the first option.
+             - GENERATE 3 plausible distractors (wrong answers) relevant to that specific item.
+        
+        - Output format for Type 2:
+          {
+            "type": "cloze", 
+            "text": "Match the following:\nLung Pattern A: {{0}}\nLung Pattern B: {{1}}", 
+            "clozeOptions": [
+               {"options": ["Alveolar", "Interstitial", "Normal", "Cystic"], "correctIndex": 0},
+               {"options": ["Interstitial", "Alveolar", "Normal", "Cystic"], "correctIndex": 0}
+            ],
+            "imageNeeded": true 
+          }
 
-        1. **CLOZE** (Fill-in-the-blank / Matching):
-           - Only if there are explicit gaps "____" or matching pairs (A->1).
-           - Output: "type": "cloze".
-
-        2. **MULTI-SELECT** (Checkboxes / "Select all"):
-           - Signs: Square brackets [], specific instruction to "Select all correct sentences".
-           - **ACTION**: create ONE question object.
-           - "options": List all the sentences as strings.
-           - "correctIndex": An ARRAY of integers for the correct sentences (e.g., [0, 2, 3]).
-           - **NOTE**: Ignore individual feedback lines like "Statement A is correct". Just use them to determine if index 0 is correct.
-
-        3. **SINGLE-SELECT** (Radio Buttons):
-           - Signs: Round brackets (), only one correct answer.
-           - "correctIndex": A single INTEGER (e.g., 1).
-
-        ---------------------------------------------------
-        HOW TO FIND CORRECT ANSWERS IN MOODLE:
-        - Look for the SUMMARY LINE at the bottom: "The correct answers are: A, C" (התשובות הנכונות הן: ...).
-        - OR look for checkmarks (V) / green highlights next to options.
-        ---------------------------------------------------
-
-        JSON OUTPUT RULES:
-        - Keep Hebrew text exactly as is.
-        - Remove prefixes ("a.", "1.") from options.
-        - If image exists -> "imageNeeded": true.
+        CRITICAL RULES:
+        1. If a question refers to an image (X-ray, Graph, Diagram) -> Set "imageNeeded": true.
+        2. If you see a text box inside a sentence -> It is a Type 2 (Cloze) question.
+        3. If there are multiple correct answers for different parts of the question -> It is a Type 2 (Cloze) question.
 
         Return ONLY the raw JSON array.`;
       }
@@ -128,7 +128,17 @@ exports.processExamWithGemini = onCall(
       }
 
       // 3. חילוץ השאלות
-      const questions = extractJSON(responseText);
+      const rawQuestions = extractJSON(responseText);
+
+      // --- התיקון הקריטי: נרמול הנתונים לפני השליחה לאתר ---
+      const questions = rawQuestions.map(q => {
+          // אם ג'מיני התעקש לקרוא לזה 'question', נתקן את זה ל-'text' בשבילו
+          if (q.question && !q.text) {
+              q.text = q.question;
+              delete q.question;
+          }
+          return q;
+      });
 
       // 4. החזרת התשובה לאתר
       return { questions };
