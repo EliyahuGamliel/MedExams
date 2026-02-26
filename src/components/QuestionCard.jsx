@@ -4,6 +4,7 @@ import { ref, push, set } from "firebase/database";
 
 // פונקציית עזר לערבוב
 const shuffleArray = (array) => {
+  if (!array) return [];
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -12,15 +13,32 @@ const shuffleArray = (array) => {
   return newArray;
 };
 
+// פונקציה להשוואת תשובות (לטיפול במערכים - בדיקת זהות מלאה)
+const isArrayEqual = (arr1, arr2) => {
+    if (!Array.isArray(arr1) || !Array.isArray(arr2)) return false;
+    if (arr1.length !== arr2.length) return false;
+    const sorted1 = [...arr1].sort((a, b) => a - b);
+    const sorted2 = [...arr2].sort((a, b) => a - b);
+    return sorted1.every((val, index) => val === sorted2[index]);
+};
+
 // אייקון לדיווח
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
+const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 
 export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId }) {
   
-  // State למצב מבחן (בחירה יחידה)
-  const [selectedOptionId, setSelectedOptionId] = useState(null);
+  // הגנה ראשונית - אם אין שאלה לא מרנדרים
+  if (!question) return null;
+
+  // זיהוי אם השאלה היא מרובת בחירות
+  const isMultiSelect = Array.isArray(question.correctIndex);
+
+  // State למצב מבחן
+  const [selectedOptionId, setSelectedOptionId] = useState(null); // לבחירה יחידה
+  const [testSelections, setTestSelections] = useState([]);       // לבחירה מרובה
   
-  // State למצב תרגול (ריבוי בחירות)
+  // State למצב תרגול
   const [practiceSelections, setPracticeSelections] = useState([]); 
 
   // Cloze State
@@ -32,28 +50,40 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
   const [reportText, setReportText] = useState("");
   const [reportStatus, setReportStatus] = useState('idle');
 
-  // --- הכנת נתונים חכמה (כולל ערעורים וביטולים) ---
+  // --- הכנת נתונים חכמה ---
   const shuffledOptions = useMemo(() => {
     if (question.type === 'cloze') return null;
+
+    // הגנה על מערך האופציות
+    const optionsSafe = question.options || [];
 
     const appeals = question.appealedIndexes || [];
     const isCanceled = question.isCanceled === true;
 
-    const optionsWithData = question.options.map((opt, idx) => ({
-      id: idx,
-      text: opt,
-      // אם השאלה מבוטלת - כל תשובה נכונה. אחרת: נכונה אם היא המקורית או חלק מהערעורים שהתקבלו.
-      isCorrect: isCanceled || idx === question.correctIndex || appeals.includes(idx),
-      isAppealed: appeals.includes(idx),
-      isMainCorrect: idx === question.correctIndex
-    }));
+    const optionsWithData = optionsSafe.map((opt, idx) => {
+      // בדיקה מותאמת אם זה מערך או יחיד
+      const isMainCorrect = isMultiSelect 
+          ? question.correctIndex.includes(idx) 
+          : idx === question.correctIndex;
+
+      return {
+        id: idx,
+        text: opt,
+        isCorrect: isCanceled || isMainCorrect || appeals.includes(idx),
+        isAppealed: appeals.includes(idx),
+        isMainCorrect: isMainCorrect
+      };
+    });
     return shuffleArray(optionsWithData);
-  }, [question]);
+  }, [question, isMultiSelect]);
 
   const shuffledClozeOptions = useMemo(() => {
     if (question.type !== 'cloze') return null;
-    return question.clozeOptions.map(blank => {
-      const opts = blank.options.map((opt, idx) => ({
+    
+    const clozeOptsSafe = question.clozeOptions || [];
+    
+    return clozeOptsSafe.map(blank => {
+      const opts = (blank.options || []).map((opt, idx) => ({
         id: idx,
         text: opt,
         isCorrect: idx === blank.correctIndex
@@ -65,6 +95,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
   // איפוס בחירות במעבר שאלה
   useEffect(() => {
     setSelectedOptionId(null);
+    setTestSelections([]);
     setPracticeSelections([]); 
     setClozeSelections({});
     setClozeWrongAttempts({});
@@ -72,7 +103,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
   // --- חישוב סטטוס להשלמה (Cloze) ---
   const calculateClozeStatus = (currentSelections) => {
-    if (!shuffledClozeOptions) return { correctCount: 0, total: 0, status: 'empty' };
+    if (!shuffledClozeOptions || shuffledClozeOptions.length === 0) return { correctCount: 0, total: 0, status: 'empty' };
     
     if (question.isCanceled) {
        return { correctCount: shuffledClozeOptions.length, total: shuffledClozeOptions.length, status: 'perfect', answeredCount: shuffledClozeOptions.length };
@@ -102,25 +133,63 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
   const clozeState = calculateClozeStatus(clozeSelections);
 
-  // --- לוגיקה רגילה לאמריקאיות ---
-  const handleSelectStandard = (optionId, isCorrect) => {
+  // --- לוגיקה לאמריקאיות (כולל התיקון לנכונות חלקית) ---
+  const handleSelectStandard = (optionId) => {
     if (mode === 'test' && isSubmitted) return;
 
+    // פונקציית עזר לעדכון בחירה מרובה (טוגל)
+    const toggleSelection = (prevList) => {
+        if (prevList.includes(optionId)) {
+            return prevList.filter(id => id !== optionId);
+        } else {
+            return [...prevList, optionId];
+        }
+    };
+
     if (mode === 'practice') {
-       setPracticeSelections(prev => {
-         if (prev.includes(optionId)) {
-           return prev.filter(id => id !== optionId);
-         } else {
-           return [...prev, optionId];
-         }
-       });
+       // במצב תרגול - תמיד מאפשרים בחירה מרובה (לבדיקה עצמית)
+       setPracticeSelections(prev => toggleSelection(prev));
     } else {
-       if (selectedOptionId === optionId) {
-          setSelectedOptionId(null);
-          if (onAnswer) onAnswer(index, question.isCanceled ? 'perfect' : null);
+       // --- מצב מבחן (Test) ---
+       if (isMultiSelect) {
+           // אם זו שאלה מרובת בחירות
+           setTestSelections(prev => {
+               const newList = toggleSelection(prev);
+               
+               // חישוב הסטטוס לשליחה ל-HomePage
+               let status = null;
+               if (newList.length > 0) {
+                   if (question.isCanceled) {
+                       status = 'perfect';
+                   } else {
+                       const correctArr = Array.isArray(question.correctIndex) ? question.correctIndex : [question.correctIndex];
+                       
+                       if (isArrayEqual(newList, correctArr)) {
+                           // 1. הכל נכון ומדויק
+                           status = 'perfect'; 
+                       } else if (newList.every(val => correctArr.includes(val))) {
+                           // 2. חלקי (כל מה שנבחר נכון, אבל חסרות תשובות)
+                           status = 'partial';
+                       } else {
+                           // 3. שגוי (נבחרה לפחות תשובה אחת לא נכונה)
+                           status = 'wrong';
+                       }
+                   }
+               }
+               
+               if (onAnswer) onAnswer(index, status);
+               return newList;
+           });
        } else {
-          setSelectedOptionId(optionId);
-          if (onAnswer) onAnswer(index, (isCorrect || question.isCanceled) ? 'perfect' : 'wrong');
+           // אם זו שאלה רגילה (Radio)
+           if (selectedOptionId === optionId) {
+              setSelectedOptionId(null);
+              if (onAnswer) onAnswer(index, question.isCanceled ? 'perfect' : null);
+           } else {
+              setSelectedOptionId(optionId);
+              const isCorrect = (optionId === question.correctIndex) || question.isCanceled;
+              if (onAnswer) onAnswer(index, isCorrect ? 'perfect' : 'wrong');
+           }
        }
     }
   };
@@ -171,19 +240,23 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       }, 2000); 
     } catch (error) {
       console.error(error);
-      alert("אירעה שגיאה בשליחת הדיווח. ודא שעדכנת את חוקי האבטחה ב-Firebase.");
+      alert("אירעה שגיאה בשליחת הדיווח.");
       setReportStatus('idle');
     }
   };
 
   // --- רינדור Cloze ---
   const renderClozeContent = () => {
+    if (!question.text) return null;
     return (
       <div className="text-lg text-slate-800 whitespace-pre-line leading-loose" dir="rtl">
         {question.text.split(/(\{\{\d+\}\})/g).map((part, i) => {
           const match = part.match(/\{\{(\d+)\}\}/);
           if (match) {
             const blankIndex = parseInt(match[1]);
+            // הגנה נוספת
+            if (!shuffledClozeOptions || !shuffledClozeOptions[blankIndex]) return <span key={i} className="text-red-400 font-bold">[חסר]</span>;
+
             const options = shuffledClozeOptions[blankIndex];
             const currentSelection = clozeSelections[blankIndex];
             
@@ -246,7 +319,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
              </div>
            ) : (
              <>
-               <p className="text-xs text-slate-500 mb-3">תאר בקצרה מה הבעיה (למשל: התשובה שכוללת את המילה 'אוסמוזה' אמורה להיות הנכונה).</p>
+               <p className="text-xs text-slate-500 mb-3">תאר בקצרה מה הבעיה.</p>
                <textarea 
                  value={reportText} 
                  onChange={(e) => setReportText(e.target.value)}
@@ -264,11 +337,19 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         </div>
       )}
 
-      {/* באנר שאלה מבוטלת למשתמש */}
+      {/* באנר שאלה מבוטלת */}
       {question.isCanceled && (
         <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-1 text-xs font-bold tracking-widest shadow-md">
           שאלה מבוטלת - אינה נכללת בציון (כל תשובה נכונה)
         </div>
+      )}
+
+      {/* הודעת שגיאה אם חסר מידע */}
+      {question.type === 'multiple_choice' && (!question.options || question.options.length === 0) && (
+           <div className="text-center p-4 text-red-500 bg-red-50 rounded-xl mb-4 border border-red-200">
+               <div className="flex justify-center mb-1"><AlertIcon /></div>
+               <span className="font-bold text-sm">שגיאה: נתוני השאלה חסרים.</span>
+           </div>
       )}
 
       <div className={`flex justify-between items-center mb-4 ${question.isCanceled ? 'mt-4' : ''}`}>
@@ -283,6 +364,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       {question.type === 'multiple_choice' && (
          <h3 className={`text-xl font-bold mb-4 ${question.isCanceled ? 'text-slate-500' : 'text-slate-800'}`}>
            {question.text}
+           {isMultiSelect && <span className="block text-sm text-blue-500 font-normal mt-1">(זוהי שאלה מרובת בחירות - סמן את כל התשובות הנכונות)</span>}
          </h3>
       )}
 
@@ -302,7 +384,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
            <span className="font-bold text-sm">טוען תמונה... 🖼️</span>
         </div>
       )}
-      {/* ------------------------------- */}
 
       {question.type === 'cloze' ? (
          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
@@ -325,29 +406,25 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       ) : (
         <div className="space-y-2">
           {shuffledOptions?.map((option) => {
+             // בדיקה: האם האופציה נבחרה?
              const isSelected = mode === 'practice' 
                 ? practiceSelections.includes(option.id) 
-                : selectedOptionId === option.id;
+                : (isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id);
 
-             // שינינו ל-border-2 כדי שיהיה עקבי ואחיד במעברים
              let btnClass = "w-full text-right p-4 rounded-xl border-2 mb-3 flex flex-col sm:flex-row sm:items-center justify-between transition-all ";
              let tagText = null;
              let tagColor = "";
              
              if (mode === 'test' && isSubmitted) {
                 if (option.isMainCorrect) { 
-                  // אם זו התשובה הנכונה, נצבע בירוק חזק רק אם בחרת בה, אחרת ירוק חלש
                   btnClass += isSelected ? "bg-green-100 border-green-600 text-green-900 font-bold shadow-md" : "bg-green-50 border-green-300 text-green-800"; 
                   if (question.appealedIndexes?.length > 0) { tagText = "התשובה המקורית"; tagColor = "bg-green-200 text-green-800"; }
                 } else if (option.isAppealed) { 
-                  // כנ"ל לגבי תשובת ערעור
                   btnClass += isSelected ? "bg-orange-100 border-orange-600 text-orange-900 font-bold shadow-md" : "bg-orange-50 border-orange-300 text-orange-800"; 
                   tagText = "התקבל בערעור"; tagColor = "bg-orange-200 text-orange-800"; 
                 } else if (isSelected) { 
-                  // אם בחרת תשובה שגויה
                   btnClass += "bg-red-50 border-red-500 text-red-900 shadow-md"; 
                 } else { 
-                  // תשובה לא נכונה שלא נבחרה
                   btnClass += "bg-slate-50 border-slate-100 opacity-50"; 
                 }
              } else if (mode === 'practice') {
@@ -372,11 +449,12 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
              }
 
              return (
-               <button key={option.id} onClick={() => handleSelectStandard(option.id, option.isCorrect)} className={btnClass}>
-                 <span className={`${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>{option.text}</span>
-                 
+               <button key={option.id} onClick={() => handleSelectStandard(option.id)} className={btnClass}>
+                 <span className={`${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
+                    {isMultiSelect && <span className="inline-block w-4 h-4 ml-2 border border-slate-400 rounded-sm align-middle text-[10px] leading-3">{isSelected && '✓'}</span>}
+                    {option.text}
+                 </span>
                  <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
-                    {/* תגית הבחירה שלך תופיע רק במצב מבחן אחרי הגשה */}
                     {isSelected && mode === 'test' && isSubmitted && (
                         <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm font-bold">
                             הבחירה שלך 👈
@@ -396,7 +474,8 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
              )
           })}
           
-          {mode === 'test' && isSubmitted && selectedOptionId === null && !question.isCanceled && (
+          {/* הודעה אם לא נענה */}
+          {mode === 'test' && isSubmitted && selectedOptionId === null && testSelections.length === 0 && !question.isCanceled && (
               <div className="mt-4 p-3 bg-slate-100 text-slate-500 rounded-xl text-center font-bold text-sm border border-slate-200">
                   ⚪ השאלה לא נענתה
               </div>

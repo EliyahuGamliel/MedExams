@@ -18,6 +18,8 @@ const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
+const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="M2 15h10"/><path d="m9 18 3-3-3-3"/></svg>;
+const MinusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 
 export default function AdminPage() {
   const [user, setUser] = useState(null);
@@ -28,7 +30,7 @@ export default function AdminPage() {
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
-  const examYearsList = Array.from({length: 11}, (_, i) => (2012 + i).toString());
+  const examYearsList = Array.from({length: 16}, (_, i) => (2012 + i).toString());
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
   
   const [activeTab, setActiveTab] = useState('upload'); 
@@ -57,6 +59,9 @@ export default function AdminPage() {
   const [editCourseSemester, setEditCourseSemester] = useState("");
 
   const [reportsList, setReportsList] = useState([]);
+  const [bulkFiles, setBulkFiles] = useState([]); 
+  
+  const [newQuestionOptionsCount, setNewQuestionOptionsCount] = useState(4); 
 
   const addLog = (msg) => setDebugLog(prev => prev + "\n" + msg);
 
@@ -113,7 +118,7 @@ export default function AdminPage() {
     }
   }, [userData]);
 
-  // --- 3. טעינת נתונים (Lazy Load - רשימה קלה בלבד) ---
+  // --- 3. טעינת נתונים (Lazy Load) ---
   useEffect(() => {
     get(ref(db, 'courses')).then((snap) => setCoursesList(snap.val() || {}));
     
@@ -144,39 +149,187 @@ export default function AdminPage() {
   const allowedStudentYears = studentYears.filter(y => canEditYear(y));
 
   // --- פעולות ניהול ---
-  const handleUpdateUserRole = async (targetUid, newRole) => {
-      try {
-          await update(ref(db, `users/${targetUid}`), { role: newRole });
-          if (newRole !== 'editor') await update(ref(db, `users/${targetUid}`), { allowed_years: null });
-      } catch (e) { alert("שגיאה: " + e.message); }
+  
+  const handleAddQuestion = async () => {
+      if (!questionsEditorId) return;
+      
+      const initialOptions = Array.from({ length: newQuestionOptionsCount }, (_, i) => `אפשרות ${i + 1}`);
+      const newIndex = examQuestions.length;
+
+      const newQuestion = {
+          id: newIndex, 
+          text: "שאלה חדשה... (לחץ כדי לערוך)",
+          type: "multiple_choice",
+          options: initialOptions,
+          correctIndex: 0,
+          imageNeeded: false,
+          hasImage: false,
+          isCanceled: false
+      };
+      
+      const updatedQuestions = [...examQuestions, newQuestion];
+      setExamQuestions(updatedQuestions);
+      
+      const updates = {};
+      updates[`exam_contents/${questionsEditorId}`] = updatedQuestions;
+      updates[`uploaded_exams/${questionsEditorId}/questionCount`] = updatedQuestions.length;
+      
+      await update(ref(db), updates);
+      setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: updatedQuestions.length } : e));
   };
 
-  const handleToggleUserYear = async (targetUid, year, currentStatus) => {
-      try {
-          const updates = {};
-          if (currentStatus) updates[`users/${targetUid}/allowed_years/${year}`] = null; 
-          else updates[`users/${targetUid}/allowed_years/${year}`] = true; 
-          await update(ref(db), updates);
-      } catch (e) { alert("שגיאה: " + e.message); }
+  const handleDeleteQuestion = async (idxToDelete) => {
+      if (!window.confirm("האם למחוק שאלה זו לצמיתות?")) return;
+      
+      const filtered = examQuestions.filter((_, i) => i !== idxToDelete);
+      const reindexedQuestions = filtered.map((q, i) => ({
+          ...q,
+          id: i
+      }));
+      
+      setExamQuestions(reindexedQuestions);
+      
+      const updates = {};
+      updates[`exam_contents/${questionsEditorId}`] = reindexedQuestions;
+      updates[`uploaded_exams/${questionsEditorId}/questionCount`] = reindexedQuestions.length;
+      
+      await update(ref(db), updates);
+      setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: reindexedQuestions.length } : e));
   };
 
-  const handleDeleteUser = async (targetUid) => {
-      if (!window.confirm("למחוק משתמש זה?")) return;
-      try { await remove(ref(db, `users/${targetUid}`)); } catch (e) { alert("שגיאה: " + e.message); }
+  const handleAddOptionToQuestion = async (qIdx) => {
+      const updated = [...examQuestions];
+      const currentOpts = updated[qIdx].options || [];
+      updated[qIdx].options = [...currentOpts, `אפשרות ${currentOpts.length + 1}`];
+      setExamQuestions(updated);
+      await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/options`), updated[qIdx].options);
   };
 
-  const handleGoogleLogin = async () => {
-    const auth = getAuth();
-    const provider = new GoogleAuthProvider();
-    try { await signInWithPopup(auth, provider); } catch (error) { alert(error.message); }
+  const handleRemoveOptionFromQuestion = async (qIdx, optIdx) => {
+      const updated = [...examQuestions];
+      const currentOpts = updated[qIdx].options;
+      if (currentOpts.length <= 2) return alert("חייבות להיות לפחות 2 אפשרויות.");
+
+      updated[qIdx].options = currentOpts.filter((_, i) => i !== optIdx);
+      
+      let currentCorrect = updated[qIdx].correctIndex;
+      if (Array.isArray(currentCorrect)) {
+          updated[qIdx].correctIndex = currentCorrect
+              .filter(i => i !== optIdx)
+              .map(i => i > optIdx ? i - 1 : i);
+      } else {
+          if (currentCorrect === optIdx) updated[qIdx].correctIndex = 0;
+          else if (currentCorrect > optIdx) updated[qIdx].correctIndex = currentCorrect - 1;
+      }
+
+      setExamQuestions(updated);
+      
+      await update(ref(db, `exam_contents/${questionsEditorId}/${qIdx}`), {
+          options: updated[qIdx].options,
+          correctIndex: updated[qIdx].correctIndex
+      });
   };
 
-  const handleLogout = async () => {
-    const auth = getAuth();
-    await signOut(auth);
-    window.location.reload();
+  const handleQuestionTextChange = (idx, newText) => {
+      setExamQuestions(prev => {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], text: newText };
+          return updated;
+      });
+  };
+  const saveQuestionText = async (idx, textToSave) => {
+      await set(ref(db, `exam_contents/${questionsEditorId}/${idx}/text`), textToSave);
   };
 
+  const handleOptionTextChange = (qIdx, optIdx, newText) => {
+      setExamQuestions(prev => {
+          const updated = [...prev];
+          const q = { ...updated[qIdx] };
+          const newOptions = [...q.options];
+          newOptions[optIdx] = newText;
+          q.options = newOptions;
+          updated[qIdx] = q;
+          return updated;
+      });
+  };
+  const saveOptionText = async (qIdx, optIdx, textToSave) => {
+      await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/options/${optIdx}`), textToSave);
+  };
+
+  const handleUploadQuestionImage = async (idx, f) => {
+    if (!questionsEditorId) return;
+    try {
+        setStatus('processing');
+        const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
+        const compressedFile = await imageCompression(f, options);
+        const storage = getStorage();
+        const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${idx}_${Date.now()}`);
+        await uploadBytes(fileRef, compressedFile);
+        const downloadURL = await getDownloadURL(fileRef);
+        
+        const updates = {};
+        updates[`exam_contents/${questionsEditorId}/${idx}/imageUrl`] = downloadURL;
+        updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = true;
+        await update(ref(db), updates);
+
+        setExamQuestions(prev => { 
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], imageUrl: downloadURL, hasImage: true };
+            return updated;
+        });
+        setStatus('idle');
+    } catch(e) { alert(e.message); setStatus('idle'); }
+  };
+
+  const handleSetMainCorrect = async (idx, optIdx, isMultiSelectMode = false) => {
+      const q = examQuestions[idx];
+      let currentCorrect = q.correctIndex;
+      let newCorrect;
+
+      if (isMultiSelectMode) {
+          let arr = [];
+          if (Array.isArray(currentCorrect)) arr = [...currentCorrect];
+          else if (typeof currentCorrect === 'number') arr = [currentCorrect];
+          
+          if (arr.includes(optIdx)) arr = arr.filter(i => i !== optIdx);
+          else arr.push(optIdx);
+          
+          arr.sort((a, b) => a - b);
+          newCorrect = arr.length === 1 ? arr[0] : arr.length === 0 ? null : arr;
+      } else {
+          newCorrect = optIdx;
+      }
+
+      setExamQuestions(prev => {
+          const updated = [...prev];
+          updated[idx].correctIndex = newCorrect;
+          return updated;
+      });
+
+      await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { correctIndex: newCorrect });
+  };
+
+  const handleToggleAppeal = async (idx, optIdx) => {
+      const q = examQuestions[idx];
+      const cur = q.appealedIndexes || [];
+      const newer = cur.includes(optIdx) ? cur.filter(i=>i!==optIdx) : [...cur, optIdx];
+      await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { appealedIndexes: newer });
+      setExamQuestions(p => { const n=[...p]; n[idx].appealedIndexes=newer; return n; });
+  };
+  const handleToggleCancel = async (idx) => {
+      const ns = !examQuestions[idx].isCanceled;
+      await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { isCanceled: ns });
+      setExamQuestions(p => { const n=[...p]; n[idx].isCanceled=ns; return n; });
+  };
+  
+  const getQuestionStatusColor = (q) => {
+    if (q.isCanceled) return "bg-slate-100 border-slate-300 opacity-80";
+    if (q.imageNeeded && !q.hasImage) return "bg-red-50 border-red-500 shadow-red-100";
+    if (q.hasImage) return "bg-green-50 border-green-500 shadow-green-100";
+    return "bg-white border-slate-200";
+  };
+
+  // --- ניהול קורסים (הפונקציות שחסרו) ---
   const handleAddCourse = async () => {
     if (!newCourseName) return alert("נא לכתוב שם קורס");
     if (!canEditYear(selectedStudentYear)) return alert("אין לך הרשאה לשנה זו");
@@ -245,7 +398,6 @@ export default function AdminPage() {
       const examId = `${courseName}_${examYear}_${examMoed}_${Date.now()}`.replace(/\s+/g, '_');
       
       const updates = {};
-      // שמירה מפוצלת עם questionCount
       updates[`uploaded_exams/${examId}`] = {
         id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
         courseId: selectedCourseId, examYear, examMoed, title: `${examYear} - ${examMoed}`,
@@ -261,6 +413,67 @@ export default function AdminPage() {
       await update(ref(db), updates);
       setStatus('success'); alert(`הועלה בהצלחה`); setFile(null); setAppendicesFile(null);
     } catch (e) { console.error(e); addLog("שגיאה: " + e.message); setStatus('idle'); }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkFiles || bulkFiles.length === 0) return alert("אנא בחר קבצים להעלאה.");
+    if (!selectedCourseId) return alert("אנא בחר קורס לשיוך המבחנים.");
+    
+    const currentSemesterCourses = coursesList[selectedStudentYear]?.[selectedSemester] || {};
+    const courseName = currentSemesterCourses[selectedCourseId]?.name;
+
+    if (!window.confirm(`האם אתה בטוח שברצונך להתחיל סריקה של ${bulkFiles.length} מבחנים לקורס "${courseName}"? התהליך ייקח כמה דקות, נא לא לסגור את החלון.`)) return;
+
+    setStatus('processing');
+    setDebugLog(`🚀 מתחיל תהליך אצווה עבור ${bulkFiles.length} קבצים...`);
+
+    for (let i = 0; i < bulkFiles.length; i++) {
+        const currentFile = bulkFiles[i];
+        const filename = currentFile.name.toLowerCase();
+        
+        const yearMatch = filename.match(/(20\d{2})/);
+        const extractedYear = yearMatch ? yearMatch[1] : "2026"; 
+
+        let extractedMoed = "מועד א'";
+        if (filename.includes("b")) extractedMoed = "מועד ב'";
+        else if (filename.includes("c")) extractedMoed = "מועד מיוחד";
+
+        addLog(`\n⏳ מעבד קובץ ${i+1}/${bulkFiles.length}: ${currentFile.name}`);
+        addLog(`   זוהה כשנה: ${extractedYear} | מועד: ${extractedMoed}`);
+
+        try {
+            const base64Data = await fileToBase64(currentFile);
+            const functions = getFunctions();
+            const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
+            const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
+
+            const questions = result.data.questions.map((q, idx) => ({ 
+              ...q, id: idx, type: q.type || 'multiple_choice', imageNeeded: q.imageNeeded || false, isCanceled: false, appealedIndexes: [] 
+            })); 
+
+            const examId = `${courseName}_${extractedYear}_${extractedMoed}_${Date.now()}`.replace(/\s+/g, '_');
+
+            const updates = {};
+            updates[`uploaded_exams/${examId}`] = {
+              id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
+              courseId: selectedCourseId, examYear: extractedYear, examMoed: extractedMoed, 
+              title: `${extractedYear} - ${extractedMoed}`,
+              questionCount: questions.length,
+              hasAppendices: false, parsingMode, uploadedAt: new Date().toISOString()
+            };
+            updates[`exam_contents/${examId}`] = questions;
+
+            await update(ref(db), updates);
+            addLog(`✅ קובץ עבר בהצלחה ושומר במסד הנתונים!`);
+        } catch(e) {
+            console.error(`שגיאה בקובץ ${currentFile.name}:`, e);
+            addLog(`❌ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
+        }
+    }
+
+    setStatus('success');
+    alert("🎉 סריקת האצווה הסתיימה! מומלץ לבדוק בלוגים אם היו שגיאות פרטניות.");
+    setBulkFiles([]);
   };
 
   const handleUpdateAppendices = async (examId) => {
@@ -312,49 +525,11 @@ export default function AdminPage() {
     }
   };
 
-  const handleUploadQuestionImage = async (idx, f) => {
-    if (!questionsEditorId) return;
-    try {
-        setStatus('processing');
-        const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
-        const compressedFile = await imageCompression(f, options);
-        const storage = getStorage();
-        const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${idx}_${Date.now()}`);
-        await uploadBytes(fileRef, compressedFile);
-        const downloadURL = await getDownloadURL(fileRef);
-        
-        const updates = {};
-        updates[`exam_images/${questionsEditorId}/${idx}`] = downloadURL;
-        updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = true;
-        await update(ref(db), updates);
-
-        setExamQuestions(p => { const n=[...p]; n[idx].hasImage=true; return n; });
-        setStatus('idle');
-    } catch(e) { alert(e.message); setStatus('idle'); }
-  };
-
-  const handleSetMainCorrect = async (idx, optIdx) => {
-      await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { correctIndex: optIdx });
-      setExamQuestions(p => { const n=[...p]; n[idx].correctIndex=optIdx; return n; });
-  };
-  const handleToggleAppeal = async (idx, optIdx) => {
-      const q = examQuestions[idx];
-      const cur = q.appealedIndexes || [];
-      const newer = cur.includes(optIdx) ? cur.filter(i=>i!==optIdx) : [...cur, optIdx];
-      await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { appealedIndexes: newer });
-      setExamQuestions(p => { const n=[...p]; n[idx].appealedIndexes=newer; return n; });
-  };
-  const handleToggleCancel = async (idx) => {
-      const ns = !examQuestions[idx].isCanceled;
-      await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { isCanceled: ns });
-      setExamQuestions(p => { const n=[...p]; n[idx].isCanceled=ns; return n; });
-  };
-  
-  const getQuestionStatusColor = (q) => {
-    if (q.isCanceled) return "bg-slate-100 border-slate-300 opacity-80";
-    if (q.imageNeeded && !q.hasImage) return "bg-red-50 border-red-500 shadow-red-100";
-    if (q.hasImage) return "bg-green-50 border-green-500 shadow-green-100";
-    return "bg-white border-slate-200";
+  // --- פונקציית התנתקות ---
+  const handleLogout = async () => {
+    const auth = getAuth();
+    await signOut(auth);
+    window.location.reload();
   };
 
   const availableCourses = coursesList[selectedStudentYear]?.[selectedSemester] ? Object.entries(coursesList[selectedStudentYear][selectedSemester]) : [];
@@ -363,7 +538,6 @@ export default function AdminPage() {
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">בודק הרשאות...</div>;
 
-  // --- UI ---
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6" dir="rtl">
@@ -401,7 +575,6 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
            <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full">
               <h3 className="text-xl font-bold mb-4 text-slate-800">עריכת קורס</h3>
-              <label className="block text-xs font-bold text-slate-500 mb-1">שם הקורס:</label>
               <input type="text" value={editCourseName} onChange={e => setEditCourseName(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 mb-4 focus:ring-2 focus:ring-blue-500 outline-none" />
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div><label className="block text-xs font-bold text-slate-500 mb-1">שנת לימוד:</label><select value={editCourseYear} onChange={e => setEditCourseYear(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300">{studentYears.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
@@ -430,7 +603,8 @@ export default function AdminPage() {
 
         {/* --- שורת הטאבים --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
-          <button onClick={() => setActiveTab('upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'upload' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה חדשה</button>
+          <button onClick={() => setActiveTab('upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'upload' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
+        {/* --- <button onClick={() => setActiveTab('bulk')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'bulk' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית 📚</button> --- */}
           <button onClick={() => setActiveTab('manage_exams')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'manage_exams' ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
           <button onClick={() => setActiveTab('manage_courses')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'manage_courses' ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
           <button onClick={() => setActiveTab('reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'reports' ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
@@ -546,7 +720,15 @@ export default function AdminPage() {
 
                       {status !== 'processing' && (
                       <>
-                      <label className="flex items-center gap-2 mb-4 cursor-pointer"><input type="checkbox" checked={showMissingImagesOnly} onChange={e => setShowMissingImagesOnly(e.target.checked)} className="w-4 h-4 text-red-600 rounded" /> <span className="text-sm font-bold text-slate-600">הצג רק שאלות שחסרה להן תמונה 🚨</span></label>
+                      <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showMissingImagesOnly} onChange={e => setShowMissingImagesOnly(e.target.checked)} className="w-4 h-4 text-red-600 rounded" /> <span className="text-sm font-bold text-slate-600">הצג רק שאלות שחסרה להן תמונה 🚨</span></label>
+                          <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-500">מספר אפשרויות:</span>
+                              <input type="number" min="2" max="10" value={newQuestionOptionsCount} onChange={e => setNewQuestionOptionsCount(Number(e.target.value))} className="w-12 p-1 text-center border border-slate-300 rounded-lg text-xs" />
+                              <button onClick={handleAddQuestion} className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 flex items-center gap-1"><PlusIcon /> הוסף שאלה חדשה</button>
+                          </div>
+                      </div>
+                      
                       <div className="space-y-4">
                         {filteredQuestions.map((q, idx) => {
    const realIndex = examQuestions.findIndex(orig => orig === q);
@@ -555,33 +737,74 @@ export default function AdminPage() {
      <div key={realIndex} className={`p-4 rounded-xl border-2 transition-all ${getQuestionStatusColor(q)}`}>
         <div className="flex justify-between items-center mb-3">
            <span className="bg-slate-200 text-slate-700 text-xs font-black px-2 py-1 rounded-lg">שאלה {realIndex + 1}</span>
-           <div className="flex gap-2">
+           <div className="flex gap-2 items-center">
              {isCanceled && <span className="bg-red-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">מבוטלת</span>}
              {q.imageNeeded && !q.hasImage && (<span className="text-red-600 text-[10px] font-bold flex items-center gap-1"><AlertIcon /> דרושה תמונה</span>)}
+             <button onClick={() => handleDeleteQuestion(realIndex)} className="text-slate-400 hover:text-red-500" title="מחק שאלה"><TrashIcon /></button>
            </div>
         </div>
-        <p className="text-sm text-slate-700 font-bold mb-4 leading-relaxed whitespace-pre-line">{q.text}</p>
+        
+        {/* --- שדה עריכה לטקסט השאלה --- */}
+        <textarea 
+            value={q.text} 
+            onChange={(e) => handleQuestionTextChange(realIndex, e.target.value)}
+            onBlur={(e) => saveQuestionText(realIndex, e.target.value)}
+            className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold mb-4 bg-white focus:ring-2 focus:ring-blue-400 outline-none resize-y"
+            rows={3}
+        />
+        
+        {q.hasImage && q.imageUrl && (
+            <div className="mb-4 text-center">
+                 <img src={q.imageUrl} alt="Question" className="max-h-48 mx-auto rounded-lg border" />
+            </div>
+        )}
+
         {q.type === 'multiple_choice' && (
             <div className="mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                <div className="text-xs font-bold text-slate-500 mb-2">ניהול התשובות לשאלה:</div>
+                
+                {/* --- חיווי ויזואלי לסוג השאלה --- */}
+                <div className="flex justify-between items-end mb-2">
+                    <div className="text-xs font-bold text-slate-500">ניהול התשובות:</div>
+                    {Array.isArray(q.correctIndex) && q.correctIndex.length > 1 && (
+                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold animate-pulse">
+                            📚 בחירה מרובה ({q.correctIndex.length} תשובות)
+                        </span>
+                    )}
+                </div>
+
                 {q.options?.map((opt, optIdx) => {
-                    const isMainCorrect = q.correctIndex === optIdx;
+                    const isMainCorrect = Array.isArray(q.correctIndex) ? q.correctIndex.includes(optIdx) : q.correctIndex === optIdx;
                     const isAppealed = (q.appealedIndexes || []).includes(optIdx);
                     return (
-                        <div key={optIdx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-sm">
-                            <span className={`flex-1 leading-tight ${isMainCorrect ? 'font-bold text-green-700' : isAppealed ? 'font-bold text-orange-600' : 'text-slate-600'}`}>{optIdx + 1}. {opt}</span>
-                            <div className="flex gap-1 shrink-0">
-                                <button onClick={() => handleSetMainCorrect(realIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isMainCorrect ? 'bg-green-500 text-white shadow-md' : 'bg-white border text-slate-400 hover:bg-slate-100'}`}>התשובה הנכונה</button>
-                                <button onClick={() => handleToggleAppeal(realIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isAppealed ? 'bg-orange-500 text-white shadow-md' : 'bg-white border text-slate-400 hover:bg-slate-100'}`} disabled={isMainCorrect}>{isAppealed ? 'התקבל בערעור' : 'סמן כערעור'}</button>
+                        <div key={optIdx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg border text-sm group transition-colors ${isMainCorrect ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'}`}>
+                            <span className="font-bold text-slate-400 w-6">{optIdx + 1}.</span>
+                            
+                            {/* --- שדה עריכה לטקסט התשובה --- */}
+                            <input 
+                                type="text" 
+                                value={opt} 
+                                onChange={(e) => handleOptionTextChange(realIndex, optIdx, e.target.value)}
+                                onBlur={(e) => saveOptionText(realIndex, optIdx, e.target.value)}
+                                className={`flex-1 p-1 bg-transparent border-b border-transparent focus:border-blue-400 outline-none transition ${isMainCorrect ? 'font-bold text-green-700' : isAppealed ? 'font-bold text-orange-600' : 'text-slate-600'}`}
+                            />
+
+                            <div className="flex gap-1 shrink-0 items-center">
+                                {/* כפתור מחיקת אפשרות */}
+                                <button onClick={() => handleRemoveOptionFromQuestion(realIndex, optIdx)} className="text-slate-300 hover:text-red-500 p-1 mr-1" title="מחק תשובה"><MinusIcon /></button>
+
+                                <button onClick={() => handleSetMainCorrect(realIndex, optIdx, false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-sm ${(!Array.isArray(q.correctIndex) && isMainCorrect) ? 'bg-green-600 text-white' : 'bg-white border border-slate-300 text-slate-500 hover:bg-slate-100'}`}>נכונה</button>
+                                <button onClick={() => handleSetMainCorrect(realIndex, optIdx, true)} title="הוסף כתשובה נכונה נוספת" className={`px-2 py-1 rounded-lg text-xs font-bold transition border ${Array.isArray(q.correctIndex) && isMainCorrect ? 'bg-green-700 text-white border-green-800' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-green-50 hover:text-green-600'}`}>+</button>
+                                <button onClick={() => handleToggleAppeal(realIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isAppealed ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'text-slate-300 hover:text-orange-500'}`} disabled={isMainCorrect}>{isAppealed ? 'התקבל' : 'ערעור'}</button>
                             </div>
                         </div>
                     )
                 })}
+                <button onClick={() => handleAddOptionToQuestion(realIndex)} className="w-full text-center py-2 text-xs font-bold text-blue-500 hover:bg-blue-50 rounded-lg border border-dashed border-blue-200 mt-2 transition">+ הוסף אפשרות תשובה</button>
             </div>
         )}
         <div className="flex flex-wrap items-center gap-3">
             <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-sm"><ImageIcon /> {q.hasImage ? 'החלף תמונה' : 'העלה תמונה לשאלה'}<input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadQuestionImage(realIndex, e.target.files[0])} /></label>
-            <button onClick={() => handleToggleCancel(realIndex)} className={`px-4 py-2 rounded-lg text-xs font-bold transition border ${isCanceled ? 'bg-slate-200 text-slate-600 border-slate-300 shadow-inner' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>{isCanceled ? 'שחזר שאלה (בטל פסילה)' : 'פסול שאלה'}</button>
+            <button onClick={() => handleToggleCancel(realIndex)} className={`px-4 py-2 rounded-lg text-xs font-bold transition border ${isCanceled ? 'bg-slate-200 text-slate-600 border-slate-300 shadow-inner' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>{isCanceled ? 'שחזר שאלה' : 'פסול שאלה'}</button>
         </div>
      </div>
    );
@@ -600,10 +823,8 @@ export default function AdminPage() {
                      {filteredExamsForEdit.map(exam => (
                        <div key={exam.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
                          <div className="flex justify-between items-center">
-                            <div><span className="font-bold text-slate-800">{exam.title}</span></div>
+                            <div><span className="font-bold text-slate-800">{exam.title}</span><span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span></div>
                             {(() => {
-                               // מאחר והשאלות לא בזיכרון, לא ניתן להציג כאן כמה תמונות חסרות. 
-                               // זה המחיר של Lazy Loading. אפשר להציג רק אם נכנסנו פנימה ויצאנו.
                                const missingCount = (exam.questions || []).filter(q => q.imageNeeded && !q.hasImage).length;
                                if (missingCount > 0) {
                                  return <span className="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full font-bold animate-pulse border border-red-200">🚨 חסרות {missingCount} תמונות</span>;
@@ -632,6 +853,58 @@ export default function AdminPage() {
              </div>
           </div>
         )}
+
+        {/* --- טאב העלאה המונית (Bulk Upload) 
+        {activeTab === 'bulk' && (
+          <div className="space-y-6 animate-fade-in bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100">
+             <div className="text-center mb-6">
+                 <h3 className="font-black text-indigo-900 text-2xl mb-2">העלאה המונית (Batch Upload)</h3>
+                 <p className="text-indigo-600 text-sm font-medium">העלה עשרות מבחנים במכה אחת. <br/>המערכת תסרוק את שמות הקבצים כדי לשייך שנה ומועד אוטומטית.</p>
+             </div>
+
+             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <h4 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wider">1. לאיזה קורס לשייך את המבחנים?</h4>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <select value={selectedStudentYear} onChange={e => {setSelectedStudentYear(e.target.value); setSelectedCourseId("");}} className="w-full p-3 rounded-xl border border-slate-300 bg-white">{studentYears.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                  <select value={selectedSemester} onChange={e => {setSelectedSemester(e.target.value); setSelectedCourseId("");}} className="w-full p-3 rounded-xl border border-slate-300 bg-white">{semesters.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                </div>
+                <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"><option value="">-- בחר מהרשימה --</option>{availableCourses.map(([id, course]) => (<option key={id} value={id}>{course.name}</option>))}</select>
+             </div>
+
+             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <h4 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wider">2. סוג הקבצים לפענוח</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <button onClick={() => setParsingMode('standard')} className={`p-4 rounded-xl border-2 flex items-center gap-3 transition ${parsingMode === 'standard' ? 'border-indigo-500 bg-indigo-50 text-indigo-800' : 'border-slate-100 hover:border-slate-300 text-slate-500'}`}><div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${parsingMode === 'standard' ? 'border-indigo-600' : 'border-slate-300'}`}>{parsingMode === 'standard' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div>}</div><div className="text-right"><div className="font-bold flex items-center gap-2"><FileTextIcon /> קובץ רגיל</div></div></button>
+                     <button onClick={() => setParsingMode('computerized')} className={`p-4 rounded-xl border-2 flex items-center gap-3 transition ${parsingMode === 'computerized' ? 'border-indigo-500 bg-indigo-50 text-indigo-800' : 'border-slate-100 hover:border-slate-300 text-slate-500'}`}><div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${parsingMode === 'computerized' ? 'border-indigo-600' : 'border-slate-300'}`}>{parsingMode === 'computerized' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div>}</div><div className="text-right"><div className="font-bold flex items-center gap-2"><ComputerIcon /> ממוחשב (Moodle)</div></div></button>
+                </div>
+             </div>
+
+             <div className="bg-white p-6 rounded-2xl border-2 border-dashed border-indigo-300 hover:bg-indigo-50 transition text-center relative cursor-pointer">
+                 <input type="file" multiple accept="application/pdf" onChange={e => setBulkFiles(Array.from(e.target.files))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                 <span className="text-4xl block mb-2">📁</span>
+                 <p className="font-bold text-indigo-900">בחר מספר קבצים להעלאה (PDF)</p>
+                 <p className="text-xs text-indigo-500 mt-1">גרור לכאן או לחץ לבחירה. מומלץ לקרוא לקבצים עם שנת המבחן והמועד.</p>
+             </div>
+
+             {bulkFiles.length > 0 && (
+                 <div className="bg-white p-4 rounded-2xl border border-indigo-200">
+                     <div className="font-bold text-slate-700 mb-2 border-b pb-2">נבחרו {bulkFiles.length} קבצים:</div>
+                     <ul className="text-sm text-slate-600 space-y-1 max-h-40 overflow-y-auto pl-2" dir="ltr">
+                         {bulkFiles.map((f, i) => (
+                             <li key={i} className="flex justify-between items-center bg-slate-50 p-2 rounded">
+                                 <span className="truncate flex-1">{f.name}</span>
+                             </li>
+                         ))}
+                     </ul>
+                     <button onClick={handleBulkUpload} disabled={status === 'processing' || !selectedCourseId} className="mt-4 w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 disabled:bg-slate-300 transition">
+                         {status === 'processing' ? '⏳ מעבד קבצים (נא לא לסגור את החלון)...' : '🚀 התחל העלאה המונית'}
+                     </button>
+                 </div>
+             )}
+
+             {debugLog && <div className="bg-black text-green-400 p-4 rounded-xl text-left h-48 overflow-auto text-xs" dir="ltr"><pre>{debugLog}</pre></div>}
+          </div>
+        )} --- */}
 
         {activeTab === 'upload' && (
           <div className="space-y-6 animate-fade-in">
