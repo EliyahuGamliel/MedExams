@@ -72,11 +72,6 @@ export default function ManageExamsTab({
                                                     rows={3}
                                                 />
 
-                                                {q.hasImage && q.imageUrl && (
-                                                    <div className="mb-4 text-center">
-                                                        <img src={q.imageUrl} alt="Question" className="max-h-48 mx-auto rounded-lg border" />
-                                                    </div>
-                                                )}
 
                                                 {q.type === 'multiple_choice' && (
                                                     <div className="mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">

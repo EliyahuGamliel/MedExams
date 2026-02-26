@@ -1,9 +1,4 @@
 import { useState, useEffect } from 'react';
-import { db } from '../../firebase';
-import { ref, get, set, onValue, push, update, remove } from "firebase/database";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import imageCompression from 'browser-image-compression';
 
 import UsersTab from './UsersTab';
 import ReportsTab from './ReportsTab';
@@ -13,6 +8,8 @@ import ManageExamsTab from './ManageExamsTab';
 import UploadTab from './UploadTab';
 import { useAdminAuth } from './useAdminAuth';
 import { useCoursesLogic } from './useCoursesLogic';
+import { useExamsLogic } from './useExamsLogic';
+import { useUploadLogic } from './useUploadLogic';
 
 // --- אייקונים ---
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>;
@@ -23,9 +20,7 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 
 export default function AdminPage() {
-
-
-
+  
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
   const examYearsList = Array.from({ length: 16 }, (_, i) => (2012 + i).toString());
@@ -35,31 +30,27 @@ export default function AdminPage() {
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
   const [selectedSemester, setSelectedSemester] = useState("סמסטר א'");
   const [selectedCourseId, setSelectedCourseId] = useState("");
-  const [examYear, setExamYear] = useState("2026");
-  const [examMoed, setExamMoed] = useState("מועד א'");
-  const [file, setFile] = useState(null);
-  const [appendicesFile, setAppendicesFile] = useState(null);
-  const [parsingMode, setParsingMode] = useState('standard');
-  const [editingExamId, setEditingExamId] = useState(null);
-  const [newAppendicesFile, setNewAppendicesFile] = useState(null);
-  const [questionsEditorId, setQuestionsEditorId] = useState(null);
-  const [examQuestions, setExamQuestions] = useState([]);
-  const [showMissingImagesOnly, setShowMissingImagesOnly] = useState(false);
-  const [examsList, setExamsList] = useState([]);
+
   const [status, setStatus] = useState('idle');
-  const [debugLog, setDebugLog] = useState("");
 
-  const [reportsList, setReportsList] = useState([]);
-  const [bulkFiles, setBulkFiles] = useState([]);
-  const [newQuestionOptionsCount, setNewQuestionOptionsCount] = useState(4);
-
-  const addLog = (msg) => setDebugLog(prev => prev + "\n" + msg);
 
   const {
     user, userData, isAdminLogin, authLoading, allUsers,
     handleGoogleLogin, handleLogout, handleUpdateUserRole,
     handleToggleUserYear, handleDeleteUser, canEditYear
   } = useAdminAuth();
+
+  const {
+    examsList, setExamsList, reportsList, questionsEditorId, setQuestionsEditorId,
+    examQuestions, setExamQuestions, showMissingImagesOnly, setShowMissingImagesOnly,
+    newQuestionOptionsCount, setNewQuestionOptionsCount, editingExamId, setEditingExamId,
+    newAppendicesFile, setNewAppendicesFile, handleDeleteExam, handleUpdateAppendices,
+    openQuestionsEditor, handleAddQuestion, handleDeleteQuestion, handleAddOptionToQuestion,
+    handleRemoveOptionFromQuestion, handleQuestionTextChange, saveQuestionText,
+    handleOptionTextChange, saveOptionText, handleUploadQuestionImage,
+    handleSetMainCorrect, handleToggleAppeal, handleToggleCancel,
+    getQuestionStatusColor, handleResolveReport
+  } = useExamsLogic(setStatus);
 
   const {
     coursesList, newCourseName, setNewCourseName,
@@ -70,164 +61,12 @@ export default function AdminPage() {
     handleAddCourse, startEditingCourse, handleUpdateCourse
   } = useCoursesLogic(canEditYear, examsList, setStatus, selectedStudentYear, selectedSemester);
 
-  // ==========================================
-  // פונקציות עריכת שאלות
-  // ==========================================
-  const handleAddQuestion = async () => {
-    if (!questionsEditorId) return;
-    const initialOptions = Array.from({ length: newQuestionOptionsCount }, (_, i) => `אפשרות ${i + 1}`);
-    const newIndex = examQuestions.length;
-    const newQuestion = {
-      id: newIndex, text: "שאלה חדשה... (לחץ כדי לערוך)", type: "multiple_choice",
-      options: initialOptions, correctIndex: 0, imageNeeded: false, hasImage: false, isCanceled: false
-    };
-
-    const updatedQuestions = [...examQuestions, newQuestion];
-    setExamQuestions(updatedQuestions);
-
-    const updates = {};
-    updates[`exam_contents/${questionsEditorId}`] = updatedQuestions;
-    updates[`uploaded_exams/${questionsEditorId}/questionCount`] = updatedQuestions.length;
-    await update(ref(db), updates);
-    setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: updatedQuestions.length } : e));
-  };
-
-  const handleDeleteQuestion = async (idxToDelete) => {
-    if (!window.confirm("האם למחוק שאלה זו לצמיתות?")) return;
-    const filtered = examQuestions.filter((_, i) => i !== idxToDelete);
-    const reindexedQuestions = filtered.map((q, i) => ({ ...q, id: i }));
-    setExamQuestions(reindexedQuestions);
-
-    const updates = {};
-    updates[`exam_contents/${questionsEditorId}`] = reindexedQuestions;
-    updates[`uploaded_exams/${questionsEditorId}/questionCount`] = reindexedQuestions.length;
-    await update(ref(db), updates);
-    setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: reindexedQuestions.length } : e));
-  };
-
-  const handleAddOptionToQuestion = async (qIdx) => {
-    const updated = [...examQuestions];
-    const currentOpts = updated[qIdx].options || [];
-    updated[qIdx].options = [...currentOpts, `אפשרות ${currentOpts.length + 1}`];
-    setExamQuestions(updated);
-    await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/options`), updated[qIdx].options);
-  };
-
-  const handleRemoveOptionFromQuestion = async (qIdx, optIdx) => {
-    const updated = [...examQuestions];
-    const currentOpts = updated[qIdx].options;
-    if (currentOpts.length <= 2) return alert("חייבות להיות לפחות 2 אפשרויות.");
-
-    updated[qIdx].options = currentOpts.filter((_, i) => i !== optIdx);
-    let currentCorrect = updated[qIdx].correctIndex;
-    if (Array.isArray(currentCorrect)) {
-      updated[qIdx].correctIndex = currentCorrect.filter(i => i !== optIdx).map(i => i > optIdx ? i - 1 : i);
-    } else {
-      if (currentCorrect === optIdx) updated[qIdx].correctIndex = 0;
-      else if (currentCorrect > optIdx) updated[qIdx].correctIndex = currentCorrect - 1;
-    }
-    setExamQuestions(updated);
-    await update(ref(db, `exam_contents/${questionsEditorId}/${qIdx}`), {
-      options: updated[qIdx].options, correctIndex: updated[qIdx].correctIndex
-    });
-  };
-
-  const handleQuestionTextChange = (idx, newText) => {
-    setExamQuestions(prev => {
-      const updated = [...prev];
-      updated[idx] = { ...updated[idx], text: newText };
-      return updated;
-    });
-  };
-  const saveQuestionText = async (idx, textToSave) => {
-    await set(ref(db, `exam_contents/${questionsEditorId}/${idx}/text`), textToSave);
-  };
-
-  const handleOptionTextChange = (qIdx, optIdx, newText) => {
-    setExamQuestions(prev => {
-      const updated = [...prev];
-      const q = { ...updated[qIdx] };
-      const newOptions = [...q.options];
-      newOptions[optIdx] = newText;
-      q.options = newOptions;
-      updated[qIdx] = q;
-      return updated;
-    });
-  };
-  const saveOptionText = async (qIdx, optIdx, textToSave) => {
-    await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/options/${optIdx}`), textToSave);
-  };
-
-  const handleUploadQuestionImage = async (idx, f) => {
-    if (!questionsEditorId) return;
-    try {
-      setStatus('processing');
-      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
-      const compressedFile = await imageCompression(f, options);
-      const storage = getStorage();
-      const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${idx}_${Date.now()}`);
-      await uploadBytes(fileRef, compressedFile);
-      const downloadURL = await getDownloadURL(fileRef);
-
-      const updates = {};
-      updates[`exam_contents/${questionsEditorId}/${idx}/imageUrl`] = downloadURL;
-      updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = true;
-      await update(ref(db), updates);
-
-      setExamQuestions(prev => {
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], imageUrl: downloadURL, hasImage: true };
-        return updated;
-      });
-      setStatus('idle');
-    } catch (e) { alert(e.message); setStatus('idle'); }
-  };
-
-  const handleSetMainCorrect = async (idx, optIdx, isMultiSelectMode = false) => {
-    const q = examQuestions[idx];
-    let currentCorrect = q.correctIndex;
-    let newCorrect;
-
-    if (isMultiSelectMode) {
-      let arr = [];
-      if (Array.isArray(currentCorrect)) arr = [...currentCorrect];
-      else if (typeof currentCorrect === 'number') arr = [currentCorrect];
-
-      if (arr.includes(optIdx)) arr = arr.filter(i => i !== optIdx);
-      else arr.push(optIdx);
-
-      arr.sort((a, b) => a - b);
-      newCorrect = arr.length === 1 ? arr[0] : arr.length === 0 ? null : arr;
-    } else {
-      newCorrect = optIdx;
-    }
-    setExamQuestions(prev => {
-      const updated = [...prev];
-      updated[idx].correctIndex = newCorrect;
-      return updated;
-    });
-    await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { correctIndex: newCorrect });
-  };
-
-  const handleToggleAppeal = async (idx, optIdx) => {
-    const q = examQuestions[idx];
-    const cur = q.appealedIndexes || [];
-    const newer = cur.includes(optIdx) ? cur.filter(i => i !== optIdx) : [...cur, optIdx];
-    await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { appealedIndexes: newer });
-    setExamQuestions(p => { const n = [...p]; n[idx].appealedIndexes = newer; return n; });
-  };
-  const handleToggleCancel = async (idx) => {
-    const ns = !examQuestions[idx].isCanceled;
-    await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { isCanceled: ns });
-    setExamQuestions(p => { const n = [...p]; n[idx].isCanceled = ns; return n; });
-  };
-
-  // ==========================================
-  // פונקציות העלאה וניהול מבחנים
-  // ==========================================
-  const handleResolveReport = async (reportId) => {
-    try { await set(ref(db, `reported_errors/${reportId}`), null); } catch (e) { }
-  };
+  const {
+    examYear, setExamYear, examMoed, setExamMoed,
+    file, setFile, appendicesFile, setAppendicesFile,
+    parsingMode, setParsingMode, bulkFiles, setBulkFiles,
+    debugLog, setDebugLog, handleUploadExam, handleBulkUpload
+  } = useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus);
 
   const handleNavigateToReportedQuestion = (examId) => {
     setActiveTab('manage_exams');
@@ -236,182 +75,18 @@ export default function AdminPage() {
       setSelectedStudentYear(examToEdit.studentYear);
       setSelectedSemester(examToEdit.semester);
       setSelectedCourseId(examToEdit.courseId);
-      // נותנים לסטייטים של הריאקט רגע להתעדכן לפני שפותחים את העורך
       setTimeout(() => openQuestionsEditor(examToEdit), 500);
     } else {
       alert("המבחן נמחק או שלא ניתן למצוא אותו.");
     }
   };
 
-  const fileToBase64 = (file) => new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(file); });
-
-  const handleUploadExam = async () => {
-    if (!file) return alert("אנא בחר קובץ PDF");
-    if (!selectedCourseId) return alert("אנא בחר קורס");
-    if (!canEditYear(selectedStudentYear)) return alert("אין הרשאה להעלאה לשנה זו");
-
-    const currentSemesterCourses = coursesList[selectedStudentYear]?.[selectedSemester] || {};
-    const courseName = currentSemesterCourses[selectedCourseId]?.name;
-    setStatus('processing'); setDebugLog(`מתחיל...`);
-
-    try {
-      const base64Data = await fileToBase64(file);
-      let appendicesBase64 = null;
-      if (appendicesFile) appendicesBase64 = await fileToBase64(appendicesFile);
-      const functions = getFunctions();
-      const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });
-      const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
-      const questions = result.data.questions.map((q, idx) => ({ ...q, id: idx, type: q.type || 'multiple_choice', imageNeeded: q.imageNeeded || false, isCanceled: false, appealedIndexes: [] }));
-      const examId = `${courseName}_${examYear}_${examMoed}_${Date.now()}`.replace(/\s+/g, '_');
-
-      const updates = {};
-      updates[`uploaded_exams/${examId}`] = {
-        id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
-        courseId: selectedCourseId, examYear, examMoed, title: `${examYear} - ${examMoed}`,
-        questionCount: questions.length,
-        hasAppendices: !!appendicesFile, parsingMode, uploadedAt: new Date().toISOString()
-      };
-      updates[`exam_contents/${examId}`] = questions;
-
-      if (appendicesFile && appendicesBase64) {
-        updates[`exam_appendices/${examId}`] = { fileData: appendicesBase64 };
-      }
-
-      await update(ref(db), updates);
-      setStatus('success'); alert(`הועלה בהצלחה`); setFile(null); setAppendicesFile(null);
-    } catch (e) { console.error(e); addLog("שגיאה: " + e.message); setStatus('idle'); }
-  };
-
-  const handleBulkUpload = async () => {
-    if (!bulkFiles || bulkFiles.length === 0) return alert("אנא בחר קבצים להעלאה.");
-    if (!selectedCourseId) return alert("אנא בחר קורס לשיוך המבחנים.");
-
-    const currentSemesterCourses = coursesList[selectedStudentYear]?.[selectedSemester] || {};
-    const courseName = currentSemesterCourses[selectedCourseId]?.name;
-
-    if (!window.confirm(`האם אתה בטוח שברצונך להתחיל סריקה של ${bulkFiles.length} מבחנים לקורס "${courseName}"? התהליך ייקח כמה דקות, נא לא לסגור את החלון.`)) return;
-
-    setStatus('processing');
-    setDebugLog(`🚀 מתחיל תהליך אצווה עבור ${bulkFiles.length} קבצים...`);
-
-    for (let i = 0; i < bulkFiles.length; i++) {
-      const currentFile = bulkFiles[i];
-      const filename = currentFile.name.toLowerCase();
-
-      const yearMatch = filename.match(/(20\d{2})/);
-      const extractedYear = yearMatch ? yearMatch[1] : "2026";
-
-      let extractedMoed = "מועד א'";
-      if (filename.includes("b")) extractedMoed = "מועד ב'";
-      else if (filename.includes("c")) extractedMoed = "מועד מיוחד";
-
-      addLog(`\n⏳ מעבד קובץ ${i + 1}/${bulkFiles.length}: ${currentFile.name}`);
-      addLog(`   זוהה כשנה: ${extractedYear} | מועד: ${extractedMoed}`);
-
-      try {
-        const base64Data = await fileToBase64(currentFile);
-        const functions = getFunctions();
-        const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });
-        const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
-
-        // --- התיקון נמצא כאן ---
-        const questions = result.data.questions.map((q, idx) => ({
-          ...q,
-          id: idx,
-          // פה אנחנו מכריחים אותו ליצור מפתח text, גם אם ג'מיני קרא לזה question
-          text: q.text || q.question || "⚠️ שאלה זו הוחזרה ללא טקסט",
-          type: q.type || 'multiple_choice',
-          imageNeeded: q.imageNeeded || false,
-          isCanceled: false,
-          appealedIndexes: []
-        }));
-
-        const examId = `${courseName}_${extractedYear}_${extractedMoed}_${Date.now()}`.replace(/\s+/g, '_');
-
-        const updates = {};
-        updates[`uploaded_exams/${examId}`] = {
-          id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
-          courseId: selectedCourseId, examYear: extractedYear, examMoed: extractedMoed,
-          title: `${extractedYear} - ${extractedMoed}`,
-          questionCount: questions.length,
-          hasAppendices: false, parsingMode, uploadedAt: new Date().toISOString()
-        };
-        updates[`exam_contents/${examId}`] = questions;
-
-        await update(ref(db), updates);
-        addLog(`✅ קובץ עבר בהצלחה ושומר במסד הנתונים!`);
-      } catch (e) {
-        console.error(`שגיאה בקובץ ${currentFile.name}:`, e);
-        addLog(`❌ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
-      }
-    }
-
-    setStatus('success');
-    alert("🎉 סריקת האצווה הסתיימה! מומלץ לבדוק בלוגים אם היו שגיאות פרטניות.");
-    setBulkFiles([]);
-  };
-
-  const handleUpdateAppendices = async (examId) => {
-    if (!newAppendicesFile) return alert("בחר קובץ");
-    try {
-      setStatus('processing');
-      const storage = getStorage();
-      const fileRef = storageRef(storage, `exam_appendices/${examId}.pdf`);
-      await uploadBytes(fileRef, newAppendicesFile);
-      const downloadURL = await getDownloadURL(fileRef);
-      await update(ref(db, `uploaded_exams/${examId}`), { hasAppendices: true });
-      await set(ref(db, `exam_appendices/${examId}`), { fileUrl: downloadURL });
-      alert("עודכן!"); setEditingExamId(null); setNewAppendicesFile(null); setStatus('idle');
-    } catch (e) { alert(e.message); setStatus('idle'); }
-  };
-
-  const handleDeleteExam = async (examId) => {
-    if (!window.confirm("למחוק?")) return;
-    try {
-      setStatus('processing');
-      const updates = {};
-      updates[`uploaded_exams/${examId}`] = null;
-      updates[`exam_contents/${examId}`] = null;
-      updates[`exam_appendices/${examId}`] = null;
-      updates[`exam_images/${examId}`] = null;
-      await update(ref(db), updates);
-      alert("נמחק."); setStatus('idle');
-    } catch (e) { alert(e.message); setStatus('idle'); }
-  };
-
-  const openQuestionsEditor = async (exam) => {
-    setQuestionsEditorId(exam.id);
-    setEditingExamId(null);
-    if (exam.questions && exam.questions.length > 0) {
-      setExamQuestions(exam.questions);
-      return;
-    }
-    setStatus('processing');
-    try {
-      const snapshot = await get(ref(db, `exam_contents/${exam.id}`));
-      const questionsData = snapshot.val();
-      setExamQuestions(questionsData || []);
-    } catch (e) { alert("שגיאה בטעינת השאלות: " + e.message); } finally { setStatus('idle'); }
-  };
-
-  const getQuestionStatusColor = (q) => {
-    if (q.isCanceled) return "bg-slate-100 border-slate-300 opacity-80";
-    if (q.imageNeeded && !q.hasImage) return "bg-red-50 border-red-500 shadow-red-100";
-    if (q.hasImage) return "bg-green-50 border-green-500 shadow-green-100";
-    return "bg-white border-slate-200";
-  };
-
-
-  // ==========================================
   // משתני תצוגה
-  // ==========================================
   const availableCourses = coursesList[selectedStudentYear]?.[selectedSemester] ? Object.entries(coursesList[selectedStudentYear][selectedSemester]) : [];
   const filteredExamsForEdit = selectedCourseId ? examsList.filter(exam => exam.courseId === selectedCourseId) : [];
   const filteredQuestions = showMissingImagesOnly ? examQuestions.filter(q => q.imageNeeded && !q.hasImage) : examQuestions;
 
-  // ==========================================
   // רינדור המסכים
-  // ==========================================
   if (authLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">בודק הרשאות...</div>;
 
   if (!user) {
@@ -446,7 +121,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6" dir="rtl">
-      {/* מודאל עריכת קורס */}
+      {/* חלון קופץ - עריכת קורס */}
       {editingCourseOldData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full">
