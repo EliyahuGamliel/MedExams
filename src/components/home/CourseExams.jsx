@@ -30,16 +30,16 @@ export default function CourseExams({ examsList }) {
         <h2 className="text-2xl font-black text-slate-800 mb-2">{selectedExamForMode.title}</h2>
         <p className="text-slate-500 mb-10">איך נפתור את המבחן?</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
-            <button onClick={() => navigate(`/exam/${selectedExamForMode.id}/test`)} className="relative bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 hover:border-blue-500 hover:shadow-xl transition-all group text-right">
-                <div className="text-4xl mb-4 group-hover:scale-110 transition transform">📝</div>
-                <h3 className="text-xl font-bold text-slate-700">מצב מבחן</h3>
-                <p className="text-sm text-slate-400 mt-2 leading-relaxed">סימולציה מלאה. התשובות ייחשפו בסוף.</p>
-            </button>
-            <button onClick={() => navigate(`/exam/${selectedExamForMode.id}/practice`)} className="relative bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 hover:border-green-500 hover:shadow-xl transition-all group text-right">
-                <div className="text-4xl mb-4 group-hover:scale-110 transition transform">🎯</div>
-                <h3 className="text-xl font-bold text-slate-700">מצב תרגול</h3>
-                <p className="text-sm text-slate-400 mt-2 leading-relaxed">משוב מיידי עם סימון כל תשובה.</p>
-            </button>
+            <button onClick={() => navigate(`/exam/${selectedExamForMode.id}/test`, { state: { fromCourse: true } })} className="relative bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 hover:border-blue-500 hover:shadow-xl transition-all group text-right">
+    <div className="text-4xl mb-4 group-hover:scale-110 transition transform">📝</div>
+    <h3 className="text-xl font-bold text-slate-700">מצב מבחן</h3>
+    <p className="text-sm text-slate-400 mt-2 leading-relaxed">סימולציה מלאה. התשובות ייחשפו בסוף.</p>
+</button>
+<button onClick={() => navigate(`/exam/${selectedExamForMode.id}/practice`, { state: { fromCourse: true } })} className="relative bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 hover:border-green-500 hover:shadow-xl transition-all group text-right">
+    <div className="text-4xl mb-4 group-hover:scale-110 transition transform">🎯</div>
+    <h3 className="text-xl font-bold text-slate-700">מצב תרגול</h3>
+    <p className="text-sm text-slate-400 mt-2 leading-relaxed">משוב מיידי עם סימון כל תשובה.</p>
+</button>
         </div>
         <button onClick={() => setSelectedExamForMode(null)} className="text-slate-400 hover:text-slate-600 font-bold underline underline-offset-4">ביטול וחזרה לרשימה</button>
       </div>

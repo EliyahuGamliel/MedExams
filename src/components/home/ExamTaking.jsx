@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { db } from '../../firebase'; // <-- הנתיב עודכן
+import { db } from '../../firebase'; 
 import { ref, onValue, get } from "firebase/database";
-import { useParams, useNavigate } from 'react-router-dom';
-import QuestionCard from '../QuestionCard'; // <-- הנתיב עודכן (הקובץ נמצא תיקייה אחת למעלה)
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
 
 const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
@@ -12,6 +12,7 @@ const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" h
 export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const selectedExam = examsList.find(e => e.id === examId);
 
@@ -52,6 +53,14 @@ export default function ExamTaking({ examsList }) {
 
     return () => unsub();
   }, [selectedExam]);
+
+  const handleReturnToCourse = () => {
+    if (location.state?.fromCourse) {
+      navigate(-1);
+    } else {
+      navigate(`/course/${selectedExam.course}`, { replace: true });
+    }
+  };
 
   if (!selectedExam) return <div className="text-center py-20 text-xl font-bold text-slate-500">המבחן לא נמצא 😕</div>;
 
@@ -122,9 +131,11 @@ export default function ExamTaking({ examsList }) {
   const isSubmitted = finalScore !== null;
 
   return (
-    <div className="animate-fade-in-up space-y-8">
+    // הסרנו מכאן את ה-space-y-8
+    <div className="animate-fade-in-up pb-10">
+      
       {showAppendices && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
            <div className="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden">
              <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
                <h3 className="font-bold text-slate-800 flex items-center gap-2"><PaperclipIcon /> נספחים למבחן</h3>
@@ -139,12 +150,26 @@ export default function ExamTaking({ examsList }) {
 
       {!loadingQuestions && (
         <>
-           <button onClick={() => setIsSidebarOpen(true)} className="fixed top-24 left-4 z-40 bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition"><MenuIcon /></button>
-           {isSidebarOpen && <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm transition-opacity" />}
-           <div className={`fixed inset-y-0 right-0 z-50 w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+           {/* הכפתור הצף - נמצא בשמאל ומתחלף בין המבורגר לאיקס */}
+           <button 
+             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+             className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105"
+           >
+             {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
+           </button>
+           
+           {/* רקע מטשטש - מתחיל מתחת להדר הראשי */}
+           {isSidebarOpen && (
+             <div 
+               onClick={() => setIsSidebarOpen(false)} 
+               className="fixed top-16 inset-x-0 bottom-0 bg-black/20 z-[40] backdrop-blur-sm transition-opacity" 
+             />
+           )}
+           
+           {/* תפריט הצד - נפתח משמאל */}
+           <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <h3 className="font-bold text-slate-800 text-lg">ניווט מהיר</h3>
-               <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-red-500 transition"><CloseIcon /></button>
              </div>
              <div className="flex-1 overflow-y-auto p-4">
                <div className="grid grid-cols-4 gap-3">
@@ -164,36 +189,43 @@ export default function ExamTaking({ examsList }) {
         </>
       )}
 
-      <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm flex flex-wrap gap-2 justify-between items-center border-b border-slate-100">
-        <div><span className="font-bold text-slate-700 block">{selectedExam.course}</span><span className="text-xs text-slate-400">{selectedExam.title}</span></div>
+      {/* הבר הדביק של המבחן - בלי רווח מיותר למעלה */}
+      <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm flex flex-wrap gap-2 justify-between items-center border-b border-slate-100 mb-8">
+        <div>
+          <span className="font-bold text-slate-700 block">{selectedExam.course}</span>
+          <span className="text-xs text-slate-400">{selectedExam.title}</span>
+        </div>
         <div className="flex items-center gap-2">
           {selectedExam.hasAppendices && <button onClick={handleOpenAppendices} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-200 transition flex items-center gap-1"><PaperclipIcon /> נספחים</button>}
           <span className={`text-xs px-2 py-1.5 rounded font-bold ${mode==='test'?'bg-blue-100 text-blue-800':'bg-green-100 text-green-800'}`}>{mode==='test'?'מבחן':'תרגול'}</span>
         </div>
       </div>
 
-      {loadingQuestions ? (
-          <div className="text-center py-20"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 font-bold">טוען שאלות...</div></div>
-      ) : examQuestionsData.length === 0 ? (
-          <div className="text-center py-10 text-slate-400">לא נמצאו שאלות במבחן זה.</div>
-      ) : (
-          examQuestionsData.map((q, i) => (
-              <div key={i} id={`question-${i}`} className="scroll-mt-36">
-                <QuestionCard question={q} index={i} mode={mode} onAnswer={handleAnswerUpdate} isSubmitted={isSubmitted} examId={selectedExam.id} imageUrl={examImages[i]} />
-              </div>
-          ))
-      )}
+      {/* העברנו את ה-space-y-8 לכאן, לאזור של השאלות בלבד */}
+      <div className="space-y-8">
+        {loadingQuestions ? (
+            <div className="text-center py-20"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 font-bold">טוען שאלות...</div></div>
+        ) : examQuestionsData.length === 0 ? (
+            <div className="text-center py-10 text-slate-400">לא נמצאו שאלות במבחן זה.</div>
+        ) : (
+            examQuestionsData.map((q, i) => (
+                <div key={i} id={`question-${i}`} className="scroll-mt-36">
+                  <QuestionCard question={q} index={i} mode={mode} onAnswer={handleAnswerUpdate} isSubmitted={isSubmitted} examId={selectedExam.id} imageUrl={examImages[i]} />
+                </div>
+            ))
+        )}
+      </div>
 
       {!loadingQuestions && examQuestionsData.length > 0 && (
         <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4">
         {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 transition">הגש מבחן 🏆</button>}
         {isSubmitted && <button onClick={() => setShowScoreModal(true)} className="bg-green-100 text-green-700 px-8 py-3 rounded-full font-bold">הצג שוב ציון 📊</button>}
-        <button onClick={() => navigate(`/course/${selectedExam.course}`)} className="text-slate-500 font-bold hover:text-slate-800 underline underline-offset-4">חזור לרשימת המבחנים</button>
+        <button onClick={handleReturnToCourse} className="text-slate-500 font-bold hover:text-slate-800 underline underline-offset-4">חזור לרשימת המבחנים</button>
         </div>
       )}
 
       {showScoreModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
             <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${isPass ? 'from-green-400 to-emerald-600' : 'from-red-400 to-rose-600'}`}></div>
             <div className="mt-4 mb-6"><div className="text-6xl mb-4">{finalScore >= 90 ? '🏆' : isPass ? '😎' : '😐'}</div><h2 className="text-3xl font-black text-slate-800">{finalScore >= 90 ? 'מדהים!' : isPass ? 'כל הכבוד!' : 'לא נורא...'}</h2></div>
@@ -204,7 +236,7 @@ export default function ExamTaking({ examsList }) {
               <div className="text-center"><span className="block text-xl font-bold text-red-500">{scorableQuestionsForModal.length - perfectCount}</span>טעויות/חוסר</div>
             </div>
             <div className="space-y-3">
-              <button onClick={() => navigate(`/course/${selectedExam.course}`)} className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold">חזור לרשימת המבחנים</button>
+              <button onClick={handleReturnToCourse} className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold">חזור לרשימת המבחנים</button>
               <button onClick={() => setShowScoreModal(false)} className="w-full py-4 text-blue-600 font-bold">סגור וצפה בטעויות</button>
             </div>
           </div>
