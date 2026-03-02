@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { db } from '../../firebase';
 import { ref, update } from "firebase/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import toast from 'react-hot-toast'; // <--- הייבוא החדש והחשוב!
 
 // ==========================================
 // פונקציית מגן - מנרמלת ומנקה את המידע מג'מיני
@@ -42,15 +43,17 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
 
   // --- העלאה בודדת ---
   const handleUploadExam = async () => {
-    if (!file) return alert("אנא בחר קובץ PDF");
-    if (!selectedCourseId) return alert("אנא בחר קורס");
-    if (!canEditYear(selectedStudentYear)) return alert("אין הרשאה להעלאה לשנה זו");
+    if (!file) return toast.error("אנא בחר קובץ PDF");
+    if (!selectedCourseId) return toast.error("יש לבחור קורס");
+    if (!canEditYear(selectedStudentYear)) return toast.error("אין הרשאה להעלאה לשנה זו");
 
     const currentSemesterCourses = coursesList[selectedStudentYear]?.[selectedSemester] || {};
     const courseName = currentSemesterCourses[selectedCourseId]?.name;
-    setStatus('processing'); setDebugLog(`מתחיל...`);
     
-    try {
+    setStatus('processing'); 
+    setDebugLog(`מתחיל...`);
+    
+    const uploadProcess = async () => {
       const base64Data = await fileToBase64(file);
       let appendicesBase64 = null;
       if (appendicesFile) appendicesBase64 = await fileToBase64(appendicesFile);
@@ -72,14 +75,29 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
       if (appendicesFile && appendicesBase64) { updates[`exam_appendices/${examId}`] = { fileData: appendicesBase64 }; }
 
       await update(ref(db), updates);
-      setStatus('success'); alert(`הועלה בהצלחה`); setFile(null); setAppendicesFile(null);
-    } catch (e) { console.error(e); addLog("שגיאה: " + e.message); setStatus('idle'); }
+      setFile(null); 
+      setAppendicesFile(null);
+    };
+
+    const toastId = toast.loading('🤖 ה-AI קורא ומפענח את המבחן (זה עשוי לקחת כמה דקות)...', { duration: Infinity });
+    
+    try {
+      await uploadProcess();
+      addLog(`✅ קובץ עבר בהצלחה ונשמר במסד הנתונים!`);
+      toast.success('המבחן פוענח ונשמר בהצלחה! 🎉', { id: toastId, duration: 5000 });
+      setStatus('idle');
+    } catch (e) { 
+      console.error(e); 
+      addLog("שגיאה: " + e.message); 
+      toast.error('שגיאה בפענוח המבחן. אנא נסה שוב.', { id: toastId, duration: 5000 });
+      setStatus('idle'); 
+    }
   };
 
   // --- העלאה המונית ---
   const handleBulkUpload = async () => {
-    if (!bulkFiles || bulkFiles.length === 0) return alert("אנא בחר קבצים להעלאה.");
-    if (!selectedCourseId) return alert("אנא בחר קורס לשיוך המבחנים.");
+    if (!bulkFiles || bulkFiles.length === 0) return toast.error("אנא בחר קבצים להעלאה.");
+    if (!selectedCourseId) return toast.error("אנא בחר קורס לשיוך המבחנים.");
     
     const currentSemesterCourses = coursesList[selectedStudentYear]?.[selectedSemester] || {};
     const courseName = currentSemesterCourses[selectedCourseId]?.name;
@@ -89,45 +107,56 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
     setStatus('processing');
     setDebugLog(`🚀 מתחיל תהליך אצווה עבור ${bulkFiles.length} קבצים...`);
 
-    for (let i = 0; i < bulkFiles.length; i++) {
-        const currentFile = bulkFiles[i];
-        const filename = currentFile.name.toLowerCase();
-        const yearMatch = filename.match(/(20\d{2})/);
-        const extractedYear = yearMatch ? yearMatch[1] : "2026"; 
-        let extractedMoed = "מועד א'";
-        if (filename.includes("b")) extractedMoed = "מועד ב'";
-        else if (filename.includes("c")) extractedMoed = "מועד מיוחד";
+    const bulkUploadProcess = async () => {
+      for (let i = 0; i < bulkFiles.length; i++) {
+          const currentFile = bulkFiles[i];
+          const filename = currentFile.name.toLowerCase();
+          const yearMatch = filename.match(/(20\d{2})/);
+          const extractedYear = yearMatch ? yearMatch[1] : "2026"; 
+          let extractedMoed = "מועד א'";
+          if (filename.includes("b")) extractedMoed = "מועד ב'";
+          else if (filename.includes("c")) extractedMoed = "מועד מיוחד";
 
-        addLog(`\n⏳ מעבד קובץ ${i+1}/${bulkFiles.length}: ${currentFile.name}`);
-        
-        try {
-            const base64Data = await fileToBase64(currentFile);
-            const functions = getFunctions();
-            const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
-            const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
+          addLog(`\n⏳ מעבד קובץ ${i+1}/${bulkFiles.length}: ${currentFile.name}`);
+          
+          try {
+              const base64Data = await fileToBase64(currentFile);
+              const functions = getFunctions();
+              const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
+              const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
 
-            const questions = result.data.questions.map((q, idx) => normalizeGeminiQuestion(q, idx)); 
-            const examId = `${courseName}_${extractedYear}_${extractedMoed}_${Date.now()}`.replace(/\s+/g, '_');
+              const questions = result.data.questions.map((q, idx) => normalizeGeminiQuestion(q, idx)); 
+              const examId = `${courseName}_${extractedYear}_${extractedMoed}_${Date.now()}`.replace(/\s+/g, '_');
 
-            const updates = {};
-            updates[`uploaded_exams/${examId}`] = {
-              id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
-              courseId: selectedCourseId, examYear: extractedYear, examMoed: extractedMoed, 
-              title: `${extractedYear} - ${extractedMoed}`, questionCount: questions.length,
-              hasAppendices: false, parsingMode, uploadedAt: new Date().toISOString()
-            };
-            updates[`exam_contents/${examId}`] = questions;
+              const updates = {};
+              updates[`uploaded_exams/${examId}`] = {
+                id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
+                courseId: selectedCourseId, examYear: extractedYear, examMoed: extractedMoed, 
+                title: `${extractedYear} - ${extractedMoed}`, questionCount: questions.length,
+                hasAppendices: false, parsingMode, uploadedAt: new Date().toISOString()
+              };
+              updates[`exam_contents/${examId}`] = questions;
 
-            await update(ref(db), updates);
-            addLog(`✅ קובץ עבר בהצלחה ושומר במסד הנתונים!`);
-        } catch(e) {
-            console.error(`שגיאה בקובץ ${currentFile.name}:`, e);
-            addLog(`❌ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
-        }
+              await update(ref(db), updates);
+              addLog(`✅ קובץ עבר בהצלחה ושומר במסד הנתונים!`);
+          } catch(e) {
+              console.error(`שגיאה בקובץ ${currentFile.name}:`, e);
+              addLog(`❌ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
+          }
+      }
+      setBulkFiles([]);
+    };
+
+    const toastId = toast.loading(`סורק ומפענח ${bulkFiles.length} מבחנים באצווה...`, { duration: Infinity });
+    
+    try {
+      await bulkUploadProcess();
+      toast.success('סריקת האצווה הסתיימה בהצלחה! (מומלץ לבדוק בלוגים אם היו שגיאות)', { id: toastId, duration: 5000 });
+      setStatus('idle');
+    } catch (e) {
+      toast.error('הייתה בעיה בסריקת האצווה.', { id: toastId, duration: 5000 });
+      setStatus('idle');
     }
-    setStatus('success');
-    alert("🎉 סריקת האצווה הסתיימה! מומלץ לבדוק בלוגים אם היו שגיאות פרטניות.");
-    setBulkFiles([]);
   };
 
   return {

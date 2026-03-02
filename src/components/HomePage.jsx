@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { ref, onValue, get } from "firebase/database";
 import { useNavigate } from 'react-router-dom';
 import QuestionCard from './QuestionCard';
+import toast from 'react-hot-toast';
 
 // --- אייקונים ---
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
@@ -156,16 +157,16 @@ export default function HomePage() {
           } else if (data.fileData) {
             setAppendicesData(`data:application/pdf;base64,${data.fileData}`); 
           } else {
-             alert("קובץ הנספחים פגום.");
+             toast.error("קובץ הנספחים פגום.");
              setShowAppendices(false);
           }
         } else {
-          alert("לא נמצא קובץ נספחים");
+          toast.error("לא נמצא קובץ נספחים");
           setShowAppendices(false);
         }
       } catch (e) {
         console.error(e);
-        alert("שגיאה בטעינת נספחים");
+        toast.error("שגיאה בטעינת נספחים");
         setShowAppendices(false);
       } finally {
         setLoadingAppendices(false);

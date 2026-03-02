@@ -52,9 +52,9 @@ export function useAdminAuth() {
 
     // --- פעולות ---
     const handleGoogleLogin = async () => {
-        try { await signInWithPopup(getAuth(), new GoogleAuthProvider()); } catch (error) { alert(error.message); }
+        try { await signInWithPopup(getAuth(), new GoogleAuthProvider()); } catch (e) { toast.error("שגיאה: " + e.message); }
     };
-
+            
     const handleLogout = async () => {
         await signOut(getAuth());
         window.location.reload();
@@ -64,7 +64,7 @@ export function useAdminAuth() {
         try {
             await update(ref(db, `users/${targetUid}`), { role: newRole });
             if (newRole !== 'editor') await update(ref(db, `users/${targetUid}`), { allowed_years: null });
-        } catch (e) { alert("שגיאה: " + e.message); }
+        } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
     const handleToggleUserYear = async (targetUid, year, currentStatus) => {
@@ -72,12 +72,12 @@ export function useAdminAuth() {
             const updates = {};
             updates[`users/${targetUid}/allowed_years/${year}`] = currentStatus ? null : true;
             await update(ref(db), updates);
-        } catch (e) { alert("שגיאה: " + e.message); }
+        } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
     const handleDeleteUser = async (targetUid) => {
         if (!window.confirm("למחוק משתמש זה?")) return;
-        try { await remove(ref(db, `users/${targetUid}`)); } catch (e) { alert("שגיאה: " + e.message); }
+        try { await remove(ref(db, `users/${targetUid}`)); } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
     const canEditYear = (yearToCheck) => {

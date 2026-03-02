@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 import UsersTab from './UsersTab';
 import ReportsTab from './ReportsTab';
@@ -20,7 +21,7 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 
 export default function AdminPage() {
-  
+
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
   const examYearsList = Array.from({ length: 16 }, (_, i) => (2012 + i).toString());
@@ -77,7 +78,7 @@ export default function AdminPage() {
       setSelectedCourseId(examToEdit.courseId);
       setTimeout(() => openQuestionsEditor(examToEdit), 500);
     } else {
-      alert("המבחן נמחק או שלא ניתן למצוא אותו.");
+      toast.error("המבחן נמחק או שלא ניתן למצוא אותו.");
     }
   };
 

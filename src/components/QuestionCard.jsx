@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { ref, push, set } from "firebase/database";
+import toast from 'react-hot-toast';
 
 // פונקציית עזר לערבוב
 const shuffleArray = (array) => {
@@ -240,7 +241,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       }, 2000); 
     } catch (error) {
       console.error(error);
-      alert("אירעה שגיאה בשליחת הדיווח.");
+      toast.error("אירעה שגיאה בשליחת הדיווח.");
       setReportStatus('idle');
     }
   };

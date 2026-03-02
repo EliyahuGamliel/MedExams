@@ -3,6 +3,7 @@ import { db } from '../../firebase';
 import { ref, get, set, update, remove, onValue } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
+import toast from 'react-hot-toast';
 
 export function useExamsLogic(setStatus) {
     // --- States ---
@@ -38,35 +39,57 @@ export function useExamsLogic(setStatus) {
         return () => unsubscribeReports();
     }, []);
 
-    // --- פעולות עריכת מבחנים ---
     const handleDeleteExam = async (examId) => {
-        if (!window.confirm("למחוק?")) return;
-        try {
-            setStatus('processing');
+        if (!window.confirm("למחוק מבחן זה לצמיתות? פעולה זו לא ניתנת לשחזור.")) return;
+        
+        setStatus('processing');
+        
+        const deletePromise = async () => {
             const updates = {};
             updates[`uploaded_exams/${examId}`] = null;
             updates[`exam_contents/${examId}`] = null;
             updates[`exam_appendices/${examId}`] = null;
             updates[`exam_images/${examId}`] = null;
             await update(ref(db), updates);
-            // עדכון הסטייט המקומי
             setExamsList(prev => prev.filter(e => e.id !== examId));
-            alert("נמחק."); setStatus('idle');
-        } catch (e) { alert(e.message); setStatus('idle'); }
+        };
+
+        try {
+            await toast.promise(deletePromise(), {
+                loading: 'מוחק את המבחן מכל המערכות...',
+                success: 'המבחן נמחק בהצלחה! 🗑️',
+                error: 'שגיאה במחיקת המבחן.'
+            });
+        } finally {
+            setStatus('idle');
+        }
     };
 
     const handleUpdateAppendices = async (examId) => {
-        if (!newAppendicesFile) return alert("בחר קובץ");
-        try {
-            setStatus('processing');
+        if (!newAppendicesFile) return toast.error("יש לבחור קובץ");
+        
+        setStatus('processing');
+        
+        const uploadPromise = async () => {
             const storage = getStorage();
             const fileRef = storageRef(storage, `exam_appendices/${examId}.pdf`);
             await uploadBytes(fileRef, newAppendicesFile);
             const downloadURL = await getDownloadURL(fileRef);
             await update(ref(db, `uploaded_exams/${examId}`), { hasAppendices: true });
             await set(ref(db, `exam_appendices/${examId}`), { fileUrl: downloadURL });
-            alert("עודכן!"); setEditingExamId(null); setNewAppendicesFile(null); setStatus('idle');
-        } catch (e) { alert(e.message); setStatus('idle'); }
+            setEditingExamId(null); 
+            setNewAppendicesFile(null);
+        };
+
+        try {
+            await toast.promise(uploadPromise(), {
+                loading: 'מעלה קובץ נספחים...',
+                success: 'הנספחים עודכנו בהצלחה! 📎',
+                error: 'שגיאה בהעלאת הנספחים.'
+            });
+        } finally {
+            setStatus('idle');
+        }
     };
 
     const openQuestionsEditor = async (exam) => {
@@ -81,7 +104,7 @@ export function useExamsLogic(setStatus) {
             const snapshot = await get(ref(db, `exam_contents/${exam.id}`));
             const questionsData = snapshot.val();
             setExamQuestions(questionsData || []);
-        } catch (e) { alert("שגיאה בטעינת השאלות: " + e.message); } finally { setStatus('idle'); }
+        } catch (e) { toast.error("שגיאה בטעינת השאלה: " + e.message); } finally { setStatus('idle'); }
     };
 
     // --- פעולות עריכת שאלות (הוספה, מחיקה, אופציות) ---
@@ -125,7 +148,7 @@ export function useExamsLogic(setStatus) {
     const handleRemoveOptionFromQuestion = async (qIdx, optIdx) => {
         const updated = [...examQuestions];
         const currentOpts = updated[qIdx].options;
-        if (currentOpts.length <= 2) return alert("חייבות להיות לפחות 2 אפשרויות.");
+        if (currentOpts.length <= 2) return toast.error("חייבות להיות לפחות 2 אפשרויות.");
         updated[qIdx].options = currentOpts.filter((_, i) => i !== optIdx);
         let currentCorrect = updated[qIdx].correctIndex;
         if (Array.isArray(currentCorrect)) {
@@ -170,8 +193,9 @@ export function useExamsLogic(setStatus) {
 
     const handleUploadQuestionImage = async (idx, f) => {
         if (!questionsEditorId) return;
-        try {
-            setStatus('processing');
+        
+        setStatus('processing');
+        const imagePromise = async () => {
             const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
             const compressedFile = await imageCompression(f, options);
             const storage = getStorage();
@@ -189,8 +213,17 @@ export function useExamsLogic(setStatus) {
                 updated[idx] = { ...updated[idx], imageUrl: downloadURL, hasImage: true };
                 return updated;
             });
+        };
+
+        try {
+            await toast.promise(imagePromise(), {
+                loading: 'מכווץ ומעלה תמונה...',
+                success: 'התמונה שויכה לשאלה בהצלחה! 🖼️',
+                error: 'שגיאה בהעלאת התמונה.'
+            });
+        } finally {
             setStatus('idle');
-        } catch (e) { alert(e.message); setStatus('idle'); }
+        }
     };
 
     const handleSetMainCorrect = async (idx, optIdx, isMultiSelectMode = false) => {
@@ -237,7 +270,12 @@ export function useExamsLogic(setStatus) {
 
     // --- פעולת דיווחים ---
     const handleResolveReport = async (reportId) => {
-        try { await set(ref(db, `reported_errors/${reportId}`), null); } catch (e) { }
+        try { 
+            await set(ref(db, `reported_errors/${reportId}`), null); 
+            toast.success("הדיווח נסגר בהצלחה");
+        } catch (e) { 
+            toast.error("שגיאה בסגירת הדיווח"); 
+        }
     };
 
     return {

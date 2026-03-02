@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { ref, get, set, push, update } from "firebase/database";
+import toast from 'react-hot-toast';
 
 export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStudentYear, selectedSemester) {
     // --- States של קורסים ---
@@ -24,15 +25,15 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
 
     // --- פעולות ---
     const handleAddCourse = async () => {
-        if (!newCourseName) return alert("נא לכתוב שם קורס");
-        if (!canEditYear(selectedStudentYear)) return alert("אין לך הרשאה לשנה זו");
+        if (!newCourseName) return toast.error("נא לכתוב שם קורס");
+        if (!canEditYear(selectedStudentYear)) return toast.error("אין לך הרשאה לשנה זו");
         try {
             const path = `courses/${selectedStudentYear}/${selectedSemester}`;
             await set(push(ref(db, path)), { name: newCourseName, createdAt: new Date().toISOString() });
-            alert(`הקורס "${newCourseName}" נוסף בהצלחה!`);
+            toast.success(`הקורס "${newCourseName}" נוסף בהצלחה!`);
             setNewCourseName("");
             refreshCourses();
-        } catch (e) { alert("שגיאה: " + e.message); }
+        } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
     const startEditingCourse = (year, sem, id, name) => {
@@ -43,8 +44,8 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
     };
 
     const handleUpdateCourse = async () => {
-        if (!editCourseName) return alert("נא לכתוב שם קורס");
-        if (!canEditYear(editingCourseOldData.year) || !canEditYear(editCourseYear)) return alert("אין הרשאה לערוך בשנים אלו");
+        if (!editCourseName) return toast.error("נא לכתוב שם קורס");
+        if (!canEditYear(editingCourseOldData.year) || !canEditYear(editCourseYear)) return toast.error("אין לך הרשאה לשנה זו");
         try {
             setStatus('processing');
             const { year: oldYear, sem: oldSem, id: courseId } = editingCourseOldData;
@@ -68,12 +69,12 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
             });
 
             await update(ref(db), updates);
-            alert("עודכן!");
+            toast.success(`הקורס "${editCourseName}" עודכן בהצלחה!`);
             setEditingCourseOldData(null);
             setStatus('idle');
             refreshCourses();
         } catch (e) {
-            alert(e.message);
+            toast.error("שגיאה: " + e.message);
             setStatus('idle');
         }
     };
