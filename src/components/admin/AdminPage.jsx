@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 import UsersTab from './UsersTab';
 import ReportsTab from './ReportsTab';
@@ -21,19 +22,19 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 
 export default function AdminPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
   const examYearsList = Array.from({ length: 16 }, (_, i) => (2012 + i).toString());
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
-  const [activeTab, setActiveTab] = useState('upload');
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
   const [selectedSemester, setSelectedSemester] = useState("סמסטר א'");
   const [selectedCourseId, setSelectedCourseId] = useState("");
 
   const [status, setStatus] = useState('idle');
-
 
   const {
     user, userData, isAdminLogin, authLoading, allUsers,
@@ -70,7 +71,7 @@ export default function AdminPage() {
   } = useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus);
 
   const handleNavigateToReportedQuestion = (examId) => {
-    setActiveTab('manage_exams');
+    navigate('/admin/manage_exams');
     const examToEdit = examsList.find(e => e.id === examId);
     if (examToEdit) {
       setSelectedStudentYear(examToEdit.studentYear);
@@ -80,6 +81,11 @@ export default function AdminPage() {
     } else {
       toast.error("המבחן נמחק או שלא ניתן למצוא אותו.");
     }
+  };
+
+  const isActiveTab = (path) => {
+      if (path === 'upload' && location.pathname === '/admin') return true;
+      return location.pathname.includes(`/admin/${path}`);
   };
 
   // משתני תצוגה
@@ -155,148 +161,156 @@ export default function AdminPage() {
 
         {/* --- שורת הטאבים --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
-          <button onClick={() => setActiveTab('upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'upload' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
-          <button onClick={() => setActiveTab('bulk')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'bulk' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button>
-          <button onClick={() => setActiveTab('manage_exams')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'manage_exams' ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
-          <button onClick={() => setActiveTab('manage_courses')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'manage_courses' ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
-          <button onClick={() => setActiveTab('reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'reports' ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
-          {userData?.role === 'super_admin' && <button onClick={() => setActiveTab('users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${activeTab === 'users' ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
+          <button onClick={() => navigate('/admin/upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
+          <button onClick={() => navigate('/admin/bulk')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button>
+          <button onClick={() => navigate('/admin/manage_exams')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
+          <button onClick={() => navigate('/admin/manage_courses')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
+          <button onClick={() => navigate('/admin/reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
         </div>
 
-        {/* --- טאב ניהול משתמשים --- */}
-        {activeTab === 'users' && userData?.role === 'super_admin' && (
-          <UsersTab
-            allUsers={allUsers}
-            currentUser={user}
-            studentYears={studentYears}
-            onUpdateRole={handleUpdateUserRole}
-            onToggleYear={handleToggleUserYear}
-            onDeleteUser={handleDeleteUser}
-          />
-        )}
+        {/* --- אזור הראוטינג של הטאבים --- */}
+        <Routes>
+          <Route path="upload" element={
+            <UploadTab
+              studentYears={studentYears}
+              semesters={semesters}
+              selectedStudentYear={selectedStudentYear}
+              setSelectedStudentYear={setSelectedStudentYear}
+              selectedSemester={selectedSemester}
+              setSelectedSemester={setSelectedSemester}
+              selectedCourseId={selectedCourseId}
+              setSelectedCourseId={setSelectedCourseId}
+              availableCourses={availableCourses}
+              examYear={examYear}
+              setExamYear={setExamYear}
+              examYearsList={examYearsList}
+              examMoed={examMoed}
+              setExamMoed={setExamMoed}
+              moedList={moedList}
+              parsingMode={parsingMode}
+              setParsingMode={setParsingMode}
+              file={file}
+              setFile={setFile}
+              appendicesFile={appendicesFile}
+              setAppendicesFile={setAppendicesFile}
+              handleUploadExam={handleUploadExam}
+              status={status}
+              debugLog={debugLog}
+            />
+          } />
+          
+          <Route path="bulk" element={
+            <BulkUploadTab
+              studentYears={studentYears}
+              semesters={semesters}
+              selectedStudentYear={selectedStudentYear}
+              setSelectedStudentYear={setSelectedStudentYear}
+              selectedSemester={selectedSemester}
+              setSelectedSemester={setSelectedSemester}
+              selectedCourseId={selectedCourseId}
+              setSelectedCourseId={setSelectedCourseId}
+              availableCourses={availableCourses}
+              parsingMode={parsingMode}
+              setParsingMode={setParsingMode}
+              bulkFiles={bulkFiles}
+              setBulkFiles={setBulkFiles}
+              status={status}
+              handleBulkUpload={handleBulkUpload}
+              debugLog={debugLog}
+            />
+          } />
 
-        {/* --- טאב דיווחים --- */}
-        {activeTab === 'reports' && (
-          <ReportsTab
-            reportsList={reportsList}
-            onResolveReport={handleResolveReport}
-            onNavigateToQuestion={handleNavigateToReportedQuestion}
-          />
-        )}
+          <Route path="manage_exams" element={
+            <ManageExamsTab
+              questionsEditorId={questionsEditorId}
+              setQuestionsEditorId={setQuestionsEditorId}
+              status={status}
+              showMissingImagesOnly={showMissingImagesOnly}
+              setShowMissingImagesOnly={setShowMissingImagesOnly}
+              newQuestionOptionsCount={newQuestionOptionsCount}
+              setNewQuestionOptionsCount={setNewQuestionOptionsCount}
+              handleAddQuestion={handleAddQuestion}
+              filteredQuestions={filteredQuestions}
+              examQuestions={examQuestions}
+              getQuestionStatusColor={getQuestionStatusColor}
+              handleDeleteQuestion={handleDeleteQuestion}
+              handleQuestionTextChange={handleQuestionTextChange}
+              saveQuestionText={saveQuestionText}
+              handleOptionTextChange={handleOptionTextChange}
+              saveOptionText={saveOptionText}
+              handleRemoveOptionFromQuestion={handleRemoveOptionFromQuestion}
+              handleSetMainCorrect={handleSetMainCorrect}
+              handleToggleAppeal={handleToggleAppeal}
+              handleAddOptionToQuestion={handleAddOptionToQuestion}
+              handleUploadQuestionImage={handleUploadQuestionImage}
+              handleToggleCancel={handleToggleCancel}
+              selectedStudentYear={selectedStudentYear}
+              setSelectedStudentYear={setSelectedStudentYear}
+              studentYears={studentYears}
+              selectedSemester={selectedSemester}
+              setSelectedSemester={setSelectedSemester}
+              semesters={semesters}
+              selectedCourseId={selectedCourseId}
+              setSelectedCourseId={setSelectedCourseId}
+              availableCourses={availableCourses}
+              filteredExamsForEdit={filteredExamsForEdit}
+              handleDeleteExam={handleDeleteExam}
+              editingExamId={editingExamId}
+              setEditingExamId={setEditingExamId}
+              newAppendicesFile={newAppendicesFile}
+              setNewAppendicesFile={setNewAppendicesFile}
+              handleUpdateAppendices={handleUpdateAppendices}
+              openQuestionsEditor={openQuestionsEditor}
+            />
+          } />
 
-        {/* --- טאב ניהול קורסים --- */}
-        {activeTab === 'manage_courses' && (
-          <ManageCoursesTab
-            studentYears={studentYears}
-            semesters={semesters}
-            selectedStudentYear={selectedStudentYear}
-            setSelectedStudentYear={setSelectedStudentYear}
-            selectedSemester={selectedSemester}
-            setSelectedSemester={setSelectedSemester}
-            newCourseName={newCourseName}
-            setNewCourseName={setNewCourseName}
-            onAddCourse={handleAddCourse}
-            coursesList={coursesList}
-            onEditCourse={startEditingCourse}
-          />
-        )}
+          <Route path="manage_courses" element={
+             <ManageCoursesTab
+              studentYears={studentYears}
+              semesters={semesters}
+              selectedStudentYear={selectedStudentYear}
+              setSelectedStudentYear={setSelectedStudentYear}
+              selectedSemester={selectedSemester}
+              setSelectedSemester={setSelectedSemester}
+              newCourseName={newCourseName}
+              setNewCourseName={setNewCourseName}
+              onAddCourse={handleAddCourse}
+              coursesList={coursesList}
+              onEditCourse={startEditingCourse}
+            />
+          } />
 
-        {/* --- טאב ניהול מבחנים (Lazy Load) --- */}
-        {activeTab === 'manage_exams' && (
-          <ManageExamsTab
-            questionsEditorId={questionsEditorId}
-            setQuestionsEditorId={setQuestionsEditorId}
-            status={status}
-            showMissingImagesOnly={showMissingImagesOnly}
-            setShowMissingImagesOnly={setShowMissingImagesOnly}
-            newQuestionOptionsCount={newQuestionOptionsCount}
-            setNewQuestionOptionsCount={setNewQuestionOptionsCount}
-            handleAddQuestion={handleAddQuestion}
-            filteredQuestions={filteredQuestions}
-            examQuestions={examQuestions}
-            getQuestionStatusColor={getQuestionStatusColor}
-            handleDeleteQuestion={handleDeleteQuestion}
-            handleQuestionTextChange={handleQuestionTextChange}
-            saveQuestionText={saveQuestionText}
-            handleOptionTextChange={handleOptionTextChange}
-            saveOptionText={saveOptionText}
-            handleRemoveOptionFromQuestion={handleRemoveOptionFromQuestion}
-            handleSetMainCorrect={handleSetMainCorrect}
-            handleToggleAppeal={handleToggleAppeal}
-            handleAddOptionToQuestion={handleAddOptionToQuestion}
-            handleUploadQuestionImage={handleUploadQuestionImage}
-            handleToggleCancel={handleToggleCancel}
-            selectedStudentYear={selectedStudentYear}
-            setSelectedStudentYear={setSelectedStudentYear}
-            studentYears={studentYears}
-            selectedSemester={selectedSemester}
-            setSelectedSemester={setSelectedSemester}
-            semesters={semesters}
-            selectedCourseId={selectedCourseId}
-            setSelectedCourseId={setSelectedCourseId}
-            availableCourses={availableCourses}
-            filteredExamsForEdit={filteredExamsForEdit}
-            handleDeleteExam={handleDeleteExam}
-            editingExamId={editingExamId}
-            setEditingExamId={setEditingExamId}
-            newAppendicesFile={newAppendicesFile}
-            setNewAppendicesFile={setNewAppendicesFile}
-            handleUpdateAppendices={handleUpdateAppendices}
-            openQuestionsEditor={openQuestionsEditor}
-          />
-        )}
+          <Route path="reports" element={
+             <ReportsTab
+              reportsList={reportsList}
+              onResolveReport={handleResolveReport}
+              onNavigateToQuestion={handleNavigateToReportedQuestion}
+            />
+          } />
 
-        {/* --- טאב העלאה המונית (Bulk Upload) --- */}
-        {activeTab === 'bulk' && (
-          <BulkUploadTab
-            studentYears={studentYears}
-            semesters={semesters}
-            selectedStudentYear={selectedStudentYear}
-            setSelectedStudentYear={setSelectedStudentYear}
-            selectedSemester={selectedSemester}
-            setSelectedSemester={setSelectedSemester}
-            selectedCourseId={selectedCourseId}
-            setSelectedCourseId={setSelectedCourseId}
-            availableCourses={availableCourses}
-            parsingMode={parsingMode}
-            setParsingMode={setParsingMode}
-            bulkFiles={bulkFiles}
-            setBulkFiles={setBulkFiles}
-            status={status}
-            handleBulkUpload={handleBulkUpload}
-            debugLog={debugLog}
-          />
-        )}
+          {/* נתיב מוגן - רק סופר אדמין */}
+          <Route path="users" element={
+             userData?.role === 'super_admin' ? (
+                <UsersTab
+                  allUsers={allUsers}
+                  currentUser={user}
+                  studentYears={studentYears}
+                  onUpdateRole={handleUpdateUserRole}
+                  onToggleYear={handleToggleUserYear}
+                  onDeleteUser={handleDeleteUser}
+                />
+             ) : (
+                <Navigate to="/admin/upload" replace />
+             )
+          } />
 
-        {/* --- טאב העלאה בודדת --- */}
-        {activeTab === 'upload' && (
-          <UploadTab
-            studentYears={studentYears}
-            semesters={semesters}
-            selectedStudentYear={selectedStudentYear}
-            setSelectedStudentYear={setSelectedStudentYear}
-            selectedSemester={selectedSemester}
-            setSelectedSemester={setSelectedSemester}
-            selectedCourseId={selectedCourseId}
-            setSelectedCourseId={setSelectedCourseId}
-            availableCourses={availableCourses}
-            examYear={examYear}
-            setExamYear={setExamYear}
-            examYearsList={examYearsList}
-            examMoed={examMoed}
-            setExamMoed={setExamMoed}
-            moedList={moedList}
-            parsingMode={parsingMode}
-            setParsingMode={setParsingMode}
-            file={file}
-            setFile={setFile}
-            appendicesFile={appendicesFile}
-            setAppendicesFile={setAppendicesFile}
-            handleUploadExam={handleUploadExam}
-            status={status}
-            debugLog={debugLog}
-          />
-        )}
+          {/* ניתוב ברירת מחדל אם מגיעים רק ל- /admin */}
+          <Route path="/" element={<Navigate to="upload" replace />} />
+          
+          {/* טיפול בכתובות לא תקינות באדמין */}
+          <Route path="*" element={<Navigate to="upload" replace />} />
+        </Routes>
 
       </div>
     </div>

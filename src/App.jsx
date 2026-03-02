@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import HomePage from './components/HomePage';
+import HomePage from './components/home/HomePage';
 import AdminPage from './components/admin/AdminPage';
 import { Toaster } from 'react-hot-toast';
 
@@ -8,7 +8,6 @@ function App() {
     <Router>
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" dir="rtl">
         
-        {/* === רכיב ההתראות של react-hot-toast === */}
         <Toaster 
           position="top-center" 
           toastOptions={{
@@ -23,8 +22,8 @@ function App() {
         />
 
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/*" element={<HomePage />} />
+          <Route path="/admin/*" element={<AdminPage />} />
         </Routes>
       </div>
     </Router>
