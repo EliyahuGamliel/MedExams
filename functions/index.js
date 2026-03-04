@@ -18,7 +18,8 @@ exports.processExamWithGemini = onCall(
     }
 
     const { fileBase64, parsingMode } = request.data;
-
+    console.log("🚀🚀🚀 השרת המעודכן רץ עכשיו! 🚀🚀🚀");
+    
     if (!fileBase64) {
       throw new HttpsError("invalid-argument", "לא נשלח קובץ.");
     }
@@ -33,27 +34,32 @@ exports.processExamWithGemini = onCall(
       if (parsingMode === 'standard') {
         // --- מצב רגיל (טופס 0) ---
         prompt = `Extract questions from this exam PDF to JSON. 
-        The first option is ALWAYS correct (Form 0 style).
+        CRITICAL FOR correctIndex:
+        - If there is ONE correct answer, the first option is ALWAYS the correct one. Set "correctIndex": 0.
+        - If MULTIPLE answers are correct (e.g. "Select all that apply"), put ALL correct options at the beginning of the "options" array, and set "correctIndex" as an array of integers (e.g. [0, 1, 2]).
+        
         CRITICAL FOR IMAGES: Set "imageNeeded": true ONLY IF text explicitly refers to a missing diagram/graph.
         Return ONLY raw JSON array: [{"id": 1, "text": "Q", "options": ["Correct", "W1", "W2"], "correctIndex": 0, "imageNeeded": false}]`;
       } else {
-        // --- מצב ממוחשב (Moodle) - הפרומפט החדש והגמיש ---
+        // --- מצב ממוחשב (Moodle) - הפרומפט החדש והמדויק ---
         prompt = `You are parsing a "Review" PDF of a solved Moodle exam.
         Extract questions into a JSON array. 
         
         The exam contains two main types of logical questions. Use your intelligence to detect the type:
 
-        TYPE 1: Single Choice (Radio Buttons / Checkboxes)
-        - The user selects ONE answer from a list.
-        - The correct answer is marked with "התשובה הנכונה:", a checkmark (✓/☑), or bold text.
-        - Output format: {"type": "multiple_choice", "text": "Question?", "options": ["Opt1", "Opt2"], "correctIndex": X, "imageNeeded": false}
+        TYPE 1: Single OR Multiple Choice (Radio Buttons / Checkboxes)
+        - DETECT IF: There is ONE main question sentence, followed by a list of options. The user selects one OR MORE options.
+        - The correct answer(s) are usually marked with a checkmark (✓/☑), green color, or summarized at the bottom like "התשובות הנכונות הן".
+        - Output format: {"type": "multiple_choice", "text": "Question?", "options": ["Opt1", "Opt2", "Opt3"], "correctIndex": [0, 2], "imageNeeded": false}
+        - CRITICAL RULE FOR correctIndex:
+          * If there is exactly ONE correct answer, correctIndex MUST be an integer (e.g., 1).
+          * If there are MULTIPLE correct answers (e.g., checkboxes, or multiple statements are correct), correctIndex MUST be an ARRAY of integers representing the indices of ALL correct options (e.g., [0, 2]).
 
         TYPE 2: Complex / Multi-Part / Matching / Cloze
-        - DETECT IF: The question asks to match items, fill multiple blanks, or classify items.
+        - DETECT IF: The question asks to match items to each other, fill in missing words inside a paragraph, or classify items in a table.
         - EXAMPLES: 
           * "Match item A to X, item B to Y..."
           * "Complete the sentence: The heart is {{0}} and the liver is {{1}}..."
-          * A list of sub-questions (1, 2, 3...) where each has its own correct answer displayed.
         
         - ACTION for Type 2:
           1. Consolidate the main question text and the sub-items into one clear string.
@@ -74,10 +80,10 @@ exports.processExamWithGemini = onCall(
             "imageNeeded": true 
           }
 
-        CRITICAL RULES:
-        1. If a question refers to an image (X-ray, Graph, Diagram) -> Set "imageNeeded": true.
-        2. If you see a text box inside a sentence -> It is a Type 2 (Cloze) question.
-        3. If there are multiple correct answers for different parts of the question -> It is a Type 2 (Cloze) question.
+        CRITICAL DIFFERENTIATION RULES:
+        1. DO NOT confuse Type 1 with Type 2! If there is a simple list of checkboxes and the question asks to "mark all correct statements" (e.g. "סמנו את כל המשפטים הנכונים"), it is ABSOLUTELY TYPE 1. Just use an array for correctIndex!
+        2. Type 2 is STRICTLY for fill-in-the-blanks, drop-down menus inside text, or matching columns.
+        3. If a question refers to an image (X-ray, Graph, Diagram) -> Set "imageNeeded": true.
 
         Return ONLY the raw JSON array.`;
       }
@@ -92,9 +98,7 @@ exports.processExamWithGemini = onCall(
       const responseText = result.response.text();
       
       // 2. פונקציית עזר לניקוי חכם של JSON
-      // היא מחפשת את הסוגריים המרובעים החיצוניים ביותר ומנקה שאריות
       function extractJSON(text) {
-        // הסרת בלוקים של מרקדאון אם יש (```json ... ```)
         let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
         
         const firstBracket = cleanText.indexOf('[');
@@ -104,22 +108,17 @@ exports.processExamWithGemini = onCall(
              throw new Error("לא נמצא מבנה של מערך JSON בתשובה.");
         }
 
-        // ניסיון ראשון: חיתוך מהסוגר הראשון לאחרון
         const candidate = cleanText.substring(firstBracket, lastBracket + 1);
         
         try {
             return JSON.parse(candidate);
         } catch (e) {
-            // אם נכשלנו, כנראה ש-Gemini הוסיף הערות עם סוגריים בסוף הטקסט.
-            // ננסה לנקות את ה"זנב" עד שנצליח (לולאה מהסוף להתחלה)
-            // זה מנגנון "הצלה" למקרים קשים
             let currentEnd = lastBracket;
             while (currentEnd > firstBracket) {
                 try {
                     const subCandidate = cleanText.substring(firstBracket, currentEnd + 1);
                     return JSON.parse(subCandidate);
                 } catch (e2) {
-                    // מחפשים את ה-']' הבא אחורה
                     currentEnd = cleanText.lastIndexOf(']', currentEnd - 1);
                 }
             }
@@ -130,9 +129,8 @@ exports.processExamWithGemini = onCall(
       // 3. חילוץ השאלות
       const rawQuestions = extractJSON(responseText);
 
-      // --- התיקון הקריטי: נרמול הנתונים לפני השליחה לאתר ---
+      // 4. התיקון הקריטי: נרמול הנתונים לפני השליחה לאתר
       const questions = rawQuestions.map(q => {
-          // אם ג'מיני התעקש לקרוא לזה 'question', נתקן את זה ל-'text' בשבילו
           if (q.question && !q.text) {
               q.text = q.question;
               delete q.question;
@@ -140,7 +138,7 @@ exports.processExamWithGemini = onCall(
           return q;
       });
 
-      // 4. החזרת התשובה לאתר
+      // 5. החזרת התשובה לאתר
       return { questions };
 
     } catch (error) {
