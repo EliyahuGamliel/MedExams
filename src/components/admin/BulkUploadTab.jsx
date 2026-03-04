@@ -1,7 +1,6 @@
 import React from 'react';
 
-const FileTextIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
-const ComputerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>;
+const InfoIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
 
 export default function BulkUploadTab({
     studentYears,
@@ -26,7 +25,7 @@ export default function BulkUploadTab({
             <div className="text-center mb-6">
                 <h3 className="font-black text-indigo-900 text-2xl mb-2">העלאה המונית (Batch Upload)</h3>
                 <p className="text-indigo-600 text-sm font-medium">
-                    העלה עשרות מבחנים במכה אחת. <br />המערכת תסרוק את שמות הקבצים כדי לשייך שנה ומועד אוטומטית.
+                    העלה עשרות מבחנים במכה אחת. <br />המערכת תסרוק את שמות הקבצים כדי לזהות אוטומטית את סוג הטופס, השנה והמועד.
                 </p>
             </div>
 
@@ -61,37 +60,38 @@ export default function BulkUploadTab({
                 </select>
             </div>
 
-            {/* 2. סוג הקבצים */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                <h4 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wider">2. סוג הקבצים לפענוח</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <button
-                        onClick={() => setParsingMode('standard')}
-                        className={`p-4 rounded-xl border-2 flex items-center gap-3 transition ${parsingMode === 'standard' ? 'border-indigo-500 bg-indigo-50 text-indigo-800' : 'border-slate-100 hover:border-slate-300 text-slate-500'}`}
-                    >
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${parsingMode === 'standard' ? 'border-indigo-600' : 'border-slate-300'}`}>
-                            {parsingMode === 'standard' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div>}
-                        </div>
-                        <div className="text-right">
-                            <div className="font-bold flex items-center gap-2"><FileTextIcon /> קובץ רגיל</div>
-                        </div>
-                    </button>
-                    <button
-                        onClick={() => setParsingMode('computerized')}
-                        className={`p-4 rounded-xl border-2 flex items-center gap-3 transition ${parsingMode === 'computerized' ? 'border-indigo-500 bg-indigo-50 text-indigo-800' : 'border-slate-100 hover:border-slate-300 text-slate-500'}`}
-                    >
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${parsingMode === 'computerized' ? 'border-indigo-600' : 'border-slate-300'}`}>
-                            {parsingMode === 'computerized' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div>}
-                        </div>
-                        <div className="text-right">
-                            <div className="font-bold flex items-center gap-2"><ComputerIcon /> ממוחשב (Moodle)</div>
-                        </div>
-                    </button>
+            {/* 2. חוקי שמות הקבצים (במקום בחירה ידנית) */}
+            <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-sm">
+                <h4 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wider flex items-center gap-2">
+                    <InfoIcon /> 2. איך לקרוא לקבצים? (זיהוי אוטומטי)
+                </h4>
+                
+                <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-700 space-y-3 border border-slate-200">
+                    <p>כדי שהמערכת תזהה הכל לבד, קרא לקבצים בפורמט הבא: <strong className="text-indigo-600 font-mono text-base bg-indigo-100 px-2 py-0.5 rounded">P2022A.pdf</strong> או <strong className="text-indigo-600 font-mono text-base bg-indigo-100 px-2 py-0.5 rounded">S2023B.pdf</strong></p>
+                    
+                    <ul className="list-disc list-inside space-y-1 ml-2 text-slate-600">
+                        <li><strong>P / S</strong> = <span className="text-blue-600 font-bold">P</span>rint (טופס 0) או <span className="text-blue-600 font-bold">S</span>creen (ממוחשב)</li>
+                        <li><strong>20XX</strong> = שנת המבחן</li>
+                        <li><strong>A / B / C</strong> = מועד א', ב', או מיוחד</li>
+                    </ul>
+
+                    {/* בחירת גיבוי - למקרה שהשם לא תואם לפורמט */}
+                    <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-500">ברירת מחדל לקבצים ללא אות (P/S):</span>
+                        <select 
+                            value={parsingMode} 
+                            onChange={e => setParsingMode(e.target.value)}
+                            className="text-xs p-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold"
+                        >
+                            <option value="standard">קובץ רגיל (טופס 0)</option>
+                            <option value="moodle">ממוחשב (Moodle)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             {/* 3. בחירת קבצים */}
-            <div className="bg-white p-6 rounded-2xl border-2 border-dashed border-indigo-300 hover:bg-indigo-50 transition text-center relative cursor-pointer">
+            <div className="bg-white p-8 rounded-2xl border-2 border-dashed border-indigo-300 hover:bg-indigo-50 transition text-center relative cursor-pointer">
                 <input
                     type="file"
                     multiple
@@ -100,34 +100,38 @@ export default function BulkUploadTab({
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <span className="text-4xl block mb-2">📁</span>
-                <p className="font-bold text-indigo-900">בחר מספר קבצים להעלאה (PDF)</p>
-                <p className="text-xs text-indigo-500 mt-1">גרור לכאן או לחץ לבחירה. מומלץ לקרוא לקבצים עם שנת המבחן והמועד.</p>
+                <p className="font-bold text-indigo-900 text-lg">גרור קבצים לכאן או לחץ לבחירה</p>
+                <p className="text-sm text-indigo-500 mt-1">ניתן להעלות עשרות קבצי PDF במכה אחת</p>
             </div>
 
             {/* אזור פעולה ולוגים */}
             {bulkFiles.length > 0 && (
-                <div className="bg-white p-4 rounded-2xl border border-indigo-200">
-                    <div className="font-bold text-slate-700 mb-2 border-b pb-2">נבחרו {bulkFiles.length} קבצים:</div>
+                <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-md">
+                    <div className="font-bold text-slate-700 mb-2 border-b pb-2 flex justify-between items-center">
+                        <span>הוכנו להעלאה: {bulkFiles.length} קבצים</span>
+                        <button onClick={() => setBulkFiles([])} className="text-xs text-red-500 hover:text-red-700 font-bold">נקה רשימה</button>
+                    </div>
                     <ul className="text-sm text-slate-600 space-y-1 max-h-40 overflow-y-auto pl-2" dir="ltr">
                         {bulkFiles.map((f, i) => (
-                            <li key={i} className="flex justify-between items-center bg-slate-50 p-2 rounded">
-                                <span className="truncate flex-1">{f.name}</span>
+                            <li key={i} className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
+                                <span className="truncate flex-1 font-mono text-xs">{f.name}</span>
+                                <span className="text-green-500 ml-2">✓</span>
                             </li>
                         ))}
                     </ul>
                     <button
                         onClick={handleBulkUpload}
                         disabled={status === 'processing' || !selectedCourseId}
-                        className="mt-4 w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 disabled:bg-slate-300 transition"
+                        className="mt-4 w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-indigo-700 disabled:bg-slate-300 transition flex items-center justify-center gap-2 text-lg"
                     >
-                        {status === 'processing' ? '⏳ מעבד קבצים (נא לא לסגור את החלון)...' : '🚀 התחל העלאה המונית'}
+                        {status === 'processing' ? '⏳ מפענח... (נא לא לסגור את החלון)' : '🚀 התחל עיבוד והעלאה'}
                     </button>
                 </div>
             )}
 
             {debugLog && (
-                <div className="bg-black text-green-400 p-4 rounded-xl text-left h-48 overflow-auto text-xs" dir="ltr">
-                    <pre>{debugLog}</pre>
+                <div className="bg-slate-900 text-green-400 p-4 rounded-xl text-left h-48 overflow-auto text-xs font-mono shadow-inner border border-slate-800" dir="ltr">
+                    <pre className="whitespace-pre-wrap">{debugLog}</pre>
                 </div>
             )}
         </div>

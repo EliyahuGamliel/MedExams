@@ -17,6 +17,12 @@ export default function ManageExamsTab({
     handleRemoveOptionFromQuestion, handleSetMainCorrect,
     handleToggleAppeal, handleAddOptionToQuestion,
     handleUploadQuestionImage, handleToggleCancel,
+    
+    // פונקציות Cloze
+    handleClozeCorrectIndexChange, handleAddOptionToCloze, 
+    handleRemoveOptionFromCloze, handleClozeOptionTextChange, 
+    saveClozeOptionText, handleToggleClozeAppeal,
+
     selectedStudentYear, setSelectedStudentYear, studentYears,
     selectedSemester, setSelectedSemester, semesters,
     selectedCourseId, setSelectedCourseId, availableCourses,
@@ -53,7 +59,7 @@ export default function ManageExamsTab({
                                         const realIndex = examQuestions.findIndex(orig => orig === q);
                                         return (
                                             <QuestionItem
-                                                key={realIndex} // מפתח ייחודי לכל שאלה
+                                                key={realIndex} 
                                                 q={q}
                                                 realIndex={realIndex}
                                                 getQuestionStatusColor={getQuestionStatusColor}
@@ -68,6 +74,13 @@ export default function ManageExamsTab({
                                                 handleAddOptionToQuestion={handleAddOptionToQuestion}
                                                 handleUploadQuestionImage={handleUploadQuestionImage}
                                                 handleToggleCancel={handleToggleCancel}
+                                                
+                                                handleClozeCorrectIndexChange={handleClozeCorrectIndexChange}
+                                                handleAddOptionToCloze={handleAddOptionToCloze}
+                                                handleRemoveOptionFromCloze={handleRemoveOptionFromCloze}
+                                                handleClozeOptionTextChange={handleClozeOptionTextChange}
+                                                saveClozeOptionText={saveClozeOptionText}
+                                                handleToggleClozeAppeal={handleToggleClozeAppeal}
                                             />
                                         );
                                     })}
@@ -97,13 +110,6 @@ export default function ManageExamsTab({
                                         <span className="font-bold text-slate-800">{exam.title}</span>
                                         <span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span>
                                     </div>
-                                    {(() => {
-                                        const missingCount = (exam.questions || []).filter(q => q.imageNeeded && !q.hasImage).length;
-                                        if (missingCount > 0) {
-                                            return <span className="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full font-bold animate-pulse border border-red-200">🚨 חסרות {missingCount} תמונות</span>;
-                                        }
-                                        return null;
-                                    })()}
                                     <button onClick={() => handleDeleteExam(exam.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="מחק מבחן"><TrashIcon /></button>
                                 </div>
                                 <div className="flex gap-2 mt-2">
@@ -112,9 +118,9 @@ export default function ManageExamsTab({
                                 </div>
                                 {editingExamId === exam.id && (
                                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2 animate-fade-in">
-                                        <input type="file" accept="application/pdf" onChange={e => setNewAppendicesFile(e.target.files[0])} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
+                                        <input type="file" accept="application/pdf" onChange={e => setNewAppendicesFile(e.target.files[0])} className="block w-full text-sm text-slate-500" />
                                         <div className="flex gap-2 mt-3">
-                                            <button onClick={() => handleUpdateAppendices(exam.id)} disabled={!newAppendicesFile || status === 'processing'} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition">{status === 'processing' ? 'מעלה...' : 'שמור'}</button>
+                                            <button onClick={() => handleUpdateAppendices(exam.id)} disabled={!newAppendicesFile || status === 'processing'} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition">שמור</button>
                                             <button onClick={() => { setEditingExamId(null); setNewAppendicesFile(null); }} className="text-slate-400 px-4 py-2 text-sm font-bold hover:text-slate-600">ביטול</button>
                                         </div>
                                     </div>

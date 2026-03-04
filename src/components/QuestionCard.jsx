@@ -87,7 +87,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       const opts = (blank.options || []).map((opt, idx) => ({
         id: idx,
         text: opt,
-        isCorrect: idx === blank.correctIndex
+        isCorrect: idx === blank.correctIndex || (blank.appealedIndexes || []).includes(idx)
       }));
       return shuffleArray(opts);
     });

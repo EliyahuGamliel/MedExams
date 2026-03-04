@@ -51,7 +51,14 @@ export default function AdminPage() {
     handleRemoveOptionFromQuestion, handleQuestionTextChange, saveQuestionText,
     handleOptionTextChange, saveOptionText, handleUploadQuestionImage,
     handleSetMainCorrect, handleToggleAppeal, handleToggleCancel,
-    getQuestionStatusColor, handleResolveReport
+    getQuestionStatusColor, handleResolveReport,
+
+    handleClozeCorrectIndexChange,
+    handleAddOptionToCloze,
+    handleRemoveOptionFromCloze,
+    handleClozeOptionTextChange,
+    saveClozeOptionText,
+    handleToggleClozeAppeal
   } = useExamsLogic(setStatus);
 
   const {
@@ -239,12 +246,18 @@ export default function AdminPage() {
               saveQuestionText={saveQuestionText}
               handleOptionTextChange={handleOptionTextChange}
               saveOptionText={saveOptionText}
+              handleClozeCorrectIndexChange={handleClozeCorrectIndexChange}
               handleRemoveOptionFromQuestion={handleRemoveOptionFromQuestion}
               handleSetMainCorrect={handleSetMainCorrect}
               handleToggleAppeal={handleToggleAppeal}
               handleAddOptionToQuestion={handleAddOptionToQuestion}
               handleUploadQuestionImage={handleUploadQuestionImage}
               handleToggleCancel={handleToggleCancel}
+              handleAddOptionToCloze={handleAddOptionToCloze}
+              handleRemoveOptionFromCloze={handleRemoveOptionFromCloze}
+              handleClozeOptionTextChange={handleClozeOptionTextChange}
+              saveClozeOptionText={saveClozeOptionText}
+              handleToggleClozeAppeal={handleToggleClozeAppeal}
               selectedStudentYear={selectedStudentYear}
               setSelectedStudentYear={setSelectedStudentYear}
               studentYears={studentYears}

@@ -110,20 +110,47 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
     const bulkUploadProcess = async () => {
       for (let i = 0; i < bulkFiles.length; i++) {
           const currentFile = bulkFiles[i];
-          const filename = currentFile.name.toLowerCase();
-          const yearMatch = filename.match(/(20\d{2})/);
-          const extractedYear = yearMatch ? yearMatch[1] : "2026"; 
+          const filename = currentFile.name.toUpperCase(); // הופכים לאותיות גדולות כדי להקל על הזיהוי
+          
+          // ערכי ברירת מחדל (מה שבחרו ב-UI או השנה הנוכחית)
+          let extractedYear = "2026";
           let extractedMoed = "מועד א'";
-          if (filename.includes("b")) extractedMoed = "מועד ב'";
-          else if (filename.includes("c")) extractedMoed = "מועד מיוחד";
+          let currentParsingMode = parsingMode; // ברירת המחדל היא מה שבחרו בממשק
 
-          addLog(`\n⏳ מעבד קובץ ${i+1}/${bulkFiles.length}: ${currentFile.name}`);
+          // ביטוי רגולרי שמחפש: [P או S] (אופציונלי) + [שנה] + [A, B או C] (אופציונלי)
+          const match = filename.match(/([PS])?(20\d{2})([ABC]?)/);
+
+          if (match) {
+              // 1. זיהוי שיטת פענוח (Print / Screen)
+              if (match[1] === 'P') currentParsingMode = 'standard';
+              else if (match[1] === 'S') currentParsingMode = 'moodle';
+
+              // 2. זיהוי שנה
+              if (match[2]) extractedYear = match[2];
+
+              // 3. זיהוי מועד (A/B/C)
+              if (match[3] === 'A') extractedMoed = "מועד א'";
+              else if (match[3] === 'B') extractedMoed = "מועד ב'";
+              else if (match[3] === 'C') extractedMoed = "מועד מיוחד";
+          } else {
+              // גיבוי למקרה ששם הקובץ ישן (למשל exam_2023_b.pdf)
+              const lowerName = currentFile.name.toLowerCase();
+              const yearFallbackMatch = lowerName.match(/(20\d{2})/);
+              if (yearFallbackMatch) extractedYear = yearFallbackMatch[1];
+              
+              if (lowerName.includes("b") || lowerName.includes("ב'")) extractedMoed = "מועד ב'";
+              else if (lowerName.includes("c") || lowerName.includes("ג'") || lowerName.includes("מיוחד")) extractedMoed = "מועד מיוחד";
+          }
+
+          addLog(`\n⏳ מעבד קובץ ${i+1}/${bulkFiles.length}: ${currentFile.name} | זיהה: ${extractedYear}, ${extractedMoed}, סוג: ${currentParsingMode === 'standard' ? 'טופס 0' : 'Moodle'}`);
           
           try {
               const base64Data = await fileToBase64(currentFile);
               const functions = getFunctions();
               const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
-              const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
+              
+              // שולחים לשרת את מצב הפענוח הספציפי שחילצנו משם הקובץ!
+              const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: currentParsingMode });
 
               const questions = result.data.questions.map((q, idx) => normalizeGeminiQuestion(q, idx)); 
               const examId = `${courseName}_${extractedYear}_${extractedMoed}_${Date.now()}`.replace(/\s+/g, '_');
@@ -133,7 +160,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
                 id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
                 courseId: selectedCourseId, examYear: extractedYear, examMoed: extractedMoed, 
                 title: `${extractedYear} - ${extractedMoed}`, questionCount: questions.length,
-                hasAppendices: false, parsingMode, uploadedAt: new Date().toISOString()
+                hasAppendices: false, parsingMode: currentParsingMode, uploadedAt: new Date().toISOString()
               };
               updates[`exam_contents/${examId}`] = questions;
 
@@ -154,7 +181,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
       toast.success('סריקת האצווה הסתיימה בהצלחה! (מומלץ לבדוק בלוגים אם היו שגיאות)', { id: toastId, duration: 5000 });
       setStatus('idle');
     } catch (e) {
-      toast.error('הייתה בעיה בסריקת האצווה.', { id: toastId, duration: 5000 });
+      toast.error('הייתה בעיה בסריקת האצווה.' + e.message, { id: toastId, duration: 5000 });
       setStatus('idle');
     }
   };

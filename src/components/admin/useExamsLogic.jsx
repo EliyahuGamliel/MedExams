@@ -191,6 +191,70 @@ export function useExamsLogic(setStatus) {
         await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/options/${optIdx}`), textToSave);
     };
 
+    // --- הפונקציה לטיפול בשאלות Cloze ---
+    const handleClozeCorrectIndexChange = async (qIdx, blankIndex, newCorrectIndex) => {
+        const numIndex = Number(newCorrectIndex);
+        setExamQuestions(prev => {
+            const updated = [...prev];
+            updated[qIdx].clozeOptions[blankIndex].correctIndex = numIndex;
+            return updated;
+        });
+        await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIndex}/correctIndex`), numIndex);
+    };
+
+    // --- פונקציות נוספות לעריכת Cloze מתקדמת ---
+    const handleAddOptionToCloze = async (qIdx, blankIdx) => {
+        const updated = [...examQuestions];
+        const currentOpts = updated[qIdx].clozeOptions[blankIdx].options || [];
+        updated[qIdx].clozeOptions[blankIdx].options = [...currentOpts, `אפשרות ${currentOpts.length + 1}`];
+        setExamQuestions(updated);
+        await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIdx}/options`), updated[qIdx].clozeOptions[blankIdx].options);
+    };
+
+    const handleRemoveOptionFromCloze = async (qIdx, blankIdx, optIdx) => {
+        const updated = [...examQuestions];
+        const blank = updated[qIdx].clozeOptions[blankIdx];
+        if (blank.options.length <= 2) return toast.error("חייבות להיות לפחות 2 אפשרויות להשלמה.");
+
+        blank.options = blank.options.filter((_, i) => i !== optIdx);
+        if (blank.correctIndex === optIdx) blank.correctIndex = 0;
+        else if (blank.correctIndex > optIdx) blank.correctIndex -= 1;
+        
+        if (blank.appealedIndexes) {
+            blank.appealedIndexes = blank.appealedIndexes.filter(i => i !== optIdx).map(i => i > optIdx ? i - 1 : i);
+        }
+
+        setExamQuestions(updated);
+        await update(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIdx}`), {
+            options: blank.options,
+            correctIndex: blank.correctIndex,
+            appealedIndexes: blank.appealedIndexes || []
+        });
+    };
+
+    const handleClozeOptionTextChange = (qIdx, blankIdx, optIdx, newText) => {
+        setExamQuestions(prev => {
+            const updated = [...prev];
+            updated[qIdx].clozeOptions[blankIdx].options[optIdx] = newText;
+            return updated;
+        });
+    };
+
+    const saveClozeOptionText = async (qIdx, blankIdx, optIdx, textToSave) => {
+        await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIdx}/options/${optIdx}`), textToSave);
+    };
+
+    const handleToggleClozeAppeal = async (qIdx, blankIdx, optIdx) => {
+        const updated = [...examQuestions];
+        const blank = updated[qIdx].clozeOptions[blankIdx];
+        const cur = blank.appealedIndexes || [];
+        const newer = cur.includes(optIdx) ? cur.filter(i => i !== optIdx) : [...cur, optIdx];
+        blank.appealedIndexes = newer;
+        setExamQuestions(updated);
+        await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIdx}/appealedIndexes`), newer);
+    };
+    // ------------------------------------------------
+
     const handleUploadQuestionImage = async (idx, f) => {
         if (!questionsEditorId) return;
         
@@ -292,6 +356,14 @@ export function useExamsLogic(setStatus) {
         handleRemoveOptionFromQuestion, handleQuestionTextChange, saveQuestionText,
         handleOptionTextChange, saveOptionText, handleUploadQuestionImage,
         handleSetMainCorrect, handleToggleAppeal, handleToggleCancel,
-        getQuestionStatusColor, handleResolveReport
+        getQuestionStatusColor, handleResolveReport,
+        
+        // --- ייצוא של פונקציות ה-Cloze ---
+        handleClozeCorrectIndexChange,
+        handleAddOptionToCloze,
+        handleRemoveOptionFromCloze,
+        handleClozeOptionTextChange,
+        saveClozeOptionText,
+        handleToggleClozeAppeal
     };
 }
