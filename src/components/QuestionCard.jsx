@@ -23,9 +23,10 @@ const isArrayEqual = (arr1, arr2) => {
     return sorted1.every((val, index) => val === sorted2[index]);
 };
 
-// אייקון לדיווח
+// אייקונים
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
 
 export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId }) {
   
@@ -53,7 +54,8 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
   // --- הכנת נתונים חכמה ---
   const shuffledOptions = useMemo(() => {
-    if (question.type === 'cloze') return null;
+    // דילוג על הכנת אופציות לשאלות Cloze ולשאלות פתוחות
+    if (question.type === 'cloze' || question.type === 'open_ended') return null;
 
     // הגנה על מערך האופציות
     const optionsSafe = question.options || [];
@@ -100,6 +102,11 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
     setPracticeSelections([]); 
     setClozeSelections({});
     setClozeWrongAttempts({});
+    
+    // סימון שאלה פתוחה כ"התעלם" בספירה הכללית
+    if (question.type === 'open_ended' && onAnswer) {
+        onAnswer(index, 'ignored');
+    }
   }, [question, mode]);
 
   // --- חישוב סטטוס להשלמה (Cloze) ---
@@ -362,10 +369,11 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         </button>
       </div>
 
-      {question.type === 'multiple_choice' && (
-         <h3 className={`text-xl font-bold mb-4 ${question.isCanceled ? 'text-slate-500' : 'text-slate-800'}`}>
+      {/* הכותרת לשאלות אמריקאיות ופתוחות - עכשיו עם תמיכה בירידות שורה */}
+      {(question.type === 'multiple_choice' || question.type === 'open_ended') && (
+         <h3 className={`text-xl font-bold mb-4 whitespace-pre-wrap leading-relaxed ${question.isCanceled ? 'text-slate-500' : 'text-slate-800'}`}>
            {question.text}
-           {isMultiSelect && <span className="block text-sm text-blue-500 font-normal mt-1">(זוהי שאלה מרובת בחירות - סמן את כל התשובות הנכונות)</span>}
+           {isMultiSelect && question.type === 'multiple_choice' && <span className="block text-sm text-blue-500 font-normal mt-2">(זוהי שאלה מרובת בחירות - סמן את כל התשובות הנכונות)</span>}
          </h3>
       )}
 
@@ -386,7 +394,20 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         </div>
       )}
 
-      {question.type === 'cloze' ? (
+      {/* --- אזור הרינדור --- */}
+      {question.type === 'open_ended' ? (
+        <div className="mt-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-center">
+          <div className="flex justify-center mb-3 text-blue-500">
+            <div className="bg-blue-100 p-3 rounded-full">
+              <PenIcon />
+            </div>
+          </div>
+          <h4 className="font-bold text-blue-900 mb-2">שאלה פתוחה (טקסט חופשי)</h4>
+          <p className="text-sm text-blue-700/80 max-w-sm mx-auto">
+            שאלה זו דורשת כתיבת תשובה חופשית במבחן האמיתי. <br/>היא מוצגת כאן לטובת הכרות עם החומר בלבד ואינה משוקללת בציון.
+          </p>
+        </div>
+      ) : question.type === 'cloze' ? (
          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
              {renderClozeContent()}
              
@@ -451,11 +472,13 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
              return (
                <button key={option.id} onClick={() => handleSelectStandard(option.id)} className={btnClass}>
-                 <span className={`${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
-                    {isMultiSelect && <span className="inline-block w-4 h-4 ml-2 border border-slate-400 rounded-sm align-middle text-[10px] leading-3">{isSelected && '✓'}</span>}
-                    {option.text}
-                 </span>
-                 <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
+                 {/* שינוי: הוספנו תמיכה בירידות שורה גם בתוך טקסט התשובות */}
+                 <div className={`flex items-start text-right ${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
+                    {isMultiSelect && <span className="inline-block shrink-0 w-4 h-4 ml-2 mt-1 border border-slate-400 rounded-sm text-[10px] leading-3 text-center text-slate-700">{isSelected && '✓'}</span>}
+                    <span className="whitespace-pre-wrap">{option.text}</span>
+                 </div>
+                 
+                 <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 shrink-0">
                     {isSelected && mode === 'test' && isSubmitted && (
                         <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm font-bold">
                             הבחירה שלך 👈

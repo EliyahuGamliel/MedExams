@@ -18,7 +18,7 @@ exports.processExamWithGemini = onCall(
     }
 
     const { fileBase64, parsingMode } = request.data;
-    console.log("🚀🚀🚀 השרת המעודכן רץ עכשיו! 🚀🚀🚀");
+    console.log("🚀🚀🚀 השרת המעודכן (Multiple Choice + Cloze + Open Ended) רץ עכשיו! 🚀🚀🚀");
     
     if (!fileBase64) {
       throw new HttpsError("invalid-argument", "לא נשלח קובץ.");
@@ -37,15 +37,16 @@ exports.processExamWithGemini = onCall(
         CRITICAL FOR correctIndex:
         - If there is ONE correct answer, the first option is ALWAYS the correct one. Set "correctIndex": 0.
         - If MULTIPLE answers are correct (e.g. "Select all that apply"), put ALL correct options at the beginning of the "options" array, and set "correctIndex" as an array of integers (e.g. [0, 1, 2]).
+        - If the question is an OPEN ESSAY question with no options, set "type": "open_ended", "options": [], and "correctIndex": null.
         
         CRITICAL FOR IMAGES: Set "imageNeeded": true ONLY IF text explicitly refers to a missing diagram/graph.
         Return ONLY raw JSON array: [{"id": 1, "text": "Q", "options": ["Correct", "W1", "W2"], "correctIndex": 0, "imageNeeded": false}]`;
       } else {
-        // --- מצב ממוחשב (Moodle) - הפרומפט החדש והמדויק ---
+        // --- מצב ממוחשב (Moodle) - תומך ב-3 סוגים ---
         prompt = `You are parsing a "Review" PDF of a solved Moodle exam.
         Extract questions into a JSON array. 
         
-        The exam contains two main types of logical questions. Use your intelligence to detect the type:
+        The exam contains THREE main types of logical questions. Use your intelligence to detect the type:
 
         TYPE 1: Single OR Multiple Choice (Radio Buttons / Checkboxes)
         - DETECT IF: There is ONE main question sentence, followed by a list of options. The user selects one OR MORE options.
@@ -80,10 +81,15 @@ exports.processExamWithGemini = onCall(
             "imageNeeded": true 
           }
 
+        TYPE 3: Open-Ended / Free Text / Essay
+        - DETECT IF: The question explicitly requires the student to type a free-text response and there are absolutely NO options to choose from.
+        - Output format: {"type": "open_ended", "text": "Explain the process of...", "options": [], "correctIndex": null, "imageNeeded": false}
+
         CRITICAL DIFFERENTIATION RULES:
         1. DO NOT confuse Type 1 with Type 2! If there is a simple list of checkboxes and the question asks to "mark all correct statements" (e.g. "סמנו את כל המשפטים הנכונים"), it is ABSOLUTELY TYPE 1. Just use an array for correctIndex!
         2. Type 2 is STRICTLY for fill-in-the-blanks, drop-down menus inside text, or matching columns.
-        3. If a question refers to an image (X-ray, Graph, Diagram) -> Set "imageNeeded": true.
+        3. Type 3 is ONLY for questions with no options at all (the student has to write from scratch).
+        4. If a question refers to an image (X-ray, Graph, Diagram) -> Set "imageNeeded": true.
 
         Return ONLY the raw JSON array.`;
       }
@@ -135,6 +141,12 @@ exports.processExamWithGemini = onCall(
               q.text = q.question;
               delete q.question;
           }
+          
+          // אבטחת סוגי שאלות במקרה של הזיות
+          if (q.type !== 'multiple_choice' && q.type !== 'cloze' && q.type !== 'open_ended') {
+              q.type = 'multiple_choice';
+          }
+          
           return q;
       });
 

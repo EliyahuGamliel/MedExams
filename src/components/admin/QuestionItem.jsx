@@ -116,6 +116,18 @@ const QuestionItem = memo(({
             </div>
           )}
 
+          {/* --- אזור תצוגה לשאלות פתוחות --- */}
+      {q.type === 'open_ended' && (
+        <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm text-center space-y-2">
+          <div className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold mb-2">
+            📝 שאלה פתוחה (טקסט חופשי)
+          </div>
+          <p className="text-sm text-slate-600 font-medium">
+            שאלה זו לא דורשת בחירת תשובות. היא תוצג לסטודנטים במהלך המבחן לטובת הכרות בלבד, <b>ולא תשוקלל בציון הסופי</b>.
+          </p>
+        </div>
+      )}
+      
           {/* --- אזור עריכת שאלות מסוג Cloze --- */}
           {q.type === 'cloze' && (
             <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-4">

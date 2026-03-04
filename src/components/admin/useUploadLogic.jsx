@@ -8,20 +8,34 @@ import toast from 'react-hot-toast'; // <--- הייבוא החדש והחשוב!
 // פונקציית מגן - מנרמלת ומנקה את המידע מג'מיני
 // ==========================================
 const normalizeGeminiQuestion = (q, idx) => {
-    const text = q.text || q.question || q.title || q.body || "⚠️ שאלה ללא טקסט (שגיאת פענוח)";
+    let text = String(q.text || q.question || q.title || q.body || "⚠️ שאלה ללא טקסט");
     let type = q.type;
-    if (type !== 'multiple_choice' && type !== 'cloze') type = 'multiple_choice'; 
-    let options = q.options || q.answers || q.choices || q.items;
+    let options = q.options || q.answers || q.choices || q.items || [];
+    let correctIndex = q.correctIndex;
+
+    // מתירים גם multiple_choice, גם cloze (אם נשאר לך במקרה ישן), וגם open_ended!
+    if (type !== 'multiple_choice' && type !== 'cloze' && type !== 'open_ended') {
+        type = 'multiple_choice'; 
+    }
+    
+    // מוודאים ששאלות אמריקאיות יקבלו אפשרויות גיבוי במקרה של שגיאה
     if (type === 'multiple_choice' && (!Array.isArray(options) || options.length === 0)) {
         options = ["אפשרות 1 (לא פוענח)", "אפשרות 2 (לא פוענח)", "אפשרות 3 (לא פוענח)"];
     }
-    let correctIndex = q.correctIndex;
+    
     if (correctIndex === undefined || correctIndex === null) correctIndex = 0; 
+    
     return {
-        id: idx, text: text, type: type, options: options || [], 
+        id: idx, 
+        text: text, 
+        type: type, 
+        options: options, 
         clozeOptions: Array.isArray(q.clozeOptions) ? q.clozeOptions : [],
-        correctIndex: correctIndex, imageNeeded: q.imageNeeded === true,
-        hasImage: false, isCanceled: false, appealedIndexes: []
+        correctIndex: type === 'open_ended' ? null : correctIndex, // לשאלה פתוחה אין אינדקס נכון
+        imageNeeded: q.imageNeeded === true,
+        hasImage: false, 
+        isCanceled: false, 
+        appealedIndexes: []
     };
 };
 
