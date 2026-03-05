@@ -67,7 +67,8 @@ export default function AdminPage() {
     editCourseName, setEditCourseName,
     editCourseYear, setEditCourseYear,
     editCourseSemester, setEditCourseSemester,
-    handleAddCourse, startEditingCourse, handleUpdateCourse
+    handleAddCourse, startEditingCourse, handleUpdateCourse,
+    handleDeleteCourse
   } = useCoursesLogic(canEditYear, examsList, setStatus, selectedStudentYear, selectedSemester);
 
   const {
@@ -291,6 +292,7 @@ export default function AdminPage() {
               onAddCourse={handleAddCourse}
               coursesList={coursesList}
               onEditCourse={startEditingCourse}
+              onDeleteCourse={handleDeleteCourse}
             />
           } />
 

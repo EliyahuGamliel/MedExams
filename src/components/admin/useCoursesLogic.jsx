@@ -17,7 +17,7 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
         get(ref(db, 'courses')).then((snap) => setCoursesList(snap.val() || {}));
     }, []);
 
-    // רענון רשימת הקורסים (לשימוש אחרי עדכון/הוספה)
+    // רענון רשימת הקורסים (לשימוש אחרי עדכון/הוספה/מחיקה)
     const refreshCourses = async () => {
         const snap = await get(ref(db, 'courses'));
         setCoursesList(snap.val() || {});
@@ -79,6 +79,52 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
         }
     };
 
+    // --- הוספת פונקציית המחיקה (מחיקה מדורגת) ---
+    const handleDeleteCourse = async (year, semester, courseId, courseName) => {
+        if (!canEditYear(year)) return toast.error("אין לך הרשאה למחוק קורס משנה זו.");
+        
+        if (!window.confirm(`האם אתה בטוח שברצונך למחוק לחלוטין את הקורס "${courseName}"?\n\n⚠️ אזהרה: פעולה זו תמחק גם את כל המבחנים והשאלות המשויכים לקורס זה. לא ניתן לשחזר את המידע!`)) {
+            return;
+        }
+
+        setStatus('processing');
+        
+        try {
+            const examsSnap = await get(ref(db, 'uploaded_exams'));
+            const allExams = examsSnap.val() || {};
+            
+            const updates = {};
+            
+            // מחיקת הקורס עצמו
+            updates[`courses/${year}/${semester}/${courseId}`] = null;
+
+            // ריצה על כל המבחנים ומחיקת כל מה שמשויך ל-courseId הזה
+            Object.keys(allExams).forEach(examId => {
+                if (allExams[examId].courseId === courseId) {
+                    updates[`uploaded_exams/${examId}`] = null;
+                    updates[`exam_contents/${examId}`] = null;
+                    updates[`exam_appendices/${examId}`] = null;
+                    updates[`exam_images/${examId}`] = null; 
+                }
+            });
+
+            await update(ref(db), updates);
+            toast.success(`הקורס "${courseName}" נמחק בהצלחה! 🗑️`);
+            
+            // סגירת חלון העריכה אם היה פתוח על הקורס הזה
+            if (editingCourseOldData?.id === courseId) {
+                setEditingCourseOldData(null);
+            }
+            
+            refreshCourses();
+        } catch (error) {
+            console.error("Error deleting course:", error);
+            toast.error("שגיאה במחיקת הקורס.");
+        } finally {
+            setStatus('idle');
+        }
+    };
+
     return {
         coursesList,
         newCourseName, setNewCourseName,
@@ -86,6 +132,7 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
         editCourseName, setEditCourseName,
         editCourseYear, setEditCourseYear,
         editCourseSemester, setEditCourseSemester,
-        handleAddCourse, startEditingCourse, handleUpdateCourse
+        handleAddCourse, startEditingCourse, handleUpdateCourse, 
+        handleDeleteCourse // החזרת פונקציית המחיקה
     };
 }
