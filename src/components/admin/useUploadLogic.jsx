@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { db } from '../../firebase';
 import { ref, update } from "firebase/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import toast from 'react-hot-toast'; // <--- הייבוא החדש והחשוב!
+import toast from 'react-hot-toast'; 
 
 // ==========================================
 // פונקציית מגן - מנרמלת ומנקה את המידע מג'מיני
@@ -67,6 +67,8 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
     setStatus('processing'); 
     setDebugLog(`מתחיל...`);
     
+    const toastId = toast.loading('🤖 ה-AI קורא ומפענח את המבחן (זה עשוי לקחת כמה דקות)...', { duration: Infinity });
+    
     const uploadProcess = async () => {
       const base64Data = await fileToBase64(file);
       let appendicesBase64 = null;
@@ -81,9 +83,19 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
       
       const updates = {};
       updates[`uploaded_exams/${examId}`] = {
-        id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
-        courseId: selectedCourseId, examYear, examMoed, title: `${examYear} - ${examMoed}`,
-        questionCount: questions.length, hasAppendices: !!appendicesFile, parsingMode, uploadedAt: new Date().toISOString()
+        id: examId, 
+        studentYear: selectedStudentYear, 
+        semester: selectedSemester, 
+        course: courseName,
+        courseId: selectedCourseId, 
+        examYear, 
+        examMoed, 
+        title: `${examYear} - ${examMoed}`,
+        questionCount: questions.length, 
+        hasAppendices: !!appendicesFile, 
+        parsingMode, 
+        uploadedAt: new Date().toISOString(),
+        isVerified: false // 🆕 התוספת שלנו - המבחן מסומן אוטומטית כממתין להגהה
       };
       updates[`exam_contents/${examId}`] = questions;
       if (appendicesFile && appendicesBase64) { updates[`exam_appendices/${examId}`] = { fileData: appendicesBase64 }; }
@@ -93,8 +105,6 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
       setAppendicesFile(null);
     };
 
-    const toastId = toast.loading('🤖 ה-AI קורא ומפענח את המבחן (זה עשוי לקחת כמה דקות)...', { duration: Infinity });
-    
     try {
       await uploadProcess();
       addLog(`✅ קובץ עבר בהצלחה ונשמר במסד הנתונים!`);
@@ -120,34 +130,27 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
 
     setStatus('processing');
     setDebugLog(`🚀 מתחיל תהליך אצווה עבור ${bulkFiles.length} קבצים...`);
+    const toastId = toast.loading(`סורק ומפענח ${bulkFiles.length} מבחנים באצווה...`, { duration: Infinity });
 
     const bulkUploadProcess = async () => {
       for (let i = 0; i < bulkFiles.length; i++) {
           const currentFile = bulkFiles[i];
-          const filename = currentFile.name.toUpperCase(); // הופכים לאותיות גדולות כדי להקל על הזיהוי
+          const filename = currentFile.name.toUpperCase(); 
           
-          // ערכי ברירת מחדל (מה שבחרו ב-UI או השנה הנוכחית)
           let extractedYear = "2026";
           let extractedMoed = "מועד א'";
-          let currentParsingMode = parsingMode; // ברירת המחדל היא מה שבחרו בממשק
+          let currentParsingMode = parsingMode; 
 
-          // ביטוי רגולרי שמחפש: [P או S] (אופציונלי) + [שנה] + [A, B או C] (אופציונלי)
           const match = filename.match(/([PS])?(20\d{2})([ABC]?)/);
 
           if (match) {
-              // 1. זיהוי שיטת פענוח (Print / Screen)
               if (match[1] === 'P') currentParsingMode = 'standard';
               else if (match[1] === 'S') currentParsingMode = 'moodle';
-
-              // 2. זיהוי שנה
               if (match[2]) extractedYear = match[2];
-
-              // 3. זיהוי מועד (A/B/C)
               if (match[3] === 'A') extractedMoed = "מועד א'";
               else if (match[3] === 'B') extractedMoed = "מועד ב'";
               else if (match[3] === 'C') extractedMoed = "מועד מיוחד";
           } else {
-              // גיבוי למקרה ששם הקובץ ישן (למשל exam_2023_b.pdf)
               const lowerName = currentFile.name.toLowerCase();
               const yearFallbackMatch = lowerName.match(/(20\d{2})/);
               if (yearFallbackMatch) extractedYear = yearFallbackMatch[1];
@@ -163,7 +166,6 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
               const functions = getFunctions();
               const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
               
-              // שולחים לשרת את מצב הפענוח הספציפי שחילצנו משם הקובץ!
               const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: currentParsingMode });
 
               const questions = result.data.questions.map((q, idx) => normalizeGeminiQuestion(q, idx)); 
@@ -171,10 +173,19 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
 
               const updates = {};
               updates[`uploaded_exams/${examId}`] = {
-                id: examId, studentYear: selectedStudentYear, semester: selectedSemester, course: courseName,
-                courseId: selectedCourseId, examYear: extractedYear, examMoed: extractedMoed, 
-                title: `${extractedYear} - ${extractedMoed}`, questionCount: questions.length,
-                hasAppendices: false, parsingMode: currentParsingMode, uploadedAt: new Date().toISOString()
+                id: examId, 
+                studentYear: selectedStudentYear, 
+                semester: selectedSemester, 
+                course: courseName,
+                courseId: selectedCourseId, 
+                examYear: extractedYear, 
+                examMoed: extractedMoed, 
+                title: `${extractedYear} - ${extractedMoed}`, 
+                questionCount: questions.length,
+                hasAppendices: false, 
+                parsingMode: currentParsingMode, 
+                uploadedAt: new Date().toISOString(),
+                isVerified: false // 🆕 התוספת שלנו - המבחן מסומן אוטומטית כממתין להגהה
               };
               updates[`exam_contents/${examId}`] = questions;
 
@@ -188,8 +199,6 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
       setBulkFiles([]);
     };
 
-    const toastId = toast.loading(`סורק ומפענח ${bulkFiles.length} מבחנים באצווה...`, { duration: Infinity });
-    
     try {
       await bulkUploadProcess();
       toast.success('סריקת האצווה הסתיימה בהצלחה! (מומלץ לבדוק בלוגים אם היו שגיאות)', { id: toastId, duration: 5000 });

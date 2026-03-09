@@ -131,7 +131,6 @@ export default function ExamTaking({ examsList }) {
   const isSubmitted = finalScore !== null;
 
   return (
-    // הסרנו מכאן את ה-space-y-8
     <div className="animate-fade-in-up pb-10">
       
       {showAppendices && (
@@ -150,7 +149,6 @@ export default function ExamTaking({ examsList }) {
 
       {!loadingQuestions && (
         <>
-           {/* הכפתור הצף - נמצא בשמאל ומתחלף בין המבורגר לאיקס */}
            <button 
              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
              className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105"
@@ -158,7 +156,6 @@ export default function ExamTaking({ examsList }) {
              {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
            </button>
            
-           {/* רקע מטשטש - מתחיל מתחת להדר הראשי */}
            {isSidebarOpen && (
              <div 
                onClick={() => setIsSidebarOpen(false)} 
@@ -166,7 +163,6 @@ export default function ExamTaking({ examsList }) {
              />
            )}
            
-           {/* תפריט הצד - נפתח משמאל */}
            <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <h3 className="font-bold text-slate-800 text-lg">ניווט מהיר</h3>
@@ -189,7 +185,6 @@ export default function ExamTaking({ examsList }) {
         </>
       )}
 
-      {/* הבר הדביק של המבחן - בלי רווח מיותר למעלה */}
       <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm flex flex-wrap gap-2 justify-between items-center border-b border-slate-100 mb-8">
         <div>
           <span className="font-bold text-slate-700 block">{selectedExam.course}</span>
@@ -201,7 +196,17 @@ export default function ExamTaking({ examsList }) {
         </div>
       </div>
 
-      {/* העברנו את ה-space-y-8 לכאן, לאזור של השאלות בלבד */}
+      {/* --- באנר האזהרה נוסף כאן --- */}
+      {selectedExam.isVerified === false && (
+        <div className="bg-orange-50 border-2 border-orange-200 text-orange-800 p-4 rounded-xl mb-6 text-sm flex items-start gap-4 shadow-sm animate-fade-in">
+           <span className="text-3xl shrink-0">🤖</span>
+           <div>
+              <strong className="block mb-1 text-base text-orange-900">מבחן זה פוענח אוטומטית על ידי בינה מלאכותית וטרם עבר הגהה.</strong>
+              יתכנו אי-דיוקים קלים בניסוח או בסימון התשובה הנכונה. אם נתקלת בשאלה לא הגיונית, נשמח שתשתמש/י בכפתור <b>"דווח על טעות"</b> המופיע בכל שאלה כדי לעזור לנו לתקן זאת!
+           </div>
+        </div>
+      )}
+
       <div className="space-y-8">
         {loadingQuestions ? (
             <div className="text-center py-20"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 font-bold">טוען שאלות...</div></div>

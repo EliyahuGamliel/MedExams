@@ -332,13 +332,23 @@ export function useExamsLogic(setStatus) {
         return "bg-white border-slate-200";
     };
 
-    // --- פעולת דיווחים ---
     const handleResolveReport = async (reportId) => {
         try { 
             await set(ref(db, `reported_errors/${reportId}`), null); 
             toast.success("הדיווח נסגר בהצלחה");
         } catch (e) { 
             toast.error("שגיאה בסגירת הדיווח"); 
+        }
+    };
+
+    // --- פעולות אימות המבחן (Verification) ---
+    const handleToggleVerify = async (examId, currentStatus) => {
+        try {
+            await update(ref(db, `uploaded_exams/${examId}`), { isVerified: !currentStatus });
+            setExamsList(prev => prev.map(e => e.id === examId ? { ...e, isVerified: !currentStatus } : e));
+            toast.success(!currentStatus ? 'המבחן סומן כמאומת ומוכן! ✅' : 'המבחן סומן כממתין להגהה ⚠️');
+        } catch (error) {
+            toast.error('שגיאה בעדכון סטטוס המבחן');
         }
     };
 
@@ -357,13 +367,12 @@ export function useExamsLogic(setStatus) {
         handleOptionTextChange, saveOptionText, handleUploadQuestionImage,
         handleSetMainCorrect, handleToggleAppeal, handleToggleCancel,
         getQuestionStatusColor, handleResolveReport,
-        
-        // --- ייצוא של פונקציות ה-Cloze ---
         handleClozeCorrectIndexChange,
         handleAddOptionToCloze,
         handleRemoveOptionFromCloze,
         handleClozeOptionTextChange,
         saveClozeOptionText,
-        handleToggleClozeAppeal
+        handleToggleClozeAppeal,
+        handleToggleVerify
     };
 }

@@ -58,7 +58,8 @@ export default function AdminPage() {
     handleRemoveOptionFromCloze,
     handleClozeOptionTextChange,
     saveClozeOptionText,
-    handleToggleClozeAppeal
+    handleToggleClozeAppeal,
+    handleToggleVerify,
   } = useExamsLogic(setStatus);
 
   const {
@@ -276,6 +277,7 @@ export default function AdminPage() {
               setNewAppendicesFile={setNewAppendicesFile}
               handleUpdateAppendices={handleUpdateAppendices}
               openQuestionsEditor={openQuestionsEditor}
+              handleToggleVerify={handleToggleVerify}
             />
           } />
 

@@ -23,6 +23,9 @@ export default function ManageExamsTab({
     handleRemoveOptionFromCloze, handleClozeOptionTextChange, 
     saveClozeOptionText, handleToggleClozeAppeal,
 
+    // פונקציות אימות ועדכון
+    handleToggleVerify, runOneTimeMigration,
+
     selectedStudentYear, setSelectedStudentYear, studentYears,
     selectedSemester, setSelectedSemester, semesters,
     selectedCourseId, setSelectedCourseId, availableCourses,
@@ -105,10 +108,21 @@ export default function ManageExamsTab({
 
                         {filteredExamsForEdit.map(exam => (
                             <div key={exam.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <span className="font-bold text-slate-800">{exam.title}</span>
-                                        <span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span>
+                                <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-2 sm:gap-0">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                                        <div>
+                                            <span className="font-bold text-slate-800">{exam.title}</span>
+                                            <span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span>
+                                        </div>
+                                        
+                                        {/* תגית וכפתור ההגהה */}
+                                        <button 
+                                            onClick={() => handleToggleVerify(exam.id, exam.isVerified)}
+                                            className={`text-[10px] px-2 py-1 rounded-md font-bold transition-colors border shadow-sm ${exam.isVerified ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100'}`}
+                                            title="לחץ כדי לשנות סטטוס הגהה"
+                                        >
+                                            {exam.isVerified ? '✅ עבר הגהה' : '⚠️ ממתין להגהה'}
+                                        </button>
                                     </div>
                                     <button onClick={() => handleDeleteExam(exam.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="מחק מבחן"><TrashIcon /></button>
                                 </div>
