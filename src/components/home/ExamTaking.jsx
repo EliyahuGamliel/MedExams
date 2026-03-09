@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase'; 
-import { ref, onValue, get } from "firebase/database";
+import { ref, get } from "firebase/database"; // הסרנו את onValue המיותר
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -18,7 +18,6 @@ export default function ExamTaking({ examsList }) {
 
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
-  const [examImages, setExamImages] = useState({});
   const [userAnswers, setUserAnswers] = useState({});
   const [finalScore, setFinalScore] = useState(null);
   const [showScoreModal, setShowScoreModal] = useState(false);
@@ -45,13 +44,6 @@ export default function ExamTaking({ examsList }) {
               setLoadingQuestions(false);
           });
     }
-
-    const imagesRef = ref(db, `exam_images/${selectedExam.id}`);
-    const unsub = onValue(imagesRef, (snapshot) => {
-      setExamImages(snapshot.val() || {});
-    });
-
-    return () => unsub();
   }, [selectedExam]);
 
   const handleReturnToCourse = () => {
@@ -196,12 +188,11 @@ export default function ExamTaking({ examsList }) {
         </div>
       </div>
 
-      {/* --- באנר האזהרה נוסף כאן --- */}
       {selectedExam.isVerified === false && (
         <div className="bg-orange-50 border-2 border-orange-200 text-orange-800 p-4 rounded-xl mb-6 text-sm flex items-start gap-4 shadow-sm animate-fade-in">
            <span className="text-3xl shrink-0">🤖</span>
            <div>
-              <strong className="block mb-1 text-base text-orange-900">מבחן זה פוענח אוטומטית על ידי בינה מלאכותית וטרם עבר הגהה.</strong>
+              <strong className="block mb-1 text-base text-orange-900">מבחן זה פוענח אוטומטית על ידי בינה מלאכותית (AI) וטרם עבר הגהה.</strong>
               יתכנו אי-דיוקים קלים בניסוח או בסימון התשובה הנכונה. אם נתקלת בשאלה לא הגיונית, נשמח שתשתמש/י בכפתור <b>"דווח על טעות"</b> המופיע בכל שאלה כדי לעזור לנו לתקן זאת!
            </div>
         </div>
@@ -215,7 +206,16 @@ export default function ExamTaking({ examsList }) {
         ) : (
             examQuestionsData.map((q, i) => (
                 <div key={i} id={`question-${i}`} className="scroll-mt-36">
-                  <QuestionCard question={q} index={i} mode={mode} onAnswer={handleAnswerUpdate} isSubmitted={isSubmitted} examId={selectedExam.id} imageUrl={examImages[i]} />
+                  {/* כאן התיקון הקריטי: אנחנו מעבירים את q.imageUrl במקום examImages[i]! */}
+                  <QuestionCard 
+                    question={q} 
+                    index={i} 
+                    mode={mode} 
+                    onAnswer={handleAnswerUpdate} 
+                    isSubmitted={isSubmitted} 
+                    examId={selectedExam.id} 
+                    imageUrl={q.imageUrl} 
+                  />
                 </div>
             ))
         )}
