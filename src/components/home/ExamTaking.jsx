@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase'; 
-import { ref, get } from "firebase/database"; // הסרנו את onValue המיותר
+import { ref, onValue, get } from "firebase/database"; // החזרנו את onValue
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ export default function ExamTaking({ examsList }) {
 
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
+  const [examImages, setExamImages] = useState({}); // החזרנו את הסטייט של תמונות ישנות
   const [userAnswers, setUserAnswers] = useState({});
   const [finalScore, setFinalScore] = useState(null);
   const [showScoreModal, setShowScoreModal] = useState(false);
@@ -44,6 +45,14 @@ export default function ExamTaking({ examsList }) {
               setLoadingQuestions(false);
           });
     }
+
+    // --- הוספנו חזרה את משיכת התמונות הישנות (לתאימות לאחור) ---
+    const imagesRef = ref(db, `exam_images/${selectedExam.id}`);
+    const unsub = onValue(imagesRef, (snapshot) => {
+      setExamImages(snapshot.val() || {});
+    });
+
+    return () => unsub();
   }, [selectedExam]);
 
   const handleReturnToCourse = () => {
@@ -206,7 +215,7 @@ export default function ExamTaking({ examsList }) {
         ) : (
             examQuestionsData.map((q, i) => (
                 <div key={i} id={`question-${i}`} className="scroll-mt-36">
-                  {/* כאן התיקון הקריטי: אנחנו מעבירים את q.imageUrl במקום examImages[i]! */}
+                  {/* --- הקסם: אם יש תמונה חדשה (q.imageUrl) נשתמש בה, אם לא - ניקח מהישנה (examImages[i]) --- */}
                   <QuestionCard 
                     question={q} 
                     index={i} 
@@ -214,7 +223,7 @@ export default function ExamTaking({ examsList }) {
                     onAnswer={handleAnswerUpdate} 
                     isSubmitted={isSubmitted} 
                     examId={selectedExam.id} 
-                    imageUrl={q.imageUrl} 
+                    imageUrl={q.imageUrl || examImages[i]} 
                   />
                 </div>
             ))
