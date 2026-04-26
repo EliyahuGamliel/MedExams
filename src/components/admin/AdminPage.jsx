@@ -60,7 +60,7 @@ export default function AdminPage() {
     saveClozeOptionText,
     handleToggleClozeAppeal,
     handleToggleVerify,
-  } = useExamsLogic(setStatus);
+  } = useExamsLogic(setStatus, userData?.role === 'super_admin');
 
   const {
     coursesList, newCourseName, setNewCourseName,

@@ -5,7 +5,8 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "fire
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 
-export function useExamsLogic(setStatus) {
+// הוספנו את isSuperAdmin כפרמטר שני!
+export function useExamsLogic(setStatus, isSuperAdmin) {
     // --- States ---
     const [examsList, setExamsList] = useState([]);
     const [reportsList, setReportsList] = useState([]);
@@ -18,13 +19,16 @@ export function useExamsLogic(setStatus) {
 
     // --- טעינת נתונים ראשונית (מבחנים ודיווחים) ---
     useEffect(() => {
-        // טעינת מבחנים
+        // 1. טעינת מבחנים - פומבי, אפשר למשוך מיד
         get(ref(db, 'uploaded_exams')).then((snap) => {
             const data = snap.val();
             setExamsList(data ? Object.values(data) : []);
-        });
+        }).catch(e => console.error(e));
 
-        // האזנה חיה לדיווחים
+        // 2. עצירה! אם הוא לא סופר-אדמין, פיירבייס יחסום אותנו. לכן נחכה.
+        if (!isSuperAdmin) return;
+
+        // 3. רק כשיש לנו ודאות שהוא סופר אדמין, פותחים את ההאזנה לדיווחים
         const unsubscribeReports = onValue(ref(db, 'reported_errors'), (snap) => {
             const data = snap.val();
             if (data) {
@@ -36,8 +40,10 @@ export function useExamsLogic(setStatus) {
             }
         });
 
+        // ניקוי המאזין
         return () => unsubscribeReports();
-    }, []);
+
+    }, [isSuperAdmin]); // ה-useEffect ירוץ מחדש ברגע שההרשאה משתנה ל-true!
 
     const handleDeleteExam = async (examId) => {
         if (!window.confirm("למחוק מבחן זה לצמיתות? פעולה זו לא ניתנת לשחזור.")) return;
@@ -107,7 +113,6 @@ export function useExamsLogic(setStatus) {
         } catch (e) { toast.error("שגיאה בטעינת השאלה: " + e.message); } finally { setStatus('idle'); }
     };
 
-    // --- פעולות עריכת שאלות (הוספה, מחיקה, אופציות) ---
     const handleAddQuestion = async () => {
         if (!questionsEditorId) return;
         const initialOptions = Array.from({ length: newQuestionOptionsCount }, (_, i) => `אפשרות ${i + 1}`);
@@ -191,7 +196,6 @@ export function useExamsLogic(setStatus) {
         await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/options/${optIdx}`), textToSave);
     };
 
-    // --- הפונקציה לטיפול בשאלות Cloze ---
     const handleClozeCorrectIndexChange = async (qIdx, blankIndex, newCorrectIndex) => {
         const numIndex = Number(newCorrectIndex);
         setExamQuestions(prev => {
@@ -202,7 +206,6 @@ export function useExamsLogic(setStatus) {
         await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIndex}/correctIndex`), numIndex);
     };
 
-    // --- פונקציות נוספות לעריכת Cloze מתקדמת ---
     const handleAddOptionToCloze = async (qIdx, blankIdx) => {
         const updated = [...examQuestions];
         const currentOpts = updated[qIdx].clozeOptions[blankIdx].options || [];
@@ -253,7 +256,6 @@ export function useExamsLogic(setStatus) {
         setExamQuestions(updated);
         await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIdx}/appealedIndexes`), newer);
     };
-    // ------------------------------------------------
 
     const handleUploadQuestionImage = async (idx, f) => {
         if (!questionsEditorId) return;
@@ -336,12 +338,13 @@ export function useExamsLogic(setStatus) {
         try { 
             await set(ref(db, `reported_errors/${reportId}`), null); 
             toast.success("הדיווח נסגר בהצלחה");
+            // עכשיו הדיווח יעלם גם מהמסך המקומי ולא רק מהדאטהבייס:
+            setReportsList(prev => prev.filter(r => r.id !== reportId));
         } catch (e) { 
             toast.error("שגיאה בסגירת הדיווח"); 
         }
     };
 
-    // --- פעולות אימות המבחן (Verification) ---
     const handleToggleVerify = async (examId, currentStatus) => {
         try {
             await update(ref(db, `uploaded_exams/${examId}`), { isVerified: !currentStatus });
