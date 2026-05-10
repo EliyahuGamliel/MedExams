@@ -7,6 +7,7 @@ const ImageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 
 export default function ManageExamsTab({
+    userData, // הוספנו את נתוני המשתמש
     questionsEditorId, setQuestionsEditorId, status,
     showMissingImagesOnly, setShowMissingImagesOnly,
     newQuestionOptionsCount, setNewQuestionOptionsCount,
@@ -18,12 +19,10 @@ export default function ManageExamsTab({
     handleToggleAppeal, handleAddOptionToQuestion,
     handleUploadQuestionImage, handleToggleCancel,
     
-    // פונקציות Cloze
     handleClozeCorrectIndexChange, handleAddOptionToCloze, 
     handleRemoveOptionFromCloze, handleClozeOptionTextChange, 
     saveClozeOptionText, handleToggleClozeAppeal,
 
-    // פונקציות אימות ועדכון
     handleToggleVerify, runOneTimeMigration,
 
     selectedStudentYear, setSelectedStudentYear, studentYears,
@@ -34,6 +33,14 @@ export default function ManageExamsTab({
     newAppendicesFile, setNewAppendicesFile,
     handleUpdateAppendices, openQuestionsEditor
 }) {
+
+    // סינון: יצירת רשימת השנים המותרות למשתמש הספציפי הזה
+    const allowedStudentYears = studentYears.filter(year => {
+        if (userData?.role === 'super_admin') return true;
+        if (userData?.role === 'editor') return userData?.allowed_years?.[year] === true;
+        return false;
+    });
+
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
@@ -94,9 +101,12 @@ export default function ManageExamsTab({
                 ) : (
                     <>
                         <div className="grid grid-cols-2 gap-4 mb-4">
+                            {/* תפריט השנים - עכשיו מציג רק מה שמותר */}
                             <select value={selectedStudentYear} onChange={e => { setSelectedStudentYear(e.target.value); setSelectedCourseId(""); }} className="w-full p-3 rounded-xl border border-slate-300 bg-white">
-                                {studentYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                {allowedStudentYears.length === 0 && <option value="">אין לך הרשאה לאף שנה</option>}
+                                {allowedStudentYears.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
+
                             <select value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedCourseId(""); }} className="w-full p-3 rounded-xl border border-slate-300 bg-white">
                                 {semesters.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
@@ -106,41 +116,49 @@ export default function ManageExamsTab({
                             {availableCourses.map(([id, course]) => (<option key={id} value={id}>{course.name}</option>))}
                         </select>
 
-                        {filteredExamsForEdit.map(exam => (
-                            <div key={exam.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
-                                <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-2 sm:gap-0">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                                        <div>
-                                            <span className="font-bold text-slate-800">{exam.title}</span>
-                                            <span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span>
+                        {/* סינון מבחנים במסך לפי הרשאות */}
+                        {filteredExamsForEdit.map(exam => {
+                            const canEditThisExam = 
+                                userData?.role === 'super_admin' || 
+                                (userData?.role === 'editor' && userData?.allowed_years?.[exam.studentYear] === true);
+
+                            if (!canEditThisExam) return null;
+
+                            return (
+                                <div key={exam.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
+                                    <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-2 sm:gap-0">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                                            <div>
+                                                <span className="font-bold text-slate-800">{exam.title}</span>
+                                                <span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span>
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => handleToggleVerify(exam.id, exam.isVerified)}
+                                                className={`text-[10px] px-2 py-1 rounded-md font-bold transition-colors border shadow-sm ${exam.isVerified ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100'}`}
+                                                title="לחץ כדי לשנות סטטוס הגהה"
+                                            >
+                                                {exam.isVerified ? '✅ עבר הגהה' : '⚠️ ממתין להגהה'}
+                                            </button>
                                         </div>
-                                        
-                                        {/* תגית וכפתור ההגהה */}
-                                        <button 
-                                            onClick={() => handleToggleVerify(exam.id, exam.isVerified)}
-                                            className={`text-[10px] px-2 py-1 rounded-md font-bold transition-colors border shadow-sm ${exam.isVerified ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100'}`}
-                                            title="לחץ כדי לשנות סטטוס הגהה"
-                                        >
-                                            {exam.isVerified ? '✅ עבר הגהה' : '⚠️ ממתין להגהה'}
-                                        </button>
+                                        <button onClick={() => handleDeleteExam(exam.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="מחק מבחן"><TrashIcon /></button>
                                     </div>
-                                    <button onClick={() => handleDeleteExam(exam.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="מחק מבחן"><TrashIcon /></button>
-                                </div>
-                                <div className="flex gap-2 mt-2">
-                                    <button onClick={() => setEditingExamId(exam.id)} className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-100 transition flex items-center justify-center gap-1"><PaperclipIcon /> נספחים</button>
-                                    <button onClick={() => openQuestionsEditor(exam)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition flex items-center justify-center gap-1"><ImageIcon /> עריכת שאלות</button>
-                                </div>
-                                {editingExamId === exam.id && (
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2 animate-fade-in">
-                                        <input type="file" accept="application/pdf" onChange={e => setNewAppendicesFile(e.target.files[0])} className="block w-full text-sm text-slate-500" />
-                                        <div className="flex gap-2 mt-3">
-                                            <button onClick={() => handleUpdateAppendices(exam.id)} disabled={!newAppendicesFile || status === 'processing'} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition">שמור</button>
-                                            <button onClick={() => { setEditingExamId(null); setNewAppendicesFile(null); }} className="text-slate-400 px-4 py-2 text-sm font-bold hover:text-slate-600">ביטול</button>
+                                    <div className="flex gap-2 mt-2">
+                                        <button onClick={() => setEditingExamId(exam.id)} className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-100 transition flex items-center justify-center gap-1"><PaperclipIcon /> נספחים</button>
+                                        <button onClick={() => openQuestionsEditor(exam)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition flex items-center justify-center gap-1"><ImageIcon /> עריכת שאלות</button>
+                                    </div>
+                                    {editingExamId === exam.id && (
+                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2 animate-fade-in">
+                                            <input type="file" accept="application/pdf" onChange={e => setNewAppendicesFile(e.target.files[0])} className="block w-full text-sm text-slate-500" />
+                                            <div className="flex gap-2 mt-3">
+                                                <button onClick={() => handleUpdateAppendices(exam.id)} disabled={!newAppendicesFile || status === 'processing'} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition">שמור</button>
+                                                <button onClick={() => { setEditingExamId(null); setNewAppendicesFile(null); }} className="text-slate-400 px-4 py-2 text-sm font-bold hover:text-slate-600">ביטול</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                                    )}
+                                </div>
+                            );
+                        })}
                     </>
                 )}
             </div>

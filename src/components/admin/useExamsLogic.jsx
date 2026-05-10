@@ -5,8 +5,8 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "fire
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 
-// הוספנו את isSuperAdmin כפרמטר שני!
-export function useExamsLogic(setStatus, isSuperAdmin) {
+// הוספנו את canSeeReports כפרמטר שני!
+export function useExamsLogic(setStatus, canSeeReports) {
     // --- States ---
     const [examsList, setExamsList] = useState([]);
     const [reportsList, setReportsList] = useState([]);
@@ -26,7 +26,7 @@ export function useExamsLogic(setStatus, isSuperAdmin) {
         }).catch(e => console.error(e));
 
         // 2. עצירה! אם הוא לא סופר-אדמין, פיירבייס יחסום אותנו. לכן נחכה.
-        if (!isSuperAdmin) return;
+        if (!canSeeReports) return;
 
         // 3. רק כשיש לנו ודאות שהוא סופר אדמין, פותחים את ההאזנה לדיווחים
         const unsubscribeReports = onValue(ref(db, 'reported_errors'), (snap) => {
@@ -43,29 +43,62 @@ export function useExamsLogic(setStatus, isSuperAdmin) {
         // ניקוי המאזין
         return () => unsubscribeReports();
 
-    }, [isSuperAdmin]); // ה-useEffect ירוץ מחדש ברגע שההרשאה משתנה ל-true!
+    }, [canSeeReports]); // ה-useEffect ירוץ מחדש ברגע שההרשאה משתנה ל-true!
 
     const handleDeleteExam = async (examId) => {
-        if (!window.confirm("למחוק מבחן זה לצמיתות? פעולה זו לא ניתנת לשחזור.")) return;
+        if (!window.confirm("להעביר מבחן זה לפח המיחזור? (ניתן יהיה לשחזר אותו מאוחר יותר)")) return;
         
         setStatus('processing');
         
         const deletePromise = async () => {
+            // 1. שלב ה"גזור": מושכים את כל המידע הקיים מכל הטבלאות
+            const [metaSnap, contentsSnap, appSnap, imgSnap] = await Promise.all([
+                get(ref(db, `uploaded_exams/${examId}`)),
+                get(ref(db, `exam_contents/${examId}`)),
+                get(ref(db, `exam_appendices/${examId}`)),
+                get(ref(db, `exam_images/${examId}`))
+            ]);
+
+            const metaData = metaSnap.val();
+            if (!metaData) throw new Error("המבחן לא נמצא");
+
+            // 2. שלב ה"אריזה": יוצרים חבילת גיבוי עם הנתונים ותאריך מחיקה
+            const backupData = {
+    id: examId,
+    meta: metaData,
+    contents: contentsSnap.val() || null,
+    appendices: appSnap.val() || null,
+    images: imgSnap.val() || null,
+    deletedAt: new Date().toISOString()
+};
+
+            // 3. שלב ה"הדבק": מבצעים עדכון אטומי (הכל קורה ברגע אחד)
             const updates = {};
+            
+            // מכניסים לפח המיחזור
+            updates[`recycle_bin/${examId}`] = backupData;
+            
+            // מוחקים מהמיקומים המקוריים
             updates[`uploaded_exams/${examId}`] = null;
             updates[`exam_contents/${examId}`] = null;
             updates[`exam_appendices/${examId}`] = null;
             updates[`exam_images/${examId}`] = null;
+            
+            // שולחים לפיירבייס
             await update(ref(db), updates);
+            
+            // מעדכנים את הרשימה במסך אצל המשתמש
             setExamsList(prev => prev.filter(e => e.id !== examId));
         };
 
         try {
             await toast.promise(deletePromise(), {
-                loading: 'מוחק את המבחן מכל המערכות...',
-                success: 'המבחן נמחק בהצלחה! 🗑️',
-                error: 'שגיאה במחיקת המבחן.'
+                loading: 'מעביר לפח המיחזור...',
+                success: 'המבחן הועבר לפח המיחזור בהצלחה! 🗑️',
+                error: (err) => `שגיאה במחיקה: ${err.message}`
             });
+        } catch (error) {
+            console.error("Delete error:", error);
         } finally {
             setStatus('idle');
         }
