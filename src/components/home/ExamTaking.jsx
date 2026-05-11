@@ -27,6 +27,14 @@ export default function ExamTaking({ examsList }) {
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
+  const [flaggedQuestions, setFlaggedQuestions] = useState({}); // שומר אילו שאלות סומנו בדגל
+  const toggleFlag = (index) => {
+    setFlaggedQuestions(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
   useEffect(() => {
     if (!selectedExam) return;
     
@@ -171,8 +179,18 @@ export default function ExamTaking({ examsList }) {
              <div className="flex-1 overflow-y-auto p-4">
                <div className="grid grid-cols-4 gap-3">
                  {examQuestionsData.map((_, i) => (
-                   <button key={i} onClick={() => scrollToQuestion(i)} className={`aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}>{i + 1}</button>
-                 ))}
+<button 
+                       key={i} 
+                       onClick={() => scrollToQuestion(i)} 
+                       className={`relative overflow-hidden aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}
+                   >
+                     {i + 1}
+                     {/* המשולש הקטן בפינה הימנית העליונה */}
+                     {flaggedQuestions[i] && (
+                        <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-red-500 border-l-transparent"></div>
+                     )}
+                   </button>
+                                   ))}
                </div>
              </div>
              <div className="p-4 bg-slate-50 border-t border-slate-100 pb-24">
@@ -224,6 +242,8 @@ export default function ExamTaking({ examsList }) {
                     isSubmitted={isSubmitted} 
                     examId={selectedExam.id} 
                     imageUrl={q.imageUrl || examImages[i]} 
+                    isFlagged={!!flaggedQuestions[i]}
+                    onToggleFlag={() => toggleFlag(i)}
                   />
                 </div>
             ))

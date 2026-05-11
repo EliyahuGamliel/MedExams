@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { ref, push, set } from "firebase/database";
 import toast from 'react-hot-toast';
+import ExplanationBox from './home/ExplanationBox'; // הייבוא של קופסת ההסבר החדשה
+
+const BookmarkIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>;
 
 // פונקציית עזר לערבוב
 const shuffleArray = (array) => {
@@ -28,7 +31,7 @@ const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
 
-export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId }) {
+export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId, isFlagged, onToggleFlag }) {
   
   // הגנה ראשונית - אם אין שאלה לא מרנדרים
   if (!question) return null;
@@ -141,7 +144,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
   const clozeState = calculateClozeStatus(clozeSelections);
 
-  // --- לוגיקה לאמריקאיות (כולל התיקון לנכונות חלקית) ---
+ // --- לוגיקה לאמריקאיות (כולל התיקון לנכונות חלקית ולערעורים) ---
   const handleSelectStandard = (optionId) => {
     if (mode === 'test' && isSubmitted) return;
 
@@ -153,6 +156,9 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
             return [...prevList, optionId];
         }
     };
+
+    // שליפת מערך הערעורים (אם קיים)
+    const appeals = question.appealedIndexes || [];
 
     if (mode === 'practice') {
        // במצב תרגול - תמיד מאפשרים בחירה מרובה (לבדיקה עצמית)
@@ -171,15 +177,21 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
                        status = 'perfect';
                    } else {
                        const correctArr = Array.isArray(question.correctIndex) ? question.correctIndex : [question.correctIndex];
+                       // מאגר כל התשובות הלגיטימיות (מקוריות + ערעורים)
+                       const allValidOptions = [...correctArr, ...appeals];
                        
-                       if (isArrayEqual(newList, correctArr)) {
+                       const isExactOriginal = isArrayEqual(newList, correctArr);
+                       // מוודא שכל מה שנבחר הוא חוקי (מקורי או ערעור), והכמות תואמת לכמות הנדרשת
+                       const isAllValidAndCorrectLength = newList.every(val => allValidOptions.includes(val)) && newList.length === correctArr.length;
+                       
+                       if (isExactOriginal || isAllValidAndCorrectLength) {
                            // 1. הכל נכון ומדויק
                            status = 'perfect'; 
-                       } else if (newList.every(val => correctArr.includes(val))) {
-                           // 2. חלקי (כל מה שנבחר נכון, אבל חסרות תשובות)
+                       } else if (newList.every(val => allValidOptions.includes(val))) {
+                           // 2. חלקי (כל מה שנבחר נכון או התקבל בערעור, אבל חסרות תשובות)
                            status = 'partial';
                        } else {
-                           // 3. שגוי (נבחרה לפחות תשובה אחת לא נכונה)
+                           // 3. שגוי (נבחרה לפחות תשובה אחת לא נכונה שאינה בערעור)
                            status = 'wrong';
                        }
                    }
@@ -195,7 +207,8 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
               if (onAnswer) onAnswer(index, question.isCanceled ? 'perfect' : null);
            } else {
               setSelectedOptionId(optionId);
-              const isCorrect = (optionId === question.correctIndex) || question.isCanceled;
+              // התיקון: התשובה נכונה אם היא האינדקס המקורי, או שהיא נמצאת במערך הערעורים, או שהשאלה בוטלה
+              const isCorrect = (optionId === question.correctIndex) || appeals.includes(optionId) || question.isCanceled;
               if (onAnswer) onAnswer(index, isCorrect ? 'perfect' : 'wrong');
            }
        }
@@ -361,9 +374,20 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       )}
 
       <div className={`flex justify-between items-center mb-4 ${question.isCanceled ? 'mt-4' : ''}`}>
+        <div className="flex items-center gap-3">
          <span className="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded-full">
           שאלה {index + 1}
         </span>
+        {/* כפתור סימון השאלה לניווט */}
+            <button 
+                onClick={onToggleFlag}
+                className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 border border-red-200' : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-red-500 border border-transparent'}`}
+                title="סמן שאלה זו כדי לחזור אליה מאוחר יותר"
+            >
+                <BookmarkIcon filled={isFlagged} />
+                {isFlagged ? 'בטל סימון' : 'סמן שאלה'}
+            </button>
+         </div>
         <button onClick={() => setIsReporting(true)} className="text-slate-400 hover:text-red-500 transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 hover:bg-red-50 px-2 py-1 rounded-lg">
            <FlagIcon /> דווח על טעות
         </button>
@@ -472,7 +496,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
              return (
                <button key={option.id} onClick={() => handleSelectStandard(option.id)} className={btnClass}>
-                 {/* שינוי: הוספנו תמיכה בירידות שורה גם בתוך טקסט התשובות */}
                  <div className={`flex items-start text-right ${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
                     {isMultiSelect && <span className="inline-block shrink-0 w-4 h-4 ml-2 mt-1 border border-slate-400 rounded-sm text-[10px] leading-3 text-center text-slate-700">{isSelected && '✓'}</span>}
                     <span className="whitespace-pre-wrap">{option.text}</span>
@@ -506,6 +529,17 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
           )}
         </div>
       )}
+
+      {/* --- קופסת ההסבר (AI) --- */}
+      {/* מוצגת רק אם זה מצב תרגול או אחרי שהמבחן הוגש, כדי למנוע הצצה */}
+      {(mode === 'practice' || (mode === 'test' && isSubmitted)) && (
+          <ExplanationBox 
+              examId={examId}
+              questionIndex={index}
+              questionData={question}
+          />
+      )}
+
     </div>
   );
 }
