@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 import RecycleBinTab from './RecycleBinTab';
+import AnnouncementAdminTab from './AnnouncementAdminTab';
 import UsersTab from './UsersTab';
 import ReportsTab from './ReportsTab';
 import ManageCoursesTab from './ManageCoursesTab';
@@ -22,6 +23,7 @@ const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
 const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 const TrashNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+const MegaphoneNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>;
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -198,6 +200,7 @@ export default function AdminPage() {
           <button onClick={() => navigate('/admin/reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
           {userData?.role === 'super_admin' && (<button onClick={() => navigate('/admin/recycle_bin')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>)}
+          {userData?.role === 'super_admin' && (<button onClick={() => navigate('/admin/announcement')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>)}
         </div>
 
         {/* --- אזור הראוטינג של הטאבים --- */}
@@ -353,6 +356,15 @@ export default function AdminPage() {
             <Navigate to="/admin/upload" replace />
             )
           } />
+
+          {/* נתיב מוגן - מודעות - רק סופר אדמין */}
+<Route path="announcement" element={
+    userData?.role === 'super_admin' ? (
+        <AnnouncementAdminTab />
+    ) : (
+        <Navigate to="/admin/upload" replace />
+    )
+} />
 
           {/* ניתוב ברירת מחדל אם מגיעים רק ל- /admin */}
           <Route path="/" element={<Navigate to="upload" replace />} />
