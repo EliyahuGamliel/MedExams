@@ -13,8 +13,28 @@ const LoaderIcon = () => <svg className="animate-spin" xmlns="http://www.w3.org/
 // מפתח ה-API מהגדרות הסביבה
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_KEY);
 
-export default function ExplanationBox({ examId, questionIndex, questionData, userId = "anonymous" }) {
+// פונקציה שבודקת אם למכשיר הזה כבר יש ID, ואם לא - מייצרת אחד (עבור הצבעות)
+const getDeviceId = () => {
+    let deviceId = localStorage.getItem('exam_device_id');
+    if (!deviceId) {
+        deviceId = 'device_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('exam_device_id', deviceId);
+    }
+    return deviceId;
+};
+
+export default function ExplanationBox({ examId, questionIndex, questionData, userId, forceClose }) {
+    // זיהוי משתמש: אם יש יוזר רשום נשתמש בו, אחרת נשתמש במזהה המכשיר המקומי
+    const actualUserId = (userId && userId !== "anonymous") ? userId : getDeviceId();
+
     const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        if (forceClose) {
+            setIsOpen(false);
+        }
+    }, [forceClose]);
+
     const [isLoading, setIsLoading] = useState(false);
     const [explanationText, setExplanationText] = useState("");
     
@@ -25,6 +45,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
 
     const questionDbPath = `exam_contents/${examId}/${questionIndex}/explanationData`;
 
+    // בדיקה שקטה האם כבר קיים הסבר לשאלה זו במסד הנתונים
     useEffect(() => {
         const fetchExisting = async () => {
             try {
@@ -36,8 +57,9 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
                     }
                     setLikes(data.likes || 0);
                     setDislikes(data.dislikes || 0);
-                    if (data.voters && data.voters[userId]) {
-                        setUserVote(data.voters[userId]);
+                    // שימוש ב-actualUserId כדי לראות אם המכשיר הזה כבר הצביע
+                    if (data.voters && data.voters[actualUserId]) {
+                        setUserVote(data.voters[actualUserId]);
                     }
                 }
             } catch (e) {
@@ -45,11 +67,10 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
             }
         };
         fetchExisting();
-    }, [examId, questionIndex, questionDbPath, userId]);
+    }, [examId, questionIndex, questionDbPath, actualUserId]);
 
     // הפונקציה המרכזית: מופעלת כשלוחצים על המנורה
     const handleToggle = async () => {
-        // אם כבר פתוח, רק נסגור
         if (isOpen) {
             setIsOpen(false);
             return;
@@ -57,12 +78,11 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
 
         setIsOpen(true);
 
-        // אם כבר יש לנו את ההסבר בסטייט, לא צריך לעשות כלום
         if (explanationText) return;
 
         setIsLoading(true);
         try {
-            // חילוץ חכם של התשובה הנכונה - תומך גם בבחירה מרובה וגם ביחידה
+            // חילוץ חכם של התשובה הנכונה
             let correctAnswerText = "לא נמצאה תשובה";
             if (questionData.options) {
                 if (Array.isArray(questionData.correctIndex)) {
@@ -75,24 +95,28 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
             const optionsText = questionData.options ? questionData.options.join('\n') : 'שאלה פתוחה/השלמה';
             const questionText = questionData.text || "טקסט השאלה חסר";
 
+            // פרומפט נוקשה עם כללים מוגדרים
             const prompt = `
-            אתה מורה מקצועי באקדמיה. הסטודנט נבחן על השאלה הבאה ורוצה לדעת למה התשובה המסומנת היא הנכונה.
-            
+            אתה מומחה רפואי ומרצה בכיר באקדמיה. הסטודנט נבחן על השאלה הבאה ורוצה לדעת למה התשובה המסומנת היא הנכונה.
+
             השאלה: "${questionText}"
-            
             התשובה הנכונה: "${correctAnswerText}"
-            
             כל האפשרויות שהוצגו: 
             ${optionsText}
-            
-            כתוב הסבר קצר ומדויק בעברית (עד 3 פסקאות קצרות) שמסביר את ההיגיון מאחורי התשובה הנכונה, ובמידת הצורך הסבר מדוע המסיחים העיקריים שגויים.
+
+            חובה עליך לפעול לפי הכללים הבאים:
+            1. התבסס אך ורק על ספרות מקצועית ועובדות מדעיות מוכחות.
+            2. אל תמציא מידע! אם אינך בטוח בוודאות מוחלטת בהסבר, כתוב בדיוק את המשפט הבא ואל תוסיף מילה: "המידע הקיים אינו מספיק כדי לספק הסבר ודאי לשאלה זו."
+            3. אם התשובה הנכונה נראית לך שגויה קלינית, הסבר מדוע אך עדיין נסה להבין את כוונת השאלה.
+            4. כתוב הסבר קליני ממוקד בעברית (עד 3 פסקאות), כולל הסבר קצר מדוע המסיחים האחרים שגויים.
             `;
 
-            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" }); // מודל מהיר וזול
+            // שימוש במודל PRO החכם יותר
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" }); 
             const result = await model.generateContent(prompt);
             const generatedText = result.response.text();
 
-            // 3. שומרים את התוצאה בפיירבייס כדי שהסטודנט הבא לא יצטרך לחכות
+            // שמירה ב-Firebase
             await update(ref(db), { 
                 [`${questionDbPath}/text`]: generatedText,
                 [`${questionDbPath}/likes`]: 0,
@@ -103,7 +127,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
 
         } catch (error) {
             console.error("AI Generation Error:", error);
-            setExplanationText("מצטערים, התרחשה שגיאה ביצירת ההסבר. אולי המערכת עמוסה כרגע. נסה שוב מאוחר יותר.");
+            setExplanationText("מצטערים, התרחשה שגיאה ביצירת ההסבר. נסה שוב מאוחר יותר.");
         } finally {
             setIsLoading(false);
         }
@@ -134,7 +158,8 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
         const updates = {};
         updates[`${questionDbPath}/likes`] = newLikes;
         updates[`${questionDbPath}/dislikes`] = newDislikes;
-        updates[`${questionDbPath}/voters/${userId}`] = newVote;
+        // שימוש במזהה המכשיר כדי לשמור את ההצבעה
+        updates[`${questionDbPath}/voters/${actualUserId}`] = newVote;
 
         try {
             await update(ref(db), updates);
@@ -172,7 +197,12 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
                                 {explanationText}
                             </div>
                             
-                            <div className="mt-5 flex items-center justify-between border-t border-amber-200/50 pt-3 relative z-10">
+                            {/* הערת האזהרה לסטודנטים */}
+                            <div className="mt-3 text-[10px] text-slate-500/80 font-medium text-center relative z-10">
+                                * ההסבר נוצר אוטומטית על ידי בינה מלאכותית ועלול להכיל אי-דיוקים. מומלץ להצליב עם החומר הנלמד.
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between border-t border-amber-200/50 pt-3 relative z-10">
                                 <span className="text-xs font-bold text-slate-500">האם ההסבר של ה-AI עזר לך?</span>
                                 <div className="flex gap-2">
                                     <button 

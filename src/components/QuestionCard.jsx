@@ -331,7 +331,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       
       {/* מודאל דיווח */}
       {isReporting && (
-        <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
+      <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
            <h4 className="font-bold text-slate-800 mb-2">מצאת טעות בשאלה?</h4>
            {reportStatus === 'success' ? (
              <div className="flex-1 flex flex-col items-center justify-center text-green-600 font-bold text-center">
@@ -537,6 +537,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
               examId={examId}
               questionIndex={index}
               questionData={question}
+              forceClose={isReporting}
           />
       )}
 

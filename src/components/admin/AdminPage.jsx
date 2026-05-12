@@ -83,6 +83,7 @@ export default function AdminPage() {
     saveClozeOptionText,
     handleToggleClozeAppeal,
     handleToggleVerify,
+    handleDeleteAiExplanation,
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
@@ -304,6 +305,7 @@ export default function AdminPage() {
               handleUpdateAppendices={handleUpdateAppendices}
               openQuestionsEditor={openQuestionsEditor}
               handleToggleVerify={handleToggleVerify}
+              handleDeleteAiExplanation={handleDeleteAiExplanation}
             />
           } />
 

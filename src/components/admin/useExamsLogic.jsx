@@ -5,7 +5,6 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "fire
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 
-// הוספנו את canSeeReports כפרמטר שני!
 export function useExamsLogic(setStatus, canSeeReports) {
     // --- States ---
     const [examsList, setExamsList] = useState([]);
@@ -19,16 +18,13 @@ export function useExamsLogic(setStatus, canSeeReports) {
 
     // --- טעינת נתונים ראשונית (מבחנים ודיווחים) ---
     useEffect(() => {
-        // 1. טעינת מבחנים - פומבי, אפשר למשוך מיד
         get(ref(db, 'uploaded_exams')).then((snap) => {
             const data = snap.val();
             setExamsList(data ? Object.values(data) : []);
         }).catch(e => console.error(e));
 
-        // 2. עצירה! אם הוא לא סופר-אדמין, פיירבייס יחסום אותנו. לכן נחכה.
         if (!canSeeReports) return;
 
-        // 3. רק כשיש לנו ודאות שהוא סופר אדמין, פותחים את ההאזנה לדיווחים
         const unsubscribeReports = onValue(ref(db, 'reported_errors'), (snap) => {
             const data = snap.val();
             if (data) {
@@ -40,10 +36,9 @@ export function useExamsLogic(setStatus, canSeeReports) {
             }
         });
 
-        // ניקוי המאזין
         return () => unsubscribeReports();
 
-    }, [canSeeReports]); // ה-useEffect ירוץ מחדש ברגע שההרשאה משתנה ל-true!
+    }, [canSeeReports]);
 
     const handleDeleteExam = async (examId) => {
         if (!window.confirm("להעביר מבחן זה לפח המיחזור? (ניתן יהיה לשחזר אותו מאוחר יותר)")) return;
@@ -51,7 +46,6 @@ export function useExamsLogic(setStatus, canSeeReports) {
         setStatus('processing');
         
         const deletePromise = async () => {
-            // 1. שלב ה"גזור": מושכים את כל המידע הקיים מכל הטבלאות
             const [metaSnap, contentsSnap, appSnap, imgSnap] = await Promise.all([
                 get(ref(db, `uploaded_exams/${examId}`)),
                 get(ref(db, `exam_contents/${examId}`)),
@@ -62,32 +56,23 @@ export function useExamsLogic(setStatus, canSeeReports) {
             const metaData = metaSnap.val();
             if (!metaData) throw new Error("המבחן לא נמצא");
 
-            // 2. שלב ה"אריזה": יוצרים חבילת גיבוי עם הנתונים ותאריך מחיקה
             const backupData = {
-    id: examId,
-    meta: metaData,
-    contents: contentsSnap.val() || null,
-    appendices: appSnap.val() || null,
-    images: imgSnap.val() || null,
-    deletedAt: new Date().toISOString()
-};
+                id: examId,
+                meta: metaData,
+                contents: contentsSnap.val() || null,
+                appendices: appSnap.val() || null,
+                images: imgSnap.val() || null,
+                deletedAt: new Date().toISOString()
+            };
 
-            // 3. שלב ה"הדבק": מבצעים עדכון אטומי (הכל קורה ברגע אחד)
             const updates = {};
-            
-            // מכניסים לפח המיחזור
             updates[`recycle_bin/${examId}`] = backupData;
-            
-            // מוחקים מהמיקומים המקוריים
             updates[`uploaded_exams/${examId}`] = null;
             updates[`exam_contents/${examId}`] = null;
             updates[`exam_appendices/${examId}`] = null;
             updates[`exam_images/${examId}`] = null;
             
-            // שולחים לפיירבייס
             await update(ref(db), updates);
-            
-            // מעדכנים את הרשימה במסך אצל המשתמש
             setExamsList(prev => prev.filter(e => e.id !== examId));
         };
 
@@ -173,6 +158,34 @@ export function useExamsLogic(setStatus, canSeeReports) {
         updates[`uploaded_exams/${questionsEditorId}/questionCount`] = reindexedQuestions.length;
         await update(ref(db), updates);
         setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: reindexedQuestions.length } : e));
+    };
+
+    // ==========================================
+    // הפונקציה החדשה למחיקת ההסבר של ג'מיני
+    // ==========================================
+    const handleDeleteAiExplanation = async (idxToDelete) => {
+        if (!questionsEditorId) return;
+        if (!window.confirm("האם אתה בטוח שברצונך למחוק את הסבר ה-AI לשאלה זו? (הוא ייווצר מחדש בפעם הבאה שיבקשו אותו)")) return;
+
+        try {
+            await remove(ref(db, `exam_contents/${questionsEditorId}/${idxToDelete}/explanationData`));
+            
+            // עדכון הסטייט המקומי כדי שההסבר ייעלם מיד מהמסך ללא רענון
+            setExamQuestions(prev => {
+                const updated = [...prev];
+                if (updated[idxToDelete]) {
+                    // מוחקים את האובייקט הספציפי של ההסבר מהשאלה
+                    const { explanationData, ...rest } = updated[idxToDelete];
+                    updated[idxToDelete] = rest;
+                }
+                return updated;
+            });
+            
+            toast.success("ההסבר נמחק בהצלחה!");
+        } catch (error) {
+            console.error("Delete AI explanation error:", error);
+            toast.error("שגיאה במחיקת ההסבר.");
+        }
     };
 
     const handleAddOptionToQuestion = async (qIdx) => {
@@ -371,7 +384,6 @@ export function useExamsLogic(setStatus, canSeeReports) {
         try { 
             await set(ref(db, `reported_errors/${reportId}`), null); 
             toast.success("הדיווח נסגר בהצלחה");
-            // עכשיו הדיווח יעלם גם מהמסך המקומי ולא רק מהדאטהבייס:
             setReportsList(prev => prev.filter(r => r.id !== reportId));
         } catch (e) { 
             toast.error("שגיאה בסגירת הדיווח"); 
@@ -409,6 +421,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         handleClozeOptionTextChange,
         saveClozeOptionText,
         handleToggleClozeAppeal,
-        handleToggleVerify
+        handleToggleVerify,
+        handleDeleteAiExplanation // הוספנו פה!
     };
 }
