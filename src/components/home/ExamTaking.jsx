@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
+const RefreshIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
 
 export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
@@ -19,12 +20,52 @@ export default function ExamTaking({ examsList }) {
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [examImages, setExamImages] = useState({}); 
-  const [userAnswers, setUserAnswers] = useState({});
-  const [finalScore, setFinalScore] = useState(null);
+
+const storageKey = `exam_state_${examId}_${mode}`;
   
-  // -- סטייטים חדשים לשמירת המידע למודאל הציון --
-  const [modalStats, setModalStats] = useState({ total: 0, perfect: 0, mistakes: 0 });
-  
+  const [userAnswers, setUserAnswers] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_answers`);
+      return saved ? JSON.parse(saved) : {};
+  });
+  const [finalScore, setFinalScore] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_score`);
+      return saved ? JSON.parse(saved) : null;
+  });
+  const [userExcludedQuestions, setUserExcludedQuestions] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_excluded`);
+      return saved ? JSON.parse(saved) : {};
+  });
+  const [flaggedQuestions, setFlaggedQuestions] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_flagged`);
+      return saved ? JSON.parse(saved) : {};
+  });
+  const [modalStats, setModalStats] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_stats`);
+      return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
+  });
+
+  // --- שמירה אוטומטית בכל פעם שמשהו משתנה ---
+  useEffect(() => {
+      localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
+      localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
+      localStorage.setItem(`${storageKey}_excluded`, JSON.stringify(userExcludedQuestions));
+      localStorage.setItem(`${storageKey}_flagged`, JSON.stringify(flaggedQuestions));
+      localStorage.setItem(`${storageKey}_stats`, JSON.stringify(modalStats));
+  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey]);
+
+  // --- פונקציה לאיפוס המבחן (כדי שהסטודנט לא ייתקע עם מבחן פתור לנצח) ---
+  const handleResetExam = () => {
+      if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
+          // מוחק את כל מה שקשור למבחן הזה מהזיכרון של הדפדפן
+          Object.keys(localStorage).forEach(key => {
+              if (key.includes(`_${examId}_`)) {
+                  localStorage.removeItem(key);
+              }
+          });
+          window.location.reload(); // מרענן את הדף כדי לאפס הכל
+      }
+  };
+
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAppendices, setShowAppendices] = useState(false);
@@ -32,7 +73,6 @@ export default function ExamTaking({ examsList }) {
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
   // סטייט ששומר אילו שאלות המשתמש החריג לעצמו (זמנית)
-  const [userExcludedQuestions, setUserExcludedQuestions] = useState({});
   const toggleUserExclude = (index) => {
     setUserExcludedQuestions(prev => ({
       ...prev,
@@ -40,7 +80,6 @@ export default function ExamTaking({ examsList }) {
     }));
   };
 
-  const [flaggedQuestions, setFlaggedQuestions] = useState({}); 
   const toggleFlag = (index) => {
     setFlaggedQuestions(prev => ({
       ...prev,
@@ -251,6 +290,14 @@ export default function ExamTaking({ examsList }) {
         </div>
         <div className="flex items-center gap-2">
           {selectedExam.hasAppendices && <button onClick={handleOpenAppendices} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-200 transition flex items-center gap-1"><PaperclipIcon /> נספחים</button>}
+         {/* כפתור איפוס המבחן החדש */}
+          <button 
+             onClick={handleResetExam}
+             className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 border border-red-100"
+             title="מחק את כל התשובות והתחל מחדש"
+          >
+             <RefreshIcon /> איפוס
+          </button>
           <span className={`text-xs px-2 py-1.5 rounded font-bold ${mode==='test'?'bg-blue-100 text-blue-800':'bg-green-100 text-green-800'}`}>{mode==='test'?'מבחן':'תרגול'}</span>
         </div>
       </div>
@@ -312,8 +359,7 @@ export default function ExamTaking({ examsList }) {
               <div className="text-center"><span className="block text-xl font-bold text-red-500">{modalStats.mistakes}</span>טעויות/חוסר</div>
             </div>
             <div className="space-y-3">
-              <button onClick={handleReturnToCourse} className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold">חזור לרשימת המבחנים</button>
-              <button onClick={() => setShowScoreModal(false)} className="w-full py-4 text-blue-600 font-bold">סגור וצפה בטעויות</button>
+              <button onClick={() => setShowScoreModal(false)} className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold">סגור וצפה בטעויות</button>
             </div>
           </div>
         </div>

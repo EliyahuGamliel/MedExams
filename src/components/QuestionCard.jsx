@@ -40,16 +40,38 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
   // זיהוי אם השאלה היא מרובת בחירות
   const isMultiSelect = Array.isArray(question.correctIndex);
 
-  // State למצב מבחן
-  const [selectedOptionId, setSelectedOptionId] = useState(null); // לבחירה יחידה
-  const [testSelections, setTestSelections] = useState([]);       // לבחירה מרובה
+  const qStorageKey = `q_state_${examId}_${mode}_${index}`;
+
+  // State למצב מבחן (עם שמירה מקומית)
+  const [selectedOptionId, setSelectedOptionId] = useState(() => {
+      const saved = localStorage.getItem(`${qStorageKey}_single`);
+      return saved ? JSON.parse(saved) : null;
+  });
+  const [testSelections, setTestSelections] = useState(() => {
+      const saved = localStorage.getItem(`${qStorageKey}_multi`);
+      return saved ? JSON.parse(saved) : [];
+  });
   
   // State למצב תרגול
-  const [practiceSelections, setPracticeSelections] = useState([]); 
+  const [practiceSelections, setPracticeSelections] = useState(() => {
+      const saved = localStorage.getItem(`${qStorageKey}_prac`);
+      return saved ? JSON.parse(saved) : [];
+  });
 
   // Cloze State
-  const [clozeSelections, setClozeSelections] = useState({}); 
+  const [clozeSelections, setClozeSelections] = useState(() => {
+      const saved = localStorage.getItem(`${qStorageKey}_cloze`);
+      return saved ? JSON.parse(saved) : {};
+  });
   const [clozeWrongAttempts, setClozeWrongAttempts] = useState({}); 
+
+  // שמירה אוטומטית של בחירות השאלה
+  useEffect(() => {
+      localStorage.setItem(`${qStorageKey}_single`, JSON.stringify(selectedOptionId));
+      localStorage.setItem(`${qStorageKey}_multi`, JSON.stringify(testSelections));
+      localStorage.setItem(`${qStorageKey}_prac`, JSON.stringify(practiceSelections));
+      localStorage.setItem(`${qStorageKey}_cloze`, JSON.stringify(clozeSelections));
+  }, [selectedOptionId, testSelections, practiceSelections, clozeSelections, qStorageKey]);
 
   // --- States לדיווח תקלות ---
   const [isReporting, setIsReporting] = useState(false);
@@ -99,19 +121,29 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
     });
   }, [question]);
 
-  // איפוס בחירות במעבר שאלה
+// איפוס בחירות במעבר שאלה (אבל לא במקרה של רענון דף כשיש נתונים שמורים)
   useEffect(() => {
-    setSelectedOptionId(null);
-    setTestSelections([]);
-    setPracticeSelections([]); 
-    setClozeSelections({});
-    setClozeWrongAttempts({});
+    // בודק אם זו טעינה ראשונית שיש לה כבר נתונים בזיכרון. אם כן, מדלג על האיפוס.
+    const hasSavedData = localStorage.getItem(`${qStorageKey}_single`) || localStorage.getItem(`${qStorageKey}_multi`);
     
-    // סימון שאלה פתוחה כ"התעלם" בספירה הכללית
-    if (question.type === 'open_ended' && onAnswer) {
-        onAnswer(index, 'ignored');
+    if (!hasSavedData) {
+        setSelectedOptionId(null);
+        setTestSelections([]);
+        setPracticeSelections([]); 
+        setClozeSelections({});
+        setClozeWrongAttempts({});
     }
-  }, [question, mode]);
+    
+    if (onAnswer) {
+        if (question.isCanceled || isUserExcluded) {
+            onAnswer(index, 'canceled');
+        } else if (question.type === 'open_ended') {
+            onAnswer(index, 'ignored');
+        } else if (!hasSavedData) {
+            onAnswer(index, null);
+        }
+    }
+  }, [question, mode, question.isCanceled, isUserExcluded]);
 
   // --- חישוב סטטוס להשלמה (Cloze) ---
   const calculateClozeStatus = (currentSelections) => {
