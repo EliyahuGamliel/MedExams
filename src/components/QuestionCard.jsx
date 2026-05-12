@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import ExplanationBox from './home/ExplanationBox'; // הייבוא של קופסת ההסבר החדשה
 
 const BookmarkIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>;
+const EyeOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>;
 
 // פונקציית עזר לערבוב
 const shuffleArray = (array) => {
@@ -31,7 +32,7 @@ const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
 
-export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId, isFlagged, onToggleFlag }) {
+export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId, isFlagged, onToggleFlag, isUserExcluded, onToggleUserExclude }) {
   
   // הגנה ראשונית - אם אין שאלה לא מרנדרים
   if (!question) return null;
@@ -327,7 +328,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
   };
 
   return (
-    <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 border-slate-300' : 'bg-white border-slate-100'}`}>
+    <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 border-slate-300' : 'bg-white border-slate-100'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
       
       {/* מודאל דיווח */}
       {isReporting && (
@@ -387,6 +388,17 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
                 <BookmarkIcon filled={isFlagged} />
                 {isFlagged ? 'בטל סימון' : 'סמן שאלה'}
             </button>
+    {/* יציג את כפתור ההחרגה רק במצב מבחן */}
+        {mode === 'test' && (
+            <button 
+                onClick={onToggleUserExclude}
+                className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 border border-purple-200' : 'text-slate-400 bg-slate-50 hover:bg-purple-50 hover:text-purple-500 border border-transparent'}`}
+                title="התעלם משאלה זו בחישוב הציון"
+            >
+                <EyeOffIcon />
+                {isUserExcluded ? 'השאלה הוחרגה' : 'התעלם בציון'}
+            </button>
+        )}
          </div>
         <button onClick={() => setIsReporting(true)} className="text-slate-400 hover:text-red-500 transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 hover:bg-red-50 px-2 py-1 rounded-lg">
            <FlagIcon /> דווח על טעות

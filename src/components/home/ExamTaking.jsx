@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase'; 
-import { ref, onValue, get } from "firebase/database"; // החזרנו את onValue
+import { ref, onValue, get } from "firebase/database"; 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -18,16 +18,29 @@ export default function ExamTaking({ examsList }) {
 
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
-  const [examImages, setExamImages] = useState({}); // החזרנו את הסטייט של תמונות ישנות
+  const [examImages, setExamImages] = useState({}); 
   const [userAnswers, setUserAnswers] = useState({});
   const [finalScore, setFinalScore] = useState(null);
+  
+  // -- סטייטים חדשים לשמירת המידע למודאל הציון --
+  const [modalStats, setModalStats] = useState({ total: 0, perfect: 0, mistakes: 0 });
+  
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAppendices, setShowAppendices] = useState(false);
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
-  const [flaggedQuestions, setFlaggedQuestions] = useState({}); // שומר אילו שאלות סומנו בדגל
+  // סטייט ששומר אילו שאלות המשתמש החריג לעצמו (זמנית)
+  const [userExcludedQuestions, setUserExcludedQuestions] = useState({});
+  const toggleUserExclude = (index) => {
+    setUserExcludedQuestions(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const [flaggedQuestions, setFlaggedQuestions] = useState({}); 
   const toggleFlag = (index) => {
     setFlaggedQuestions(prev => ({
       ...prev,
@@ -54,7 +67,6 @@ export default function ExamTaking({ examsList }) {
           });
     }
 
-    // --- הוספנו חזרה את משיכת התמונות הישנות (לתאימות לאחור) ---
     const imagesRef = ref(db, `exam_images/${selectedExam.id}`);
     const unsub = onValue(imagesRef, (snapshot) => {
       setExamImages(snapshot.val() || {});
@@ -97,12 +109,32 @@ export default function ExamTaking({ examsList }) {
   const handleAnswerUpdate = (questionIndex, status) => setUserAnswers(prev => ({ ...prev, [questionIndex]: status }));
 
   const calculateScore = () => {
-    const scorableQuestions = examQuestionsData.filter(q => q.type !== 'open_ended' && !q.isCanceled);
-    const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
-    const perfectCount = scorableQuestions.filter((q) => userAnswers[examQuestionsData.indexOf(q)] === 'perfect').length;
-    setFinalScore(scorableQuestions.length === 0 ? 100 : Math.round((perfectCount / totalScorable) * 100));
-    setShowScoreModal(true);
-    setIsSidebarOpen(true);
+      const scorableQuestions = examQuestionsData.filter((q, index) => 
+          q.type !== 'open_ended' && 
+          !q.isCanceled && 
+          !userExcludedQuestions[index] 
+      );
+
+      const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
+
+      const perfectCount = scorableQuestions.filter((q) => {
+          const originalIndex = examQuestionsData.indexOf(q);
+          return userAnswers[originalIndex] === 'perfect';
+      }).length;
+
+      const actualMistakes = scorableQuestions.length - perfectCount;
+
+      setFinalScore(scorableQuestions.length === 0 ? 100 : Math.round((perfectCount / totalScorable) * 100));
+      
+      // שומרים את הסטטיסטיקות המדויקות למודאל
+      setModalStats({
+          total: scorableQuestions.length,
+          perfect: perfectCount,
+          mistakes: actualMistakes
+      });
+
+      setShowScoreModal(true);
+      setIsSidebarOpen(true);
   };
 
   const scrollToQuestion = (index) => {
@@ -118,6 +150,9 @@ export default function ExamTaking({ examsList }) {
     const q = examQuestionsData[index];
     const status = userAnswers[index];
     const isSubmitted = finalScore !== null;
+    
+    // הוספת החרגה אישית לצבע הלחצן בניווט
+    if (userExcludedQuestions[index]) return "bg-slate-200 border-slate-300 text-slate-400 opacity-50";
 
     if (q.type === 'open_ended') return "bg-white border-blue-200 text-blue-400 border-dashed border-2";
     if (mode === 'practice' || (mode === 'test' && !isSubmitted)) {
@@ -134,8 +169,13 @@ export default function ExamTaking({ examsList }) {
     return "bg-slate-50 border-slate-200 text-slate-400";
   };
 
-  const scorableQuestionsForModal = examQuestionsData.filter(q => q.type !== 'open_ended' && !q.isCanceled);
-  const perfectCount = finalScore !== null ? scorableQuestionsForModal.filter(q => userAnswers[examQuestionsData.indexOf(q)] === 'perfect').length : 0;
+  // חישוב המשתנים הקבועים לניווט (מתעדכן דינמית כל רגע)
+  const activeQuestionsForNav = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index]);
+  const answeredActiveCount = activeQuestionsForNav.filter(q => {
+      const idx = examQuestionsData.indexOf(q);
+      return userAnswers[idx] && userAnswers[idx] !== 'empty';
+  }).length;
+
   const isPass = finalScore >= 60;
   const isSubmitted = finalScore !== null;
 
@@ -179,24 +219,24 @@ export default function ExamTaking({ examsList }) {
              <div className="flex-1 overflow-y-auto p-4">
                <div className="grid grid-cols-4 gap-3">
                  {examQuestionsData.map((_, i) => (
-<button 
+                   <button 
                        key={i} 
                        onClick={() => scrollToQuestion(i)} 
                        className={`relative overflow-hidden aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}
                    >
                      {i + 1}
-                     {/* המשולש הקטן בפינה הימנית העליונה */}
                      {flaggedQuestions[i] && (
                         <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-red-500 border-l-transparent"></div>
                      )}
                    </button>
-                                   ))}
+                 ))}
                </div>
              </div>
              <div className="p-4 bg-slate-50 border-t border-slate-100 pb-24">
                <div className="flex justify-between text-xs text-slate-500 font-bold mb-2">
-                  <span>שאלות לציון: {scorableQuestionsForModal.length}</span>
-                  <span>נענו: {Object.keys(userAnswers).filter(k => userAnswers[k] && userAnswers[k] !== 'empty').length}</span>
+                  {/* העדכון המרכזי פה! מציג כמה שאלות סך הכל ולא סופר את המוחרגות */}
+                  <span>שאלות לציון: {activeQuestionsForNav.length}</span>
+                  <span>נענו: {answeredActiveCount}</span>
                </div>
                {!isSubmitted && mode === 'test' && <button onClick={() => { setIsSidebarOpen(false); calculateScore(); }} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">הגש מבחן</button>}
              </div>
@@ -233,7 +273,6 @@ export default function ExamTaking({ examsList }) {
         ) : (
             examQuestionsData.map((q, i) => (
                 <div key={i} id={`question-${i}`} className="scroll-mt-36">
-                  {/* --- הקסם: אם יש תמונה חדשה (q.imageUrl) נשתמש בה, אם לא - ניקח מהישנה (examImages[i]) --- */}
                   <QuestionCard 
                     question={q} 
                     index={i} 
@@ -244,6 +283,8 @@ export default function ExamTaking({ examsList }) {
                     imageUrl={q.imageUrl || examImages[i]} 
                     isFlagged={!!flaggedQuestions[i]}
                     onToggleFlag={() => toggleFlag(i)}
+                    isUserExcluded={!!userExcludedQuestions[i]}
+                    onToggleUserExclude={() => toggleUserExclude(i)}
                   />
                 </div>
             ))
@@ -265,9 +306,10 @@ export default function ExamTaking({ examsList }) {
             <div className="mt-4 mb-6"><div className="text-6xl mb-4">{finalScore >= 90 ? '🏆' : isPass ? '😎' : '😐'}</div><h2 className="text-3xl font-black text-slate-800">{finalScore >= 90 ? 'מדהים!' : isPass ? 'כל הכבוד!' : 'לא נורא...'}</h2></div>
             <div className={`relative w-40 h-40 mx-auto my-6 flex items-center justify-center rounded-full border-8 ${isPass ? 'border-green-100 text-green-600' : 'border-red-100 text-red-600'}`}><div className="text-center"><span className="text-5xl font-black block">{finalScore}</span><span className="text-xs font-bold text-slate-400 uppercase">ציון סופי</span></div></div>
             <div className="flex justify-center gap-8 mb-8 text-sm font-medium text-slate-500 bg-slate-50 p-4 rounded-2xl">
-              <div className="text-center"><span className="block text-xl font-bold text-green-600">{perfectCount}</span>נכונות</div>
+              {/* השימוש במשתני המודאל שחישבנו בסנכרון מלא */}
+              <div className="text-center"><span className="block text-xl font-bold text-green-600">{modalStats.perfect}</span>נכונות</div>
               <div className="w-px bg-slate-200"></div>
-              <div className="text-center"><span className="block text-xl font-bold text-red-500">{scorableQuestionsForModal.length - perfectCount}</span>טעויות/חוסר</div>
+              <div className="text-center"><span className="block text-xl font-bold text-red-500">{modalStats.mistakes}</span>טעויות/חוסר</div>
             </div>
             <div className="space-y-3">
               <button onClick={handleReturnToCourse} className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold">חזור לרשימת המבחנים</button>
