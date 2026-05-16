@@ -11,10 +11,6 @@ import HomeSelection from './HomeSelection';
 import CourseExams from './CourseExams';
 import ExamTaking from './ExamTaking';
 import UserProfile from './UserProfile';
-<<<<<<< HEAD
-import UserProfile from './UserProfile';
-=======
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
@@ -26,35 +22,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [coursesStructure, setCoursesStructure] = useState({});
   const [examsList, setExamsList] = useState([]);
-<<<<<<< HEAD
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const { user, userData, loading: authLoading, isAdmin } = useAuth();
-=======
-  
-  // הוספת סטייט חדש לשליטה בתפריט המשתמש
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  // שימוש ב-Context של המשתמשים
-  const { user, userData, loading: authLoading, isAdmin } = useAuth();
-  
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
   const navigate = useNavigate();
   const location = useLocation();
-
-  // סגירה אוטומטית של התפריט אם לוחצים מחוץ אליו
-  useEffect(() => {
-    if (!showUserMenu) return;
-    
-    const closeMenu = (e) => {
-        if (!e.target.closest('.user-menu-area')) {
-            setShowUserMenu(false);
-        }
-    };
-    
-    document.addEventListener('click', closeMenu);
-    return () => document.removeEventListener('click', closeMenu);
-  }, [showUserMenu]);
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -81,15 +53,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans relative flex flex-col pb-20" dir="rtl">
-<<<<<<< HEAD
       <header className="sticky top-0 z-[100] bg-white/90 backdrop-blur border-b border-slate-100 p-4 flex justify-between items-center shadow-sm h-16 shrink-0">
         
-=======
-      
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-100 p-4 flex justify-between items-center shadow-sm h-16 shrink-0">
-        
-        {/* צד ימין (כפתורי ניווט) */}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
         <div className="w-1/3 flex items-center gap-2">
           {showBackBtn && (
             <button onClick={() => navigate(-1)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 hover:text-blue-600 font-bold text-sm transition">
@@ -103,32 +68,17 @@ export default function HomePage() {
           )}
         </div>
         
-<<<<<<< HEAD
-=======
-        {/* אמצע (לוגו) */}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
         <h1 className="text-xl font-black text-slate-800 tracking-tight cursor-pointer w-1/3 text-center" onClick={() => navigate('/')}>
           Exa<span className="text-blue-600">Med</span>
         </h1>
         
-<<<<<<< HEAD
         <div className="w-1/3 flex justify-end">
           {user ? (
-=======
-        {/* צד שמאל (אזור אישי) */}
-        <div className="w-1/3 flex justify-end">
-          {user ? (
-              // משתמש מחובר
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
               <div className="user-menu-area flex items-center gap-2 relative">
                   <div className="hidden sm:block text-left mr-1">
                       <div className="text-xs font-bold text-slate-800 leading-tight">{user.displayName?.split(' ')[0]}</div>
                   </div>
                   
-<<<<<<< HEAD
-=======
-                  {/* העיגול בלבד (ללא תמונה), נפתח בלחיצה */}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
                   <div 
                       onClick={() => setShowUserMenu(!showUserMenu)}
                       className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm cursor-pointer border-2 border-white shadow-sm hover:bg-blue-200 transition select-none"
@@ -136,16 +86,11 @@ export default function HomePage() {
                       {user.displayName?.charAt(0) || 'U'}
                   </div>
 
-<<<<<<< HEAD
-=======
-                  {/* תפריט נפתח - תלוי בלחיצה עכשיו ולא בריחוף */}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
                   {showUserMenu && (
                     <div className="absolute top-full left-0 mt-2 bg-white border border-slate-100 shadow-lg rounded-xl p-2 flex flex-col gap-1 min-w-[140px] z-50">
                         <div className="text-slate-400 text-[10px] p-2 leading-tight text-right">שלום,<br /><b>{user.displayName}</b></div>
                         <hr className="border-slate-100 mb-1" />
                         {isAdmin && (
-<<<<<<< HEAD
                            <button 
                                onClick={() => { 
                                    // הוספנו את פקודת ההחלפה שמונעת את הלופ!
@@ -158,10 +103,6 @@ export default function HomePage() {
                                ניהול מערכת
                            </button>
                         )}
-=======
-   <button onClick={() => { navigate('/admin'); setShowUserMenu(false); }} className="text-xs font-bold text-slate-600 hover:text-purple-600 hover:bg-purple-50 p-2 rounded-lg text-right transition w-full">ניהול מערכת</button>
-)}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
                         <button onClick={() => { navigate('/profile'); setShowUserMenu(false)}} className="text-xs font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-lg text-right transition w-full">אזור אישי</button>
                         <hr className="my-1 border-slate-100" />
                         <button onClick={() => { logoutUser(); setShowUserMenu(false); }} className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg text-right transition w-full">התנתק</button>
@@ -169,10 +110,6 @@ export default function HomePage() {
                   )}
               </div>
           ) : (
-<<<<<<< HEAD
-=======
-              // משתמש לא מחובר
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
               <button 
                   onClick={loginWithGoogle}
                   className="bg-white text-blue-600 border border-blue-200 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-50 transition flex items-center gap-1.5 shadow-sm"

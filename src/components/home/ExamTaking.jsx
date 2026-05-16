@@ -129,8 +129,6 @@ export default function ExamTaking({ examsList }) {
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   // הפונקציות עכשיו יציבות ולא גורמות לרינדור מחדש של כל המבחן!
   const toggleUserExclude = useCallback((index) => {
       setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
@@ -139,14 +137,6 @@ export default function ExamTaking({ examsList }) {
   const toggleFlag = useCallback((index) => {
       setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
   }, []);
-=======
-  const toggleUserExclude = (index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
-  const toggleFlag = (index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
-=======
-  const toggleUserExclude = (index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
-  const toggleFlag = (index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 
   useEffect(() => {
     if (!selectedExam) return;
@@ -207,13 +197,6 @@ export default function ExamTaking({ examsList }) {
       });
   }, []);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
-=======
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
   const calculateScore = () => {
       const scorableQuestions = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index] );
       const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
@@ -388,18 +371,10 @@ export default function ExamTaking({ examsList }) {
                     examId={selectedExam.id} 
                     imageUrl={q.imageUrl || examImages[i]} 
                     isFlagged={!!flaggedQuestions[i]}
-<<<<<<< HEAD
 onToggleFlag={toggleFlag}
   onToggleUserExclude={toggleUserExclude}
                       isUserExcluded={!!userExcludedQuestions[i]}
-=======
-                    onToggleFlag={() => toggleFlag(i)}
-                    isUserExcluded={!!userExcludedQuestions[i]}
-                    onToggleUserExclude={() => toggleUserExclude(i)}
-<<<<<<< HEAD
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
-=======
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+
                     resetTick={resetTick} 
                   />
                 </div>

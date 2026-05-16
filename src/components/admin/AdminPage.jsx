@@ -4,11 +4,7 @@ import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-
 
 import RecycleBinTab from './RecycleBinTab';
 import AnnouncementAdminTab from './AnnouncementAdminTab';
-<<<<<<< HEAD
 import AuditLogsTab from './AuditLogsTab'; 
-=======
-import AuditLogsTab from './AuditLogsTab'; // הרכיב החדש
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 import UsersTab from './UsersTab';
 import ReportsTab from './ReportsTab';
 import ManageCoursesTab from './ManageCoursesTab';
@@ -29,11 +25,7 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 const TrashNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 const MegaphoneNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>;
-<<<<<<< HEAD
 const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
-=======
-const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>; // אייקון חדש ליומן בקרה
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -41,7 +33,7 @@ export default function AdminPage() {
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
-  const examYearsList = Array.from({ length: 20 }, (_, i) => (2012 + i).toString());
+  const examYearsList = Array.from({ length: 16 }, (_, i) => (2012 + i).toString());
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
@@ -172,11 +164,11 @@ export default function AdminPage() {
       )}
 
       <div className="max-w-2xl mx-auto mb-6 flex justify-between items-center">
-        {/* התיקון הסופי ששובר את הלופ בחזרה לאתר */}
+        {/* --- התיקון שלנו לכפתור חזור לאתר! --- */}
         <button 
           onClick={() => {
             const returnUrl = sessionStorage.getItem('lastAppUrl') || '/';
-            navigate(returnUrl, { replace: true });
+            navigate(returnUrl);
           }} 
           className="text-slate-500 font-bold hover:text-blue-600 transition"
         >
@@ -202,11 +194,6 @@ export default function AdminPage() {
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>}
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
-<<<<<<< HEAD
-=======
-          
-          {/* הטאב החדש של יומן הבקרה (רק ל-super_admin) */}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white shadow text-sky-600' : 'text-slate-500'}`}><EyeIcon /> בקרת עורכים</button>}
         </div>
 
@@ -370,10 +357,6 @@ export default function AdminPage() {
             )
         } />
 
-<<<<<<< HEAD
-=======
-        {/* הראוטינג החדש ליומן הבקרה */}
->>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
         <Route path="audit_logs" element={
             userData?.role === 'super_admin' ? (
                 <AuditLogsTab />
