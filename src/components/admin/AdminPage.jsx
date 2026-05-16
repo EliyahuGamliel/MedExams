@@ -91,7 +91,8 @@ export default function AdminPage() {
   } = useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus);
 
   const handleNavigateToReportedQuestion = (examId) => {
-    navigate('/admin/manage_exams');
+    // הוספנו פה גם את ה-replace כדי שניווט לדיווח לא יוסיף היסטוריה
+    navigate('/admin/manage_exams', { replace: true });
     const examToEdit = examsList.find(e => e.id === examId);
     if (examToEdit) {
       setSelectedStudentYear(examToEdit.studentYear);
@@ -164,17 +165,15 @@ export default function AdminPage() {
       )}
 
       <div className="max-w-2xl mx-auto mb-6 flex justify-between items-center">
-        {/* --- התיקון שלנו לכפתור חזור לאתר! --- */}
         <button 
-  onClick={() => {
-    const returnUrl = sessionStorage.getItem('lastAppUrl') || '/';
-    // הוספת ה- replace: true היא מה ששובר את הלופ!
-    navigate(returnUrl, { replace: true }); 
-  }} 
-  className="text-slate-500 font-bold hover:text-blue-600 transition"
->
-  חזור לאתר
-</button>
+          onClick={() => {
+            const returnUrl = sessionStorage.getItem('lastAppUrl') || '/';
+            navigate(returnUrl, { replace: true }); 
+          }} 
+          className="text-slate-500 font-bold hover:text-blue-600 transition"
+        >
+          חזור לאתר
+        </button>
         <div className="flex items-center gap-3">
           {userData?.role === 'super_admin' && <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Super Admin</span>}
           {userData?.role === 'editor' && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">עורך {userData.allowed_years ? Object.keys(userData.allowed_years).join(', ') : ''}</span>}
@@ -186,16 +185,17 @@ export default function AdminPage() {
       <div className="p-8 max-w-2xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-100">
         <h2 className="text-3xl font-black mb-6 text-slate-800 text-center">ממשק ניהול</h2>
 
+        {/* --- כאן הוספנו את ה-replace לכל הטאבים --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
-          <button onClick={() => navigate('/admin/upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
-          <button onClick={() => navigate('/admin/bulk')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button>
-          <button onClick={() => navigate('/admin/manage_exams')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
-          <button onClick={() => navigate('/admin/manage_courses')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
-          <button onClick={() => navigate('/admin/reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white shadow text-sky-600' : 'text-slate-500'}`}><EyeIcon /> בקרת עורכים</button>}
+          <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
+          <button onClick={() => navigate('/admin/bulk', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button>
+          <button onClick={() => navigate('/admin/manage_exams', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
+          <button onClick={() => navigate('/admin/manage_courses', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
+          <button onClick={() => navigate('/admin/reports', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white shadow text-sky-600' : 'text-slate-500'}`}><EyeIcon /> בקרת עורכים</button>}
         </div>
 
         <Routes>
