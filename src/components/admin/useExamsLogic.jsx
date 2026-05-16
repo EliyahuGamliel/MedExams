@@ -1,9 +1,29 @@
 import { useState, useEffect } from 'react';
-import { db } from '../../firebase';
-import { ref, get, set, update, remove, onValue } from "firebase/database";
+import { auth, db } from '../../firebase';
+import { ref, get, set, update, remove, onValue, push } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
+
+export const logAdminAction = async (actionType, details, examId = "כללי") => {
+    try {
+        const user = auth.currentUser;
+        if (!user) return; // לא מחובר
+
+        const logRef = push(ref(db, 'admin_logs'));
+        await set(logRef, {
+            uid: user.uid,
+            email: user.email || 'משתמש לא ידוע',
+            action: actionType, 
+            details: details,   
+            examId: examId,
+            timestamp: new Date().toISOString(), 
+            timestampNum: Date.now() 
+        });
+    } catch (error) {
+        console.error("שגיאה ברישום יומן בקרה:", error);
+    }
+};
 
 export function useExamsLogic(setStatus, canSeeReports) {
     // --- States ---
@@ -73,6 +93,10 @@ export function useExamsLogic(setStatus, canSeeReports) {
             updates[`exam_images/${examId}`] = null;
             
             await update(ref(db), updates);
+            
+            // --- תיעוד ---
+            logAdminAction("מחיקת מבחן (העברה לפח)", `המבחן הועבר לפח המיחזור`, examId);
+
             setExamsList(prev => prev.filter(e => e.id !== examId));
         };
 
@@ -101,6 +125,10 @@ export function useExamsLogic(setStatus, canSeeReports) {
             const downloadURL = await getDownloadURL(fileRef);
             await update(ref(db, `uploaded_exams/${examId}`), { hasAppendices: true });
             await set(ref(db, `exam_appendices/${examId}`), { fileUrl: downloadURL });
+            
+            // --- תיעוד ---
+            logAdminAction("עדכון נספחים", `הועלה קובץ נספחים חדש`, examId);
+
             setEditingExamId(null); 
             setNewAppendicesFile(null);
         };
@@ -145,6 +173,10 @@ export function useExamsLogic(setStatus, canSeeReports) {
         updates[`exam_contents/${questionsEditorId}`] = updatedQuestions;
         updates[`uploaded_exams/${questionsEditorId}/questionCount`] = updatedQuestions.length;
         await update(ref(db), updates);
+        
+        // --- תיעוד ---
+        logAdminAction("הוספת שאלה חדשה", `נוספה שאלה מספר ${newIndex + 1}`, questionsEditorId);
+
         setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: updatedQuestions.length } : e));
     };
 
@@ -157,12 +189,13 @@ export function useExamsLogic(setStatus, canSeeReports) {
         updates[`exam_contents/${questionsEditorId}`] = reindexedQuestions;
         updates[`uploaded_exams/${questionsEditorId}/questionCount`] = reindexedQuestions.length;
         await update(ref(db), updates);
+        
+        // --- תיעוד ---
+        logAdminAction("מחיקת שאלה", `שאלה ${idxToDelete + 1} נמחקה מהמבחן לצמיתות`, questionsEditorId);
+
         setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: reindexedQuestions.length } : e));
     };
 
-    // ==========================================
-    // הפונקציה החדשה למחיקת ההסבר של ג'מיני
-    // ==========================================
     const handleDeleteAiExplanation = async (idxToDelete) => {
         if (!questionsEditorId) return;
         if (!window.confirm("האם אתה בטוח שברצונך למחוק את הסבר ה-AI לשאלה זו? (הוא ייווצר מחדש בפעם הבאה שיבקשו אותו)")) return;
@@ -170,11 +203,12 @@ export function useExamsLogic(setStatus, canSeeReports) {
         try {
             await remove(ref(db, `exam_contents/${questionsEditorId}/${idxToDelete}/explanationData`));
             
-            // עדכון הסטייט המקומי כדי שההסבר ייעלם מיד מהמסך ללא רענון
+            // --- תיעוד ---
+            logAdminAction("מחיקת הסבר AI", `נמחק הסבר הבינה המלאכותית לשאלה ${idxToDelete + 1}`, questionsEditorId);
+
             setExamQuestions(prev => {
                 const updated = [...prev];
                 if (updated[idxToDelete]) {
-                    // מוחקים את האובייקט הספציפי של ההסבר מהשאלה
                     const { explanationData, ...rest } = updated[idxToDelete];
                     updated[idxToDelete] = rest;
                 }
@@ -212,6 +246,9 @@ export function useExamsLogic(setStatus, canSeeReports) {
         await update(ref(db, `exam_contents/${questionsEditorId}/${qIdx}`), {
             options: updated[qIdx].options, correctIndex: updated[qIdx].correctIndex
         });
+        
+        // --- תיעוד ---
+        logAdminAction("מחיקת אפשרות מענה", `אפשרות ${optIdx + 1} נמחקה משאלה ${qIdx + 1}`, questionsEditorId);
     };
 
     const handleQuestionTextChange = (idx, newText) => {
@@ -224,6 +261,8 @@ export function useExamsLogic(setStatus, canSeeReports) {
 
     const saveQuestionText = async (idx, textToSave) => {
         await set(ref(db, `exam_contents/${questionsEditorId}/${idx}/text`), textToSave);
+        // --- תיעוד ---
+        logAdminAction("עריכת תוכן שאלה", `עודכן הטקסט של שאלה ${idx + 1}`, questionsEditorId);
     };
 
     const handleOptionTextChange = (qIdx, optIdx, newText) => {
@@ -319,6 +358,9 @@ export function useExamsLogic(setStatus, canSeeReports) {
             updates[`exam_contents/${questionsEditorId}/${idx}/imageUrl`] = downloadURL;
             updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = true;
             await update(ref(db), updates);
+            
+            // --- תיעוד ---
+            logAdminAction("העלאת תמונה לשאלה", `הועלתה תמונה חדשה לשאלה ${idx + 1}`, questionsEditorId);
 
             setExamQuestions(prev => {
                 const updated = [...prev];
@@ -357,6 +399,9 @@ export function useExamsLogic(setStatus, canSeeReports) {
             return updated;
         });
         await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { correctIndex: newCorrect });
+        
+        // --- תיעוד ---
+        logAdminAction("שינוי תשובה נכונה", `עודכנה התשובה הנכונה בשאלה ${idx + 1}`, questionsEditorId);
     };
 
     const handleToggleAppeal = async (idx, optIdx) => {
@@ -364,12 +409,20 @@ export function useExamsLogic(setStatus, canSeeReports) {
         const cur = q.appealedIndexes || [];
         const newer = cur.includes(optIdx) ? cur.filter(i => i !== optIdx) : [...cur, optIdx];
         await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { appealedIndexes: newer });
+        
+        // --- תיעוד ---
+        logAdminAction("עדכון ערעור בשאלה", `שונה הסטטוס של אפשרות ${optIdx + 1} (התקבל בערעור: ${newer.includes(optIdx)}) בשאלה ${idx + 1}`, questionsEditorId);
+
         setExamQuestions(p => { const n = [...p]; n[idx].appealedIndexes = newer; return n; });
     };
 
     const handleToggleCancel = async (idx) => {
         const ns = !examQuestions[idx].isCanceled;
         await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { isCanceled: ns });
+        
+        // --- תיעוד ---
+        logAdminAction(ns ? "ביטול/פסילת שאלה" : "שחזור שאלה שנפסלה", `הסטטוס של שאלה ${idx + 1} שונה`, questionsEditorId);
+
         setExamQuestions(p => { const n = [...p]; n[idx].isCanceled = ns; return n; });
     };
 
@@ -383,6 +436,10 @@ export function useExamsLogic(setStatus, canSeeReports) {
     const handleResolveReport = async (reportId) => {
         try { 
             await set(ref(db, `reported_errors/${reportId}`), null); 
+            
+            // --- תיעוד ---
+            logAdminAction("סגירת דיווח שגיאה", `נסגר הדיווח עם מזהה ${reportId}`);
+
             toast.success("הדיווח נסגר בהצלחה");
             setReportsList(prev => prev.filter(r => r.id !== reportId));
         } catch (e) { 
@@ -393,6 +450,10 @@ export function useExamsLogic(setStatus, canSeeReports) {
     const handleToggleVerify = async (examId, currentStatus) => {
         try {
             await update(ref(db, `uploaded_exams/${examId}`), { isVerified: !currentStatus });
+            
+            // --- תיעוד ---
+            logAdminAction(!currentStatus ? "אישור מבחן לאחר הגהה" : "ביטול אישור מבחן", `הסטטוס של המבחן שונה ל: ${!currentStatus ? 'מאומת' : 'ממתין'}`, examId);
+
             setExamsList(prev => prev.map(e => e.id === examId ? { ...e, isVerified: !currentStatus } : e));
             toast.success(!currentStatus ? 'המבחן סומן כמאומת ומוכן! ✅' : 'המבחן סומן כממתין להגהה ⚠️');
         } catch (error) {
@@ -422,6 +483,6 @@ export function useExamsLogic(setStatus, canSeeReports) {
         saveClozeOptionText,
         handleToggleClozeAppeal,
         handleToggleVerify,
-        handleDeleteAiExplanation // הוספנו פה!
+        handleDeleteAiExplanation 
     };
 }

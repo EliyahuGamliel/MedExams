@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
 
 export default function CourseExams({ examsList }) {
   const { courseName } = useParams();
   const navigate = useNavigate();
-  const [selectedExamForMode, setSelectedExamForMode] = useState(null);
+  
+  // התיקון: משתמשים בפרמטרים של הכתובת במקום ב-useState כדי שהטלפון יזהה את ההיסטוריה!
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedExamId = searchParams.get('exam');
+  
+  // שולפים את המבחן הרלוונטי על בסיס ה-ID שבכתובת
+  const selectedExamForMode = selectedExamId ? examsList.find(e => String(e.id) === String(selectedExamId)) : null;
 
   const relevantExams = examsList
       .filter(e => e.course === courseName)
@@ -41,7 +46,8 @@ export default function CourseExams({ examsList }) {
                 <p className="text-sm text-slate-400 mt-2 leading-relaxed">משוב מיידי עם סימון כל תשובה.</p>
             </button>
         </div>
-        <button onClick={() => setSelectedExamForMode(null)} className="text-slate-400 hover:text-slate-600 font-bold underline underline-offset-4">ביטול וחזרה לרשימה</button>
+        {/* כפתור הביטול עכשיו פשוט מנקה את הכתובת על ידי חזרה צעד אחד אחורה */}
+        <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600 font-bold underline underline-offset-4">ביטול וחזרה לרשימה</button>
       </div>
     );
   }
@@ -61,11 +67,12 @@ export default function CourseExams({ examsList }) {
                       <div key={exam.id}>
                           {showYearHeader && <div className="text-xs font-bold text-slate-400 mt-4 mb-2 mr-2">{exam.examYear || "שונות"}</div>}
                           
-                          <button onClick={() => setSelectedExamForMode(exam)} className="w-full bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition flex justify-between items-center flex-wrap gap-2 sm:gap-0">
+                          {/* ברגע שלוחצים, זה מוסיף את המבחן לכתובת ההיסטורית במקום רק ל-useState */}
+                          <button onClick={() => setSearchParams({ exam: exam.id })} className="w-full bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition flex justify-between items-center flex-wrap gap-2 sm:gap-0">
                               <div className="flex items-center gap-3 flex-wrap">
                                   <span className="font-bold text-slate-800 text-lg">{exam.title}</span>
                                   
-                                  {/* --- תגית האימות נוספה כאן --- */}
+                                  {/* --- תגית האימות --- */}
                                   {exam.isVerified === false && (
                                      <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded-md mr-1 border border-orange-200 shadow-sm whitespace-nowrap">
                                        🤖 AI (טרם עבר אימות אנושי)

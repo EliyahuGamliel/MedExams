@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase'; 
-import { ref, onValue, get } from "firebase/database"; 
+import { ref, onValue, get, push, update, remove, set } from "firebase/database"; 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
@@ -14,14 +15,18 @@ export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  
+  const { user } = useAuth();
+
   const selectedExam = examsList.find(e => e.id === examId);
 
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [examImages, setExamImages] = useState({}); 
 
-const storageKey = `exam_state_${examId}_${mode}`;
+  // הסטייט הקריטי שמודיע לכרטיסיות להתאפס!
+  const [resetTick, setResetTick] = useState(0);
+
+  const storageKey = `exam_state_${user ? user.uid : 'guest'}_${examId}_${mode}`;
   
   const [userAnswers, setUserAnswers] = useState(() => {
       const saved = localStorage.getItem(`${storageKey}_answers`);
@@ -44,25 +49,77 @@ const storageKey = `exam_state_${examId}_${mode}`;
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
   });
 
-  // --- שמירה אוטומטית בכל פעם שמשהו משתנה ---
+  // משיכת גיבוי מהענן
+  useEffect(() => {
+      if (!user || !selectedExam) return;
+      const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
+      get(stateRef).then((snapshot) => {
+          if (snapshot.exists()) {
+              const cloudData = snapshot.val();
+              if (cloudData.answers) setUserAnswers(cloudData.answers);
+              if (cloudData.score !== undefined) setFinalScore(cloudData.score);
+              if (cloudData.excluded) setUserExcludedQuestions(cloudData.excluded);
+              if (cloudData.flagged) setFlaggedQuestions(cloudData.flagged);
+              if (cloudData.stats) setModalStats(cloudData.stats);
+          }
+      }).catch(err => console.error("שגיאה במשיכת מצב המבחן מהענן:", err));
+  }, [user, examId, mode, selectedExam]);
+
+  // שמירה משולבת
   useEffect(() => {
       localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
       localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
       localStorage.setItem(`${storageKey}_excluded`, JSON.stringify(userExcludedQuestions));
       localStorage.setItem(`${storageKey}_flagged`, JSON.stringify(flaggedQuestions));
       localStorage.setItem(`${storageKey}_stats`, JSON.stringify(modalStats));
-  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey]);
 
-  // --- פונקציה לאיפוס המבחן (כדי שהסטודנט לא ייתקע עם מבחן פתור לנצח) ---
-  const handleResetExam = () => {
+      if (user) {
+          const timeoutId = setTimeout(() => {
+              const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
+              update(stateRef, {
+                  answers: userAnswers,
+                  score: finalScore,
+                  excluded: userExcludedQuestions,
+                  flagged: flaggedQuestions,
+                  stats: modalStats,
+                  lastUpdated: new Date().toISOString()
+              }).catch(err => console.error("שגיאה בסנכרון לענן:", err));
+          }, 1000); 
+          return () => clearTimeout(timeoutId); 
+      }
+  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey, user, examId, mode]);
+
+  // פונקציית האיפוס החדשה והאגרסיבית!
+  const handleResetExam = async () => {
       if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
-          // מוחק את כל מה שקשור למבחן הזה מהזיכרון של הדפדפן
+          
+          if (user) {
+              try {
+                  const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
+                  await remove(stateRef);
+              } catch (error) {
+                  console.error("שגיאה במחיקה מהענן:", error);
+              }
+          }
+
+          // מחיקת כל זכר למבחן הזה מהזיכרון הלוקאלי
           Object.keys(localStorage).forEach(key => {
-              if (key.includes(`_${examId}_`)) {
+              if (key.includes(examId)) {
                   localStorage.removeItem(key);
               }
           });
-          window.location.reload(); // מרענן את הדף כדי לאפס הכל
+
+          setUserAnswers({});
+          setFinalScore(null);
+          setUserExcludedQuestions({});
+          setFlaggedQuestions({});
+          setModalStats({ total: 0, perfect: 0, mistakes: 0 });
+
+          // הטריגר שמעדכן את המסך באותו רגע
+          setResetTick(prev => prev + 1);
+
+          toast.success("המבחן אופס והלוח נקי! בהצלחה 🚀");
+          window.scrollTo({ top: 0, behavior: 'smooth' });
       }
   };
 
@@ -72,24 +129,27 @@ const storageKey = `exam_state_${examId}_${mode}`;
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
-  // סטייט ששומר אילו שאלות המשתמש החריג לעצמו (זמנית)
-  const toggleUserExclude = (index) => {
-    setUserExcludedQuestions(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
-  };
+<<<<<<< HEAD
+<<<<<<< HEAD
+  // הפונקציות עכשיו יציבות ולא גורמות לרינדור מחדש של כל המבחן!
+  const toggleUserExclude = useCallback((index) => {
+      setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
+  }, []);
 
-  const toggleFlag = (index) => {
-    setFlaggedQuestions(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
-  };
+  const toggleFlag = useCallback((index) => {
+      setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
+  }, []);
+=======
+  const toggleUserExclude = (index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
+  const toggleFlag = (index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+=======
+  const toggleUserExclude = (index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
+  const toggleFlag = (index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 
   useEffect(() => {
     if (!selectedExam) return;
-    
     setLoadingQuestions(true);
     if (selectedExam.questions && selectedExam.questions.length > 0) {
         setExamQuestionsData(selectedExam.questions);
@@ -99,8 +159,7 @@ const storageKey = `exam_state_${examId}_${mode}`;
           .then((snapshot) => {
               setExamQuestionsData(snapshot.val() || []);
               setLoadingQuestions(false);
-          })
-          .catch(err => {
+          }).catch(err => {
               console.error(err);
               setLoadingQuestions(false);
           });
@@ -110,16 +169,12 @@ const storageKey = `exam_state_${examId}_${mode}`;
     const unsub = onValue(imagesRef, (snapshot) => {
       setExamImages(snapshot.val() || {});
     });
-
     return () => unsub();
   }, [selectedExam]);
 
   const handleReturnToCourse = () => {
-    if (location.state?.fromCourse) {
-      navigate(-1);
-    } else {
-      navigate(`/course/${selectedExam.course}`, { replace: true });
-    }
+    if (location.state?.fromCourse) { navigate(-1); } 
+    else { navigate(`/course/${selectedExam.course}`, { replace: true }); }
   };
 
   if (!selectedExam) return <div className="text-center py-20 text-xl font-bold text-slate-500">המבחן לא נמצא 😕</div>;
@@ -139,38 +194,60 @@ const storageKey = `exam_state_${examId}_${mode}`;
       } catch (e) {
         toast.error("שגיאה בטעינת נספחים");
         setShowAppendices(false);
-      } finally {
-        setLoadingAppendices(false);
-      }
+      } finally { setLoadingAppendices(false); }
     }
   };
 
-  const handleAnswerUpdate = (questionIndex, status) => setUserAnswers(prev => ({ ...prev, [questionIndex]: status }));
+// --- התיקון שעוצר את הלולאה האינסופית ומשחרר את המערכת! ---
+  const handleAnswerUpdate = useCallback((questionIndex, status) => {
+      setUserAnswers(prev => {
+          // הקסם כאן: אם הסטטוס של התשובה לא באמת השתנה, פשוט תעצור ואל תרנדר מחדש!
+          if (prev[questionIndex] === status) return prev;
+          return { ...prev, [questionIndex]: status };
+      });
+  }, []);
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+=======
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+=======
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
   const calculateScore = () => {
-      const scorableQuestions = examQuestionsData.filter((q, index) => 
-          q.type !== 'open_ended' && 
-          !q.isCanceled && 
-          !userExcludedQuestions[index] 
-      );
-
+      const scorableQuestions = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index] );
       const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
-
       const perfectCount = scorableQuestions.filter((q) => {
           const originalIndex = examQuestionsData.indexOf(q);
           return userAnswers[originalIndex] === 'perfect';
       }).length;
 
       const actualMistakes = scorableQuestions.length - perfectCount;
+      const calculatedScore = scorableQuestions.length === 0 ? 100 : Math.round((perfectCount / totalScorable) * 100);
 
-      setFinalScore(scorableQuestions.length === 0 ? 100 : Math.round((perfectCount / totalScorable) * 100));
-      
-      // שומרים את הסטטיסטיקות המדויקות למודאל
-      setModalStats({
-          total: scorableQuestions.length,
-          perfect: perfectCount,
-          mistakes: actualMistakes
-      });
+      setFinalScore(calculatedScore);
+      setModalStats({ total: scorableQuestions.length, perfect: perfectCount, mistakes: actualMistakes });
+
+      if (user && finalScore === null) { 
+          try {
+              // שינוי קריטי: הנתיב עכשיו נגמר ב-selectedExam.id!
+              const resultRef = ref(db, `user_results/${user.uid}/${selectedExam.id}`);
+              
+              // אנחנו משתמשים ב-set כדי לדרוס את הקובץ הקיים (אם יש כזה) במקום push
+              set(resultRef, {
+                  examId: selectedExam.id,
+                  examName: selectedExam.title, 
+                  courseName: selectedExam.course,
+                  score: calculatedScore,
+                  date: new Date().toISOString(), // תאריך של ההגשה האחרונה
+                  totalQuestions: scorableQuestions.length,
+                  correctAnswers: perfectCount
+              });
+              toast.success("הציון עודכן באזור האישי! 🎉");
+          } catch (error) { 
+              console.error("שגיאה בשמירת תוצאת המבחן:", error); 
+          }
+      }
 
       setShowScoreModal(true);
       setIsSidebarOpen(true);
@@ -190,9 +267,7 @@ const storageKey = `exam_state_${examId}_${mode}`;
     const status = userAnswers[index];
     const isSubmitted = finalScore !== null;
     
-    // הוספת החרגה אישית לצבע הלחצן בניווט
     if (userExcludedQuestions[index]) return "bg-slate-200 border-slate-300 text-slate-400 opacity-50";
-
     if (q.type === 'open_ended') return "bg-white border-blue-200 text-blue-400 border-dashed border-2";
     if (mode === 'practice' || (mode === 'test' && !isSubmitted)) {
         if (status !== undefined && status !== null && status !== 'empty') return "bg-blue-600 border-blue-600 text-white font-bold";
@@ -208,7 +283,6 @@ const storageKey = `exam_state_${examId}_${mode}`;
     return "bg-slate-50 border-slate-200 text-slate-400";
   };
 
-  // חישוב המשתנים הקבועים לניווט (מתעדכן דינמית כל רגע)
   const activeQuestionsForNav = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index]);
   const answeredActiveCount = activeQuestionsForNav.filter(q => {
       const idx = examQuestionsData.indexOf(q);
@@ -237,18 +311,12 @@ const storageKey = `exam_state_${examId}_${mode}`;
 
       {!loadingQuestions && (
         <>
-           <button 
-             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-             className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105"
-           >
+           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105">
              {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
            </button>
            
            {isSidebarOpen && (
-             <div 
-               onClick={() => setIsSidebarOpen(false)} 
-               className="fixed top-16 inset-x-0 bottom-0 bg-black/20 z-[40] backdrop-blur-sm transition-opacity" 
-             />
+             <div onClick={() => setIsSidebarOpen(false)} className="fixed top-16 inset-x-0 bottom-0 bg-black/20 z-[40] backdrop-blur-sm transition-opacity" />
            )}
            
            <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -258,11 +326,7 @@ const storageKey = `exam_state_${examId}_${mode}`;
              <div className="flex-1 overflow-y-auto p-4">
                <div className="grid grid-cols-4 gap-3">
                  {examQuestionsData.map((_, i) => (
-                   <button 
-                       key={i} 
-                       onClick={() => scrollToQuestion(i)} 
-                       className={`relative overflow-hidden aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}
-                   >
+                   <button key={i} onClick={() => scrollToQuestion(i)} className={`relative overflow-hidden aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}>
                      {i + 1}
                      {flaggedQuestions[i] && (
                         <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-red-500 border-l-transparent"></div>
@@ -273,7 +337,6 @@ const storageKey = `exam_state_${examId}_${mode}`;
              </div>
              <div className="p-4 bg-slate-50 border-t border-slate-100 pb-24">
                <div className="flex justify-between text-xs text-slate-500 font-bold mb-2">
-                  {/* העדכון המרכזי פה! מציג כמה שאלות סך הכל ולא סופר את המוחרגות */}
                   <span>שאלות לציון: {activeQuestionsForNav.length}</span>
                   <span>נענו: {answeredActiveCount}</span>
                </div>
@@ -290,12 +353,8 @@ const storageKey = `exam_state_${examId}_${mode}`;
         </div>
         <div className="flex items-center gap-2">
           {selectedExam.hasAppendices && <button onClick={handleOpenAppendices} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-200 transition flex items-center gap-1"><PaperclipIcon /> נספחים</button>}
-         {/* כפתור איפוס המבחן החדש */}
-          <button 
-             onClick={handleResetExam}
-             className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 border border-red-100"
-             title="מחק את כל התשובות והתחל מחדש"
-          >
+          
+          <button onClick={handleResetExam} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 border border-red-100" title="מחק את כל התשובות והתחל מחדש">
              <RefreshIcon /> איפוס
           </button>
           <span className={`text-xs px-2 py-1.5 rounded font-bold ${mode==='test'?'bg-blue-100 text-blue-800':'bg-green-100 text-green-800'}`}>{mode==='test'?'מבחן':'תרגול'}</span>
@@ -319,7 +378,7 @@ const storageKey = `exam_state_${examId}_${mode}`;
             <div className="text-center py-10 text-slate-400">לא נמצאו שאלות במבחן זה.</div>
         ) : (
             examQuestionsData.map((q, i) => (
-                <div key={i} id={`question-${i}`} className="scroll-mt-36">
+                <div key={`${i}-${resetTick}`} id={`question-${i}`} className="scroll-mt-36">
                   <QuestionCard 
                     question={q} 
                     index={i} 
@@ -329,9 +388,19 @@ const storageKey = `exam_state_${examId}_${mode}`;
                     examId={selectedExam.id} 
                     imageUrl={q.imageUrl || examImages[i]} 
                     isFlagged={!!flaggedQuestions[i]}
+<<<<<<< HEAD
+onToggleFlag={toggleFlag}
+  onToggleUserExclude={toggleUserExclude}
+                      isUserExcluded={!!userExcludedQuestions[i]}
+=======
                     onToggleFlag={() => toggleFlag(i)}
                     isUserExcluded={!!userExcludedQuestions[i]}
                     onToggleUserExclude={() => toggleUserExclude(i)}
+<<<<<<< HEAD
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+=======
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+                    resetTick={resetTick} 
                   />
                 </div>
             ))
@@ -353,7 +422,6 @@ const storageKey = `exam_state_${examId}_${mode}`;
             <div className="mt-4 mb-6"><div className="text-6xl mb-4">{finalScore >= 90 ? '🏆' : isPass ? '😎' : '😐'}</div><h2 className="text-3xl font-black text-slate-800">{finalScore >= 90 ? 'מדהים!' : isPass ? 'כל הכבוד!' : 'לא נורא...'}</h2></div>
             <div className={`relative w-40 h-40 mx-auto my-6 flex items-center justify-center rounded-full border-8 ${isPass ? 'border-green-100 text-green-600' : 'border-red-100 text-red-600'}`}><div className="text-center"><span className="text-5xl font-black block">{finalScore}</span><span className="text-xs font-bold text-slate-400 uppercase">ציון סופי</span></div></div>
             <div className="flex justify-center gap-8 mb-8 text-sm font-medium text-slate-500 bg-slate-50 p-4 rounded-2xl">
-              {/* השימוש במשתני המודאל שחישבנו בסנכרון מלא */}
               <div className="text-center"><span className="block text-xl font-bold text-green-600">{modalStats.perfect}</span>נכונות</div>
               <div className="w-px bg-slate-200"></div>
               <div className="text-center"><span className="block text-xl font-bold text-red-500">{modalStats.mistakes}</span>טעויות/חוסר</div>

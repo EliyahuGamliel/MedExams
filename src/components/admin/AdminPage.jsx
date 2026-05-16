@@ -4,6 +4,11 @@ import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-
 
 import RecycleBinTab from './RecycleBinTab';
 import AnnouncementAdminTab from './AnnouncementAdminTab';
+<<<<<<< HEAD
+import AuditLogsTab from './AuditLogsTab'; 
+=======
+import AuditLogsTab from './AuditLogsTab'; // הרכיב החדש
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 import UsersTab from './UsersTab';
 import ReportsTab from './ReportsTab';
 import ManageCoursesTab from './ManageCoursesTab';
@@ -24,6 +29,11 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 const TrashNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 const MegaphoneNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>;
+<<<<<<< HEAD
+const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+=======
+const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>; // אייקון חדש ליומן בקרה
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -31,7 +41,7 @@ export default function AdminPage() {
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
-  const examYearsList = Array.from({ length: 16 }, (_, i) => (2012 + i).toString());
+  const examYearsList = Array.from({ length: 20 }, (_, i) => (2012 + i).toString());
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
@@ -48,22 +58,18 @@ export default function AdminPage() {
 
   const canSeeReports = userData?.role === 'super_admin' || userData?.role === 'editor';
 
-  // --- תיקון חווית משתמש: קפיצה אוטומטית לשנה המורשית הראשונה ---
   useEffect(() => {
       if (userData?.role === 'editor' && userData?.allowed_years) {
-          // אם השנה שמוגדרת כרגע בסטייט אינה מורשית לעורך הזה
           if (!userData.allowed_years[selectedStudentYear]) {
-              // עוברים על השנים לפי הסדר ומוצאים את הראשונה שמותרת לו
               const firstAllowedYear = studentYears.find(year => userData.allowed_years[year] === true);
               
               if (firstAllowedYear) {
                   setSelectedStudentYear(firstAllowedYear);
-                  setSelectedCourseId(""); // איפוס הקורס כדי למנוע התנגשויות
+                  setSelectedCourseId(""); 
               }
           }
       }
   }, [userData, selectedStudentYear]);
-  // -----------------------------------------------------------------
 
   const {
     examsList, setExamsList, reportsList, questionsEditorId, setQuestionsEditorId,
@@ -75,32 +81,21 @@ export default function AdminPage() {
     handleOptionTextChange, saveOptionText, handleUploadQuestionImage,
     handleSetMainCorrect, handleToggleAppeal, handleToggleCancel,
     getQuestionStatusColor, handleResolveReport,
-
-    handleClozeCorrectIndexChange,
-    handleAddOptionToCloze,
-    handleRemoveOptionFromCloze,
-    handleClozeOptionTextChange,
-    saveClozeOptionText,
-    handleToggleClozeAppeal,
-    handleToggleVerify,
+    handleClozeCorrectIndexChange, handleAddOptionToCloze,
+    handleRemoveOptionFromCloze, handleClozeOptionTextChange,
+    saveClozeOptionText, handleToggleClozeAppeal, handleToggleVerify,
     handleDeleteAiExplanation,
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
-    coursesList, newCourseName, setNewCourseName,
-    editingCourseOldData, setEditingCourseOldData,
-    editCourseName, setEditCourseName,
-    editCourseYear, setEditCourseYear,
-    editCourseSemester, setEditCourseSemester,
-    handleAddCourse, startEditingCourse, handleUpdateCourse,
-    handleDeleteCourse
+    coursesList, newCourseName, setNewCourseName, editingCourseOldData, setEditingCourseOldData,
+    editCourseName, setEditCourseName, editCourseYear, setEditCourseYear, editCourseSemester, setEditCourseSemester,
+    handleAddCourse, startEditingCourse, handleUpdateCourse, handleDeleteCourse
   } = useCoursesLogic(canEditYear, examsList, setStatus, selectedStudentYear, selectedSemester);
 
   const {
-    examYear, setExamYear, examMoed, setExamMoed,
-    file, setFile, appendicesFile, setAppendicesFile,
-    parsingMode, setParsingMode, bulkFiles, setBulkFiles,
-    debugLog, setDebugLog, handleUploadExam, handleBulkUpload
+    examYear, setExamYear, examMoed, setExamMoed, file, setFile, appendicesFile, setAppendicesFile,
+    parsingMode, setParsingMode, bulkFiles, setBulkFiles, debugLog, setDebugLog, handleUploadExam, handleBulkUpload
   } = useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus);
 
   const handleNavigateToReportedQuestion = (examId) => {
@@ -121,12 +116,10 @@ export default function AdminPage() {
       return location.pathname.includes(`/admin/${path}`);
   };
 
-  // משתני תצוגה
   const availableCourses = coursesList[selectedStudentYear]?.[selectedSemester] ? Object.entries(coursesList[selectedStudentYear][selectedSemester]) : [];
   const filteredExamsForEdit = selectedCourseId ? examsList.filter(exam => exam.courseId === selectedCourseId) : [];
   const filteredQuestions = showMissingImagesOnly ? examQuestions.filter(q => q.imageNeeded && !q.hasImage) : examQuestions;
 
-  // רינדור המסכים
   if (authLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">בודק הרשאות...</div>;
 
   if (!user) {
@@ -139,7 +132,7 @@ export default function AdminPage() {
             <svg width="24" height="24" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
             התחבר עם Google
           </button>
-          <div className="mt-6 text-center border-t pt-6"><button onClick={() => window.location.href = '/'} className="text-slate-400 font-bold text-sm hover:text-slate-600 transition">חזור לאתר הראשי</button></div>
+          <div className="mt-6 text-center border-t pt-6"><button onClick={() => navigate(location.state?.returnTo || '/')} className="text-slate-400 font-bold text-sm hover:text-slate-600 transition">חזור לאתר הראשי</button></div>
         </div>
       </div>
     );
@@ -153,7 +146,7 @@ export default function AdminPage() {
         <p className="text-slate-500 max-w-md">שלום <b>{user.email}</b>,<br />חשבונך נוצר בהצלחה!<br />כעת עליך להמתין שמנהל ראשי יאשר את הרשאותיך.</p>
         <div className="flex gap-4 mt-4">
           <button onClick={handleLogout} className="text-slate-500 font-bold border border-slate-300 px-4 py-2 rounded-lg hover:bg-white transition">התנתק</button>
-          <button onClick={() => window.location.href = '/'} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition">חזרה לאתר</button>
+          <button onClick={() => navigate(location.state?.returnTo || '/')} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition">חזרה לאתר</button>
         </div>
       </div>
     );
@@ -161,7 +154,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6" dir="rtl">
-      {/* חלון קופץ - עריכת קורס */}
       {editingCourseOldData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full">
@@ -180,7 +172,16 @@ export default function AdminPage() {
       )}
 
       <div className="max-w-2xl mx-auto mb-6 flex justify-between items-center">
-        <button onClick={() => window.location.href = '/'} className="text-slate-500 font-bold hover:text-blue-600 transition">חזור לאתר</button>
+        {/* התיקון הסופי ששובר את הלופ בחזרה לאתר */}
+        <button 
+          onClick={() => {
+            const returnUrl = sessionStorage.getItem('lastAppUrl') || '/';
+            navigate(returnUrl, { replace: true });
+          }} 
+          className="text-slate-500 font-bold hover:text-blue-600 transition"
+        >
+          חזור לאתר
+        </button>
         <div className="flex items-center gap-3">
           {userData?.role === 'super_admin' && <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Super Admin</span>}
           {userData?.role === 'editor' && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">עורך {userData.allowed_years ? Object.keys(userData.allowed_years).join(', ') : ''}</span>}
@@ -192,7 +193,6 @@ export default function AdminPage() {
       <div className="p-8 max-w-2xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-100">
         <h2 className="text-3xl font-black mb-6 text-slate-800 text-center">ממשק ניהול</h2>
 
-        {/* --- שורת הטאבים --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
           <button onClick={() => navigate('/admin/upload')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
           <button onClick={() => navigate('/admin/bulk')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button>
@@ -200,11 +200,16 @@ export default function AdminPage() {
           <button onClick={() => navigate('/admin/manage_courses')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
           <button onClick={() => navigate('/admin/reports')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}><UsersIcon /> משתמשים</button>}
-          {userData?.role === 'super_admin' && (<button onClick={() => navigate('/admin/recycle_bin')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>)}
-          {userData?.role === 'super_admin' && (<button onClick={() => navigate('/admin/announcement')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>)}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
+<<<<<<< HEAD
+=======
+          
+          {/* הטאב החדש של יומן הבקרה (רק ל-super_admin) */}
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs')} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white shadow text-sky-600' : 'text-slate-500'}`}><EyeIcon /> בקרת עורכים</button>}
         </div>
 
-        {/* --- אזור הראוטינג של הטאבים --- */}
         <Routes>
           <Route path="upload" element={
             <UploadTab
@@ -334,7 +339,6 @@ export default function AdminPage() {
             />
           } />
 
-          {/* נתיב מוגן - רק סופר אדמין */}
           <Route path="users" element={
              userData?.role === 'super_admin' ? (
                 <UsersTab
@@ -350,7 +354,6 @@ export default function AdminPage() {
              )
           } />
 
-          {/* נתיב מוגן - רק סופר אדמין */}
         <Route path="recycle_bin" element={
             userData?.role === 'super_admin' ? (
             <RecycleBinTab />
@@ -359,22 +362,29 @@ export default function AdminPage() {
             )
           } />
 
-          {/* נתיב מוגן - מודעות - רק סופר אדמין */}
-<Route path="announcement" element={
-    userData?.role === 'super_admin' ? (
-        <AnnouncementAdminTab />
-    ) : (
-        <Navigate to="/admin/upload" replace />
-    )
-} />
+        <Route path="announcement" element={
+            userData?.role === 'super_admin' ? (
+                <AnnouncementAdminTab />
+            ) : (
+                <Navigate to="/admin/upload" replace />
+            )
+        } />
 
-          {/* ניתוב ברירת מחדל אם מגיעים רק ל- /admin */}
+<<<<<<< HEAD
+=======
+        {/* הראוטינג החדש ליומן הבקרה */}
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
+        <Route path="audit_logs" element={
+            userData?.role === 'super_admin' ? (
+                <AuditLogsTab />
+            ) : (
+                <Navigate to="/admin/upload" replace />
+            )
+        } />
+
           <Route path="/" element={<Navigate to="upload" replace />} />
-          
-          {/* טיפול בכתובות לא תקינות באדמין */}
           <Route path="*" element={<Navigate to="upload" replace />} />
         </Routes>
-
       </div>
     </div>
   );

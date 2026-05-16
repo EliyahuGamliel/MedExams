@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { db } from '../firebase';
 import { ref, push, set } from "firebase/database";
 import toast from 'react-hot-toast';
-import ExplanationBox from './home/ExplanationBox'; // הייבוא של קופסת ההסבר החדשה
+import ExplanationBox from './home/ExplanationBox'; 
 
 const BookmarkIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>;
 const EyeOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>;
@@ -35,6 +35,7 @@ const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height=
 export default function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId, isFlagged, onToggleFlag, isUserExcluded, onToggleUserExclude }) {
   
   // הגנה ראשונית - אם אין שאלה לא מרנדרים
+>>>>>>> 571221c2446204293016196ae4c2258bed8cf3da
   if (!question) return null;
 
   // זיהוי אם השאלה היא מרובת בחירות
@@ -65,6 +66,17 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
   });
   const [clozeWrongAttempts, setClozeWrongAttempts] = useState({}); 
 
+  // --- תיקון שורש לבעיית האיפוס: האזנה ישירה מהעמוד הראשי ---
+  useEffect(() => {
+      if (resetTick > 0) {
+          setSelectedOptionId(null);
+          setTestSelections([]);
+          setPracticeSelections([]);
+          setClozeSelections({});
+          setClozeWrongAttempts({});
+      }
+  }, [resetTick]);
+
   // שמירה אוטומטית של בחירות השאלה
   useEffect(() => {
       localStorage.setItem(`${qStorageKey}_single`, JSON.stringify(selectedOptionId));
@@ -80,17 +92,13 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
   // --- הכנת נתונים חכמה ---
   const shuffledOptions = useMemo(() => {
-    // דילוג על הכנת אופציות לשאלות Cloze ולשאלות פתוחות
     if (question.type === 'cloze' || question.type === 'open_ended') return null;
 
-    // הגנה על מערך האופציות
     const optionsSafe = question.options || [];
-
     const appeals = question.appealedIndexes || [];
     const isCanceled = question.isCanceled === true;
 
     const optionsWithData = optionsSafe.map((opt, idx) => {
-      // בדיקה מותאמת אם זה מערך או יחיד
       const isMainCorrect = isMultiSelect 
           ? question.correctIndex.includes(idx) 
           : idx === question.correctIndex;
@@ -121,10 +129,13 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
     });
   }, [question]);
 
-// איפוס בחירות במעבר שאלה (אבל לא במקרה של רענון דף כשיש נתונים שמורים)
+  // איפוס בחירות במעבר שאלה (אבל לא במקרה של רענון דף כשיש נתונים שמורים)
   useEffect(() => {
-    // בודק אם זו טעינה ראשונית שיש לה כבר נתונים בזיכרון. אם כן, מדלג על האיפוס.
-    const hasSavedData = localStorage.getItem(`${qStorageKey}_single`) || localStorage.getItem(`${qStorageKey}_multi`);
+    // תיקון נוסף: בודק גם את השמירות של מצב תרגול וקלוז כדי לא לאבד נתונים ברענון דף!
+    const hasSavedData = localStorage.getItem(`${qStorageKey}_single`) || 
+                         localStorage.getItem(`${qStorageKey}_multi`) ||
+                         localStorage.getItem(`${qStorageKey}_prac`) ||
+                         localStorage.getItem(`${qStorageKey}_cloze`);
     
     if (!hasSavedData) {
         setSelectedOptionId(null);
@@ -143,7 +154,7 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
             onAnswer(index, null);
         }
     }
-  }, [question, mode, question.isCanceled, isUserExcluded]);
+  }, [question, mode, question.isCanceled, isUserExcluded, qStorageKey, onAnswer, index]); // הוספת התלויות כדי למנוע אזהרות React
 
   // --- חישוב סטטוס להשלמה (Cloze) ---
   const calculateClozeStatus = (currentSelections) => {
@@ -177,11 +188,10 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
   const clozeState = calculateClozeStatus(clozeSelections);
 
- // --- לוגיקה לאמריקאיות (כולל התיקון לנכונות חלקית ולערעורים) ---
+  // --- לוגיקה לאמריקאיות ---
   const handleSelectStandard = (optionId) => {
     if (mode === 'test' && isSubmitted) return;
 
-    // פונקציית עזר לעדכון בחירה מרובה (טוגל)
     const toggleSelection = (prevList) => {
         if (prevList.includes(optionId)) {
             return prevList.filter(id => id !== optionId);
@@ -190,57 +200,42 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         }
     };
 
-    // שליפת מערך הערעורים (אם קיים)
     const appeals = question.appealedIndexes || [];
 
     if (mode === 'practice') {
-       // במצב תרגול - תמיד מאפשרים בחירה מרובה (לבדיקה עצמית)
        setPracticeSelections(prev => toggleSelection(prev));
     } else {
-       // --- מצב מבחן (Test) ---
        if (isMultiSelect) {
-           // אם זו שאלה מרובת בחירות
            setTestSelections(prev => {
                const newList = toggleSelection(prev);
-               
-               // חישוב הסטטוס לשליחה ל-HomePage
                let status = null;
                if (newList.length > 0) {
                    if (question.isCanceled) {
                        status = 'perfect';
                    } else {
                        const correctArr = Array.isArray(question.correctIndex) ? question.correctIndex : [question.correctIndex];
-                       // מאגר כל התשובות הלגיטימיות (מקוריות + ערעורים)
                        const allValidOptions = [...correctArr, ...appeals];
-                       
                        const isExactOriginal = isArrayEqual(newList, correctArr);
-                       // מוודא שכל מה שנבחר הוא חוקי (מקורי או ערעור), והכמות תואמת לכמות הנדרשת
                        const isAllValidAndCorrectLength = newList.every(val => allValidOptions.includes(val)) && newList.length === correctArr.length;
                        
                        if (isExactOriginal || isAllValidAndCorrectLength) {
-                           // 1. הכל נכון ומדויק
                            status = 'perfect'; 
                        } else if (newList.every(val => allValidOptions.includes(val))) {
-                           // 2. חלקי (כל מה שנבחר נכון או התקבל בערעור, אבל חסרות תשובות)
                            status = 'partial';
                        } else {
-                           // 3. שגוי (נבחרה לפחות תשובה אחת לא נכונה שאינה בערעור)
                            status = 'wrong';
                        }
                    }
                }
-               
                if (onAnswer) onAnswer(index, status);
                return newList;
            });
        } else {
-           // אם זו שאלה רגילה (Radio)
            if (selectedOptionId === optionId) {
               setSelectedOptionId(null);
               if (onAnswer) onAnswer(index, question.isCanceled ? 'perfect' : null);
            } else {
               setSelectedOptionId(optionId);
-              // התיקון: התשובה נכונה אם היא האינדקס המקורי, או שהיא נמצאת במערך הערעורים, או שהשאלה בוטלה
               const isCorrect = (optionId === question.correctIndex) || appeals.includes(optionId) || question.isCanceled;
               if (onAnswer) onAnswer(index, isCorrect ? 'perfect' : 'wrong');
            }
@@ -308,7 +303,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
           const match = part.match(/\{\{(\d+)\}\}/);
           if (match) {
             const blankIndex = parseInt(match[1]);
-            // הגנה נוספת
             if (!shuffledClozeOptions || !shuffledClozeOptions[blankIndex]) return <span key={i} className="text-red-400 font-bold">[חסר]</span>;
 
             const options = shuffledClozeOptions[blankIndex];
@@ -411,19 +405,17 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
          <span className="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded-full">
           שאלה {index + 1}
         </span>
-        {/* כפתור סימון השאלה לניווט */}
             <button 
-                onClick={onToggleFlag}
+                onClick={() => onToggleFlag(index)}
                 className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 border border-red-200' : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-red-500 border border-transparent'}`}
                 title="סמן שאלה זו כדי לחזור אליה מאוחר יותר"
             >
                 <BookmarkIcon filled={isFlagged} />
                 {isFlagged ? 'בטל סימון' : 'סמן שאלה'}
             </button>
-    {/* יציג את כפתור ההחרגה רק במצב מבחן */}
         {mode === 'test' && (
             <button 
-                onClick={onToggleUserExclude}
+                onClick={() => onToggleUserExclude(index)}
                 className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 border border-purple-200' : 'text-slate-400 bg-slate-50 hover:bg-purple-50 hover:text-purple-500 border border-transparent'}`}
                 title="התעלם משאלה זו בחישוב הציון"
             >
@@ -437,7 +429,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         </button>
       </div>
 
-      {/* הכותרת לשאלות אמריקאיות ופתוחות - עכשיו עם תמיכה בירידות שורה */}
       {(question.type === 'multiple_choice' || question.type === 'open_ended') && (
          <h3 className={`text-xl font-bold mb-4 whitespace-pre-wrap leading-relaxed ${question.isCanceled ? 'text-slate-500' : 'text-slate-800'}`}>
            {question.text}
@@ -445,7 +436,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
          </h3>
       )}
 
-      {/* --- תמונות --- */}
       {question.hasImage && imageUrl && (
           <div className="mb-6 rounded-xl overflow-hidden border border-slate-200 bg-white flex justify-center">
             <img 
@@ -462,7 +452,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         </div>
       )}
 
-      {/* --- אזור הרינדור --- */}
       {question.type === 'open_ended' ? (
         <div className="mt-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-center">
           <div className="flex justify-center mb-3 text-blue-500">
@@ -496,7 +485,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
       ) : (
         <div className="space-y-2">
           {shuffledOptions?.map((option) => {
-             // בדיקה: האם האופציה נבחרה?
              const isSelected = mode === 'practice' 
                 ? practiceSelections.includes(option.id) 
                 : (isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id);
@@ -565,7 +553,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
              )
           })}
           
-          {/* הודעה אם לא נענה */}
           {mode === 'test' && isSubmitted && selectedOptionId === null && testSelections.length === 0 && !question.isCanceled && (
               <div className="mt-4 p-3 bg-slate-100 text-slate-500 rounded-xl text-center font-bold text-sm border border-slate-200">
                   ⚪ השאלה לא נענתה
@@ -574,8 +561,6 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
         </div>
       )}
 
-      {/* --- קופסת ההסבר (AI) --- */}
-      {/* מוצגת רק אם זה מצב תרגול או אחרי שהמבחן הוגש, כדי למנוע הצצה */}
       {(mode === 'practice' || (mode === 'test' && isSubmitted)) && (
           <ExplanationBox 
               examId={examId}
@@ -587,4 +572,5 @@ export default function QuestionCard({ question, index, mode, onAnswer, isSubmit
 
     </div>
   );
-}
+})
+export default QuestionCard;
