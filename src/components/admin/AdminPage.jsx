@@ -166,14 +166,15 @@ export default function AdminPage() {
       <div className="max-w-2xl mx-auto mb-6 flex justify-between items-center">
         {/* --- התיקון שלנו לכפתור חזור לאתר! --- */}
         <button 
-          onClick={() => {
-            const returnUrl = sessionStorage.getItem('lastAppUrl') || '/';
-            navigate(returnUrl);
-          }} 
-          className="text-slate-500 font-bold hover:text-blue-600 transition"
-        >
-          חזור לאתר
-        </button>
+  onClick={() => {
+    const returnUrl = sessionStorage.getItem('lastAppUrl') || '/';
+    // הוספת ה- replace: true היא מה ששובר את הלופ!
+    navigate(returnUrl, { replace: true }); 
+  }} 
+  className="text-slate-500 font-bold hover:text-blue-600 transition"
+>
+  חזור לאתר
+</button>
         <div className="flex items-center gap-3">
           {userData?.role === 'super_admin' && <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Super Admin</span>}
           {userData?.role === 'editor' && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">עורך {userData.allowed_years ? Object.keys(userData.allowed_years).join(', ') : ''}</span>}

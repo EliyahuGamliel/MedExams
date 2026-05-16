@@ -1,11 +1,14 @@
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-export default function HomeSelection({ coursesStructure, examsList }) {
-  const [searchParams, setSearchParams] = useSearchParams();
+const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
+
+export default function HomeSelection({ coursesStructure, examsList, homeYear, setHomeYear, homeSemester, setHomeSemester }) {
   const navigate = useNavigate();
-  
-  const selectedYear = searchParams.get('year');
-  const selectedSemester = searchParams.get('semester');
+
+  const handleResetSelection = () => {
+    setHomeYear("");
+    setHomeSemester("");
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -15,19 +18,19 @@ export default function HomeSelection({ coursesStructure, examsList }) {
     return "לילה טוב! 🌙";
   };
 
-  const relevantCourses = selectedYear && selectedSemester && coursesStructure[selectedYear] && coursesStructure[selectedYear][selectedSemester]
-    ? Object.values(coursesStructure[selectedYear][selectedSemester]).sort((a, b) => a.name.localeCompare(b.name, 'he'))
+  const relevantCourses = homeYear && homeSemester && coursesStructure[homeYear] && coursesStructure[homeYear][homeSemester]
+    ? Object.values(coursesStructure[homeYear][homeSemester]).sort((a, b) => a.name.localeCompare(b.name, 'he'))
     : [];
 
   return (
     <>
-      {!selectedYear && (
+      {!homeYear && (
         <div className="animate-fade-in-up text-center">
           <h2 className="text-3xl font-bold text-slate-800 mb-2">{getGreeting()}</h2>
           <p className="text-slate-500 mb-8">יש לבחור שנת לימודים כדי להתחיל</p>
           <div className="grid grid-cols-2 gap-4">
             {["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"].map(year => (
-              <button key={year} onClick={() => setSearchParams({ year })} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700">
+              <button key={year} onClick={() => setHomeYear(year)} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700">
                 {year}
               </button>
             ))}
@@ -35,13 +38,13 @@ export default function HomeSelection({ coursesStructure, examsList }) {
         </div>
       )}
 
-      {selectedYear && !selectedSemester && (
+      {homeYear && !homeSemester && (
         <div className="animate-fade-in-up text-center">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">{selectedYear}</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">{homeYear}</h2>
           <p className="text-slate-500 mb-8">בחירת סמסטר</p>
           <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
             {["סמסטר א'", "סמסטר ב'"].map(sem => (
-              <button key={sem} onClick={() => setSearchParams({ year: selectedYear, semester: sem })} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:bg-blue-50 hover:border-blue-300 transition text-lg font-bold text-slate-700">
+              <button key={sem} onClick={() => setHomeSemester(sem)} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:bg-blue-50 hover:border-blue-300 transition text-lg font-bold text-slate-700">
                 {sem}
               </button>
             ))}
@@ -49,10 +52,18 @@ export default function HomeSelection({ coursesStructure, examsList }) {
         </div>
       )}
 
-      {selectedYear && selectedSemester && (
+      {homeYear && homeSemester && (
         <div className="animate-fade-in-up">
            <div className="text-center mb-8">
-             <span className="text-xs font-bold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">{selectedYear} / {selectedSemester}</span>
+             <button 
+                onClick={handleResetSelection}
+                title="לחץ כדי לשנות שנה וסמסטר"
+                className="inline-flex items-center gap-2 text-xs font-bold bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full hover:bg-blue-200 hover:shadow-md transition cursor-pointer"
+             >
+                <span>{homeYear} / {homeSemester}</span>
+                <EditIcon />
+             </button>
+             
              <h2 className="text-2xl font-bold text-slate-800 mt-4">בחר קורס</h2>
            </div>
            

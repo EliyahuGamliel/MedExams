@@ -3,7 +3,6 @@ import { db } from '../../firebase';
 import { ref, onValue } from "firebase/database";
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
-// הייבואים החדשים שלנו
 import { useAuth } from '../../context/AuthContext';
 import { loginWithGoogle, logoutUser } from '../../services/authService';
 
@@ -24,9 +23,22 @@ export default function HomePage() {
   const [examsList, setExamsList] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // === הזיכרון של דף הבית עבר לכאן! ===
+  const [homeYear, setHomeYear] = useState(() => sessionStorage.getItem('savedHomeYear') || "");
+  const [homeSemester, setHomeSemester] = useState(() => sessionStorage.getItem('savedHomeSemester') || "");
+
   const { user, userData, loading: authLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // סנכרון הזיכרון המקומי
+  useEffect(() => {
+    if (homeYear) sessionStorage.setItem('savedHomeYear', homeYear);
+    else sessionStorage.removeItem('savedHomeYear');
+    
+    if (homeSemester) sessionStorage.setItem('savedHomeSemester', homeSemester);
+    else sessionStorage.removeItem('savedHomeSemester');
+  }, [homeYear, homeSemester]);
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -47,7 +59,28 @@ export default function HomePage() {
   }, []);
 
   const isExamMode = location.pathname.includes('/exam/');
-  const showBackBtn = location.pathname !== '/' || location.pathname !== '';
+  const isHome = location.pathname === '/';
+  
+  // התיקון הגדול: מציגים כפתורי ניווט אם אנחנו *לא* בבית, או אם אנחנו בבית אבל נבחרה שנה!
+  const showBackBtn = !isHome || homeYear !== "";
+
+  // מנגנון חזור משולב
+  const handleGoBack = () => {
+      if (isHome) {
+          // חזרה בתוך מסך הבית (מבטלים סמסטר, ואם אין אז שנה)
+          if (homeSemester) setHomeSemester("");
+          else if (homeYear) setHomeYear("");
+      } else {
+          // חזרה רגילה בהיסטוריה מדפים אחרים
+          navigate(-1);
+      }
+  };
+
+  const handleGoHome = () => {
+      setHomeYear("");
+      setHomeSemester("");
+      navigate('/');
+  };
 
   if (loading || authLoading) return <div className="min-h-screen flex items-center justify-center text-blue-600 font-bold text-xl bg-slate-50">טוען מערכת...</div>;
 
@@ -57,18 +90,18 @@ export default function HomePage() {
         
         <div className="w-1/3 flex items-center gap-2">
           {showBackBtn && (
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 hover:text-blue-600 font-bold text-sm transition">
+            <button onClick={handleGoBack} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 hover:text-blue-600 font-bold text-sm transition">
               <BackIcon /> <span className="hidden sm:inline">חזור</span>
             </button>
           )}
           {showBackBtn && (
-            <button onClick={() => navigate('/')} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition" title="ראשי">
+            <button onClick={handleGoHome} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition" title="ראשי">
               <HomeIcon />
             </button>
           )}
         </div>
         
-        <h1 className="text-xl font-black text-slate-800 tracking-tight cursor-pointer w-1/3 text-center" onClick={() => navigate('/')}>
+        <h1 className="text-xl font-black text-slate-800 tracking-tight cursor-pointer w-1/3 text-center" onClick={handleGoHome}>
           Exa<span className="text-blue-600">Med</span>
         </h1>
         
@@ -93,7 +126,6 @@ export default function HomePage() {
                         {isAdmin && (
                            <button 
                                onClick={() => { 
-                                   // הוספנו את פקודת ההחלפה שמונעת את הלופ!
                                    sessionStorage.setItem('lastAppUrl', location.pathname + location.search);
                                    navigate('/admin', { replace: true }); 
                                    setShowUserMenu(false); 
@@ -119,12 +151,12 @@ export default function HomePage() {
               </button>
           )}
         </div>
-
       </header>
 
       <main className="max-w-3xl mx-auto px-6 mt-8 flex-grow w-full">
         <Routes>
-          <Route path="/" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} />} />
+          {/* הזרקנו לפה את השנה והסמסטר כפרמטרים */}
+          <Route path="/" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
           <Route path="/course/:courseName" element={<CourseExams examsList={examsList} />} />
           <Route path="/exam/:examId/:mode" element={<ExamTaking examsList={examsList} />} />
           <Route path="/profile" element={<UserProfile />} />
@@ -147,7 +179,6 @@ export default function HomePage() {
             </span>
             
             <button onClick={() => {
-                    // הוספנו את פקודת ההחלפה שמונעת את הלופ!
                     sessionStorage.setItem('lastAppUrl', location.pathname + location.search);
                     navigate('/admin', { replace: true });
                 }} className="text-slate-300 hover:text-blue-500 transition-colors flex items-center justify-center gap-1 mx-auto mt-0.5 text-[10px] font-bold opacity-50 hover:opacity-100">
