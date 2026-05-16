@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage"; // <--- 1. הוסף את הייבוא הזה
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_KEY, //
@@ -17,3 +18,5 @@ console.log(firebaseConfig);
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
 export const storage = getStorage(app); // <--- 2. הוסף את הייצוא הזה
+export const auth = getAuth(app); 
+export const googleProvider = new GoogleAuthProvider();
