@@ -10,6 +10,8 @@ const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
 const RefreshIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+// אייקון חדש להורדת ה-PDF
+const PdfIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
 
 export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
@@ -23,7 +25,6 @@ export default function ExamTaking({ examsList }) {
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [examImages, setExamImages] = useState({}); 
 
-  // הסטייט הקריטי שמודיע לכרטיסיות להתאפס!
   const [resetTick, setResetTick] = useState(0);
 
   const storageKey = `exam_state_${user ? user.uid : 'guest'}_${examId}_${mode}`;
@@ -49,7 +50,6 @@ export default function ExamTaking({ examsList }) {
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
   });
 
-  // משיכת גיבוי מהענן
   useEffect(() => {
       if (!user || !selectedExam) return;
       const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
@@ -65,7 +65,6 @@ export default function ExamTaking({ examsList }) {
       }).catch(err => console.error("שגיאה במשיכת מצב המבחן מהענן:", err));
   }, [user, examId, mode, selectedExam]);
 
-  // שמירה משולבת
   useEffect(() => {
       localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
       localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
@@ -89,10 +88,8 @@ export default function ExamTaking({ examsList }) {
       }
   }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey, user, examId, mode]);
 
-  // פונקציית האיפוס החדשה והאגרסיבית!
   const handleResetExam = async () => {
       if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
-          
           if (user) {
               try {
                   const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
@@ -102,7 +99,6 @@ export default function ExamTaking({ examsList }) {
               }
           }
 
-          // מחיקת כל זכר למבחן הזה מהזיכרון הלוקאלי
           Object.keys(localStorage).forEach(key => {
               if (key.includes(examId)) {
                   localStorage.removeItem(key);
@@ -114,8 +110,6 @@ export default function ExamTaking({ examsList }) {
           setUserExcludedQuestions({});
           setFlaggedQuestions({});
           setModalStats({ total: 0, perfect: 0, mistakes: 0 });
-
-          // הטריגר שמעדכן את המסך באותו רגע
           setResetTick(prev => prev + 1);
 
           toast.success("המבחן אופס והלוח נקי! בהצלחה 🚀");
@@ -129,7 +123,6 @@ export default function ExamTaking({ examsList }) {
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
-  // הפונקציות עכשיו יציבות ולא גורמות לרינדור מחדש של כל המבחן!
   const toggleUserExclude = useCallback((index) => {
       setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
   }, []);
@@ -188,10 +181,8 @@ export default function ExamTaking({ examsList }) {
     }
   };
 
-// --- התיקון שעוצר את הלולאה האינסופית ומשחרר את המערכת! ---
   const handleAnswerUpdate = useCallback((questionIndex, status) => {
       setUserAnswers(prev => {
-          // הקסם כאן: אם הסטטוס של התשובה לא באמת השתנה, פשוט תעצור ואל תרנדר מחדש!
           if (prev[questionIndex] === status) return prev;
           return { ...prev, [questionIndex]: status };
       });
@@ -213,16 +204,13 @@ export default function ExamTaking({ examsList }) {
 
       if (user && finalScore === null) { 
           try {
-              // שינוי קריטי: הנתיב עכשיו נגמר ב-selectedExam.id!
               const resultRef = ref(db, `user_results/${user.uid}/${selectedExam.id}`);
-              
-              // אנחנו משתמשים ב-set כדי לדרוס את הקובץ הקיים (אם יש כזה) במקום push
               set(resultRef, {
                   examId: selectedExam.id,
                   examName: selectedExam.title, 
                   courseName: selectedExam.course,
                   score: calculatedScore,
-                  date: new Date().toISOString(), // תאריך של ההגשה האחרונה
+                  date: new Date().toISOString(),
                   totalQuestions: scorableQuestions.length,
                   correctAnswers: perfectCount
               });
@@ -279,7 +267,7 @@ export default function ExamTaking({ examsList }) {
     <div className="animate-fade-in-up pb-10">
       
       {showAppendices && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in print:hidden">
            <div className="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden">
              <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
                <h3 className="font-bold text-slate-800 flex items-center gap-2"><PaperclipIcon /> נספחים למבחן</h3>
@@ -294,15 +282,16 @@ export default function ExamTaking({ examsList }) {
 
       {!loadingQuestions && (
         <>
-           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105">
+           {/* מוסתר בהדפסה print:hidden */}
+           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105 print:hidden">
              {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
            </button>
            
            {isSidebarOpen && (
-             <div onClick={() => setIsSidebarOpen(false)} className="fixed top-16 inset-x-0 bottom-0 bg-black/20 z-[40] backdrop-blur-sm transition-opacity" />
+             <div onClick={() => setIsSidebarOpen(false)} className="fixed top-16 inset-x-0 bottom-0 bg-black/20 z-[40] backdrop-blur-sm transition-opacity print:hidden" />
            )}
            
-           <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+           <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col print:hidden ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <h3 className="font-bold text-slate-800 text-lg">ניווט מהיר</h3>
              </div>
@@ -329,12 +318,19 @@ export default function ExamTaking({ examsList }) {
         </>
       )}
 
-      <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm flex flex-wrap gap-2 justify-between items-center border-b border-slate-100 mb-8">
+      {/* בהדפסה: ביטול סטיקי, צל ורקע, הפיכה לסטטי */}
+      <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm flex flex-wrap gap-2 justify-between items-center border-b border-slate-100 mb-8 print:static print:bg-transparent print:shadow-none print:border-b-2 print:border-black print:pb-4 print:mb-12">
         <div>
-          <span className="font-bold text-slate-700 block">{selectedExam.course}</span>
-          <span className="text-xs text-slate-400">{selectedExam.title}</span>
+          <span className="font-bold text-slate-700 block print:text-black print:text-xl">{selectedExam.course}</span>
+          <span className="text-xs text-slate-400 print:text-black print:text-base">{selectedExam.title}</span>
         </div>
-        <div className="flex items-center gap-2">
+        {/* אזור הכפתורים מוסתר בהדפסה */}
+        <div className="flex items-center gap-2 print:hidden">
+          {/* כפתור ה-PDF החדש! */}
+          <button onClick={() => window.print()} className="bg-slate-800 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
+             <PdfIcon /> ייצא ל-PDF
+          </button>
+
           {selectedExam.hasAppendices && <button onClick={handleOpenAppendices} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-200 transition flex items-center gap-1"><PaperclipIcon /> נספחים</button>}
           
           <button onClick={handleResetExam} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 border border-red-100" title="מחק את כל התשובות והתחל מחדש">
@@ -345,7 +341,7 @@ export default function ExamTaking({ examsList }) {
       </div>
 
       {selectedExam.isVerified === false && (
-        <div className="bg-orange-50 border-2 border-orange-200 text-orange-800 p-4 rounded-xl mb-6 text-sm flex items-start gap-4 shadow-sm animate-fade-in">
+        <div className="bg-orange-50 border-2 border-orange-200 text-orange-800 p-4 rounded-xl mb-6 text-sm flex items-start gap-4 shadow-sm animate-fade-in print:hidden">
            <span className="text-3xl shrink-0">🤖</span>
            <div>
               <strong className="block mb-1 text-base text-orange-900">מבחן זה פוענח אוטומטית על ידי בינה מלאכותית (AI) וטרם עבר הגהה.</strong>
@@ -354,14 +350,14 @@ export default function ExamTaking({ examsList }) {
         </div>
       )}
 
-      <div className="space-y-8">
+      <div className="space-y-8 print:space-y-4">
         {loadingQuestions ? (
-            <div className="text-center py-20"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 font-bold">טוען שאלות...</div></div>
+            <div className="text-center py-20 print:hidden"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 font-bold">טוען שאלות...</div></div>
         ) : examQuestionsData.length === 0 ? (
             <div className="text-center py-10 text-slate-400">לא נמצאו שאלות במבחן זה.</div>
         ) : (
             examQuestionsData.map((q, i) => (
-                <div key={`${i}-${resetTick}`} id={`question-${i}`} className="scroll-mt-36">
+                <div key={`${i}-${resetTick}`} id={`question-${i}`} className="scroll-mt-36 print:break-inside-avoid print:pt-4">
                   <QuestionCard 
                     question={q} 
                     index={i} 
@@ -371,10 +367,9 @@ export default function ExamTaking({ examsList }) {
                     examId={selectedExam.id} 
                     imageUrl={q.imageUrl || examImages[i]} 
                     isFlagged={!!flaggedQuestions[i]}
-onToggleFlag={toggleFlag}
-  onToggleUserExclude={toggleUserExclude}
-                      isUserExcluded={!!userExcludedQuestions[i]}
-
+                    onToggleFlag={toggleFlag}
+                    onToggleUserExclude={toggleUserExclude}
+                    isUserExcluded={!!userExcludedQuestions[i]}
                     resetTick={resetTick} 
                   />
                 </div>
@@ -382,16 +377,17 @@ onToggleFlag={toggleFlag}
         )}
       </div>
 
+      {/* כפתורי הסיום מוסתרים בהדפסה */}
       {!loadingQuestions && examQuestionsData.length > 0 && (
-        <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4">
-        {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 transition">הגש מבחן 🏆</button>}
-        {isSubmitted && <button onClick={() => setShowScoreModal(true)} className="bg-green-100 text-green-700 px-8 py-3 rounded-full font-bold">הצג שוב ציון 📊</button>}
-        <button onClick={handleReturnToCourse} className="text-slate-500 font-bold hover:text-slate-800 underline underline-offset-4">חזור לרשימת המבחנים</button>
+        <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4 print:hidden">
+          {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 transition">הגש מבחן 🏆</button>}
+          {isSubmitted && <button onClick={() => setShowScoreModal(true)} className="bg-green-100 text-green-700 px-8 py-3 rounded-full font-bold">הצג שוב ציון 📊</button>}
+          <button onClick={handleReturnToCourse} className="text-slate-500 font-bold hover:text-slate-800 underline underline-offset-4">חזור לרשימת המבחנים</button>
         </div>
       )}
 
       {showScoreModal && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in print:hidden">
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
             <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${isPass ? 'from-green-400 to-emerald-600' : 'from-red-400 to-rose-600'}`}></div>
             <div className="mt-4 mb-6"><div className="text-6xl mb-4">{finalScore >= 90 ? '🏆' : isPass ? '😎' : '😐'}</div><h2 className="text-3xl font-black text-slate-800">{finalScore >= 90 ? 'מדהים!' : isPass ? 'כל הכבוד!' : 'לא נורא...'}</h2></div>

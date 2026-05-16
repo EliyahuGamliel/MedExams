@@ -405,7 +405,7 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
         </span>
             <button 
                 onClick={() => onToggleFlag(index)}
-                className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 border border-red-200' : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-red-500 border border-transparent'}`}
+                className={`print:hidden flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 border border-red-200' : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-red-500 border border-transparent'}`}
                 title="סמן שאלה זו כדי לחזור אליה מאוחר יותר"
             >
                 <BookmarkIcon filled={isFlagged} />
@@ -414,7 +414,7 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
         {mode === 'test' && (
             <button 
                 onClick={() => onToggleUserExclude(index)}
-                className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 border border-purple-200' : 'text-slate-400 bg-slate-50 hover:bg-purple-50 hover:text-purple-500 border border-transparent'}`}
+                className={`print:hidden flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 border border-purple-200' : 'text-slate-400 bg-slate-50 hover:bg-purple-50 hover:text-purple-500 border border-transparent'}`}
                 title="התעלם משאלה זו בחישוב הציון"
             >
                 <EyeOffIcon />
@@ -422,7 +422,7 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
             </button>
         )}
          </div>
-        <button onClick={() => setIsReporting(true)} className="text-slate-400 hover:text-red-500 transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 hover:bg-red-50 px-2 py-1 rounded-lg">
+        <button onClick={() => setIsReporting(true)} className="text-slate-400 hover:text-red-500 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 hover:bg-red-50 px-2 py-1 rounded-lg">
            <FlagIcon /> דווח על טעות
         </button>
       </div>

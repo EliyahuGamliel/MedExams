@@ -169,7 +169,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, us
     };
 
     return (
-        <div className="mt-4 border-t border-slate-100 pt-3 animate-fade-in">
+        <div className="mt-4 print:hidden border-t border-slate-100 pt-3 animate-fade-in">
             <button 
                 onClick={handleToggle}
                 className={`flex items-center gap-2 text-sm font-bold transition-colors ${isOpen ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}

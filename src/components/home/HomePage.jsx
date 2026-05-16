@@ -86,7 +86,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans relative flex flex-col pb-20" dir="rtl">
-      <header className="sticky top-0 z-[100] bg-white/90 backdrop-blur border-b border-slate-100 p-4 flex justify-between items-center shadow-sm h-16 shrink-0">
+      <header className="sticky print:hidden top-0 z-[100] bg-white/90 backdrop-blur border-b border-slate-100 p-4 flex justify-between items-center shadow-sm h-16 shrink-0">
         
         <div className="w-1/3 flex items-center gap-2">
           {showBackBtn && (
@@ -102,7 +102,7 @@ export default function HomePage() {
         </div>
         
         <h1 className="text-xl font-black text-slate-800 tracking-tight cursor-pointer w-1/3 text-center" onClick={handleGoHome}>
-          Exa<span className="text-blue-600">Med</span>
+          Eliko<span className="text-blue-600">Med</span>
         </h1>
         
         <div className="w-1/3 flex justify-end">
