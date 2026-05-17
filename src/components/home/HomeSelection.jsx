@@ -21,13 +21,53 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
         <div className="animate-fade-in-up text-center">
           <h2 className="text-3xl font-bold text-slate-800 mb-2">{getGreeting()}</h2>
           <p className="text-slate-500 mb-8">יש לבחור שנת לימודים כדי להתחיל</p>
-          <div className="grid grid-cols-2 gap-4">
+          
+          {/* כפתורי בחירת השנים */}
+          <div className="grid grid-cols-2 gap-4 mb-12">
             {["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"].map(year => (
               <button key={year} onClick={() => setHomeYear(year)} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700">
                 {year}
               </button>
             ))}
           </div>
+
+          {/* =========================================
+              קיר הכבוד - בגרסה המהירה והנקייה
+             ========================================= */}
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 text-right relative overflow-hidden mt-8">
+            <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400"></div>
+            
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-3xl">👑</span>
+              <div>
+                <h3 className="text-lg font-black text-slate-800">קיר הכבוד</h3>
+                <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">
+                  תודה ענקית לכל הסטודנטים שהקדישו מזמנם לתרום לפיתוח האתר:
+                </p>
+              </div>
+            </div>
+
+            {/* רשימת השמות - פשוט תוסיף שמות למערך והם יסתדרו אוטומטית */}
+            <div className="flex flex-wrap gap-2 mt-4 pr-11">
+              {[
+                  "מישל ברלן", 
+                  "אופיר כץ", 
+                  "עלמה פרנק", 
+                  "שחר דמבו",
+                  "עמית פיין", 
+                  "זואי מזור", 
+                  "שליו אביב", 
+                  "אלישע קוך",
+                  "יובל דגן"
+              ].map((name, idx) => (
+                <span key={idx} className="bg-amber-50/50 border border-amber-200/60 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                  <span className="text-amber-400 text-[10px]">✨</span> {name}
+                </span>
+              ))}
+            </div>
+          </div>
+          {/* ========================================= */}
+
         </div>
       )}
 

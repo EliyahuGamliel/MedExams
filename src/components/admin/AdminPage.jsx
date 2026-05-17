@@ -33,7 +33,7 @@ export default function AdminPage() {
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
-  const examYearsList = Array.from({ length: 16 }, (_, i) => (2012 + i).toString());
+const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 + i}`);
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
@@ -77,6 +77,7 @@ export default function AdminPage() {
     handleRemoveOptionFromCloze, handleClozeOptionTextChange,
     saveClozeOptionText, handleToggleClozeAppeal, handleToggleVerify,
     handleDeleteAiExplanation,
+    handleUpdateExamYear
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
@@ -299,6 +300,8 @@ export default function AdminPage() {
               openQuestionsEditor={openQuestionsEditor}
               handleToggleVerify={handleToggleVerify}
               handleDeleteAiExplanation={handleDeleteAiExplanation}
+              handleUpdateExamYear={handleUpdateExamYear} // ה-prop החדש
+              examYearsList={examYearsList} // ה-prop החדש
             />
           } />
 

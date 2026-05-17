@@ -461,6 +461,48 @@ export function useExamsLogic(setStatus, canSeeReports) {
         }
     };
 
+    const handleUpdateExamYear = async (examId, newYear) => {
+        try {
+            // 1. מוצאים את המבחן הנוכחי כדי לדעת מה הכותרת והשנה הישנה שלו
+            const currentExam = examsList.find(e => e.id === examId);
+            if (!currentExam) return;
+
+            const oldYear = currentExam.examYear || "";
+            let newTitle = currentExam.title;
+
+            // 2. אם הכותרת מכילה את השנה הישנה, נחליף אותה בשנה החדשה
+            if (oldYear && newTitle.includes(oldYear)) {
+                newTitle = newTitle.replace(oldYear, newYear);
+            } else {
+                // רשת ביטחון: למקרה שהשנה הישנה כבר שונתה אבל הכותרת נתקעה על 4 ספרות (למשל 2025)
+                const yearRegex = /\b202[0-9]\b/; 
+                if (yearRegex.test(newTitle)) {
+                    newTitle = newTitle.replace(yearRegex, newYear);
+                }
+            }
+
+            // 3. מעדכנים ב-Firebase גם את המטא-דאטה וגם את הכותרת
+            await update(ref(db, `uploaded_exams/${examId}`), { 
+                examYear: newYear,
+                title: newTitle 
+            });
+            
+            // מנקים קאש כדי שדף הבית יתעדכן
+            sessionStorage.removeItem('cachedExams');
+            sessionStorage.removeItem('cacheTimeExams');
+
+            // 4. מעדכנים את המסך באותו רגע
+            setExamsList(prev => prev.map(e => e.id === examId ? { ...e, examYear: newYear, title: newTitle } : e));
+            
+            toast.success(`שנת המבחן והכותרת עודכנו ל-${newYear}! 📅`);
+        } catch (error) {
+            console.error("Error updating exam year:", error);
+            toast.error("שגיאה בעדכון שנת המבחן");
+        }
+    };
+
+
+
     return {
         examsList, setExamsList,
         reportsList,
@@ -483,6 +525,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         saveClozeOptionText,
         handleToggleClozeAppeal,
         handleToggleVerify,
+        handleUpdateExamYear,
         handleDeleteAiExplanation 
     };
 }

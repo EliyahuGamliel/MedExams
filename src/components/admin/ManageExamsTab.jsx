@@ -10,7 +10,6 @@ const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" heigh
 // קומפוננטת שורת הניהול להסברי AI
 // ==========================================
 const AiExplanationManager = ({ questionIndex, explanationData, onDelete }) => {
-    // מציג רק אם יש הסבר שמור לשאלה הזו
     if (!explanationData || !explanationData.text) return null;
   
     const { likes = 0, dislikes = 0 } = explanationData;
@@ -73,7 +72,11 @@ export default function ManageExamsTab({
     newAppendicesFile, setNewAppendicesFile,
     handleUpdateAppendices, openQuestionsEditor,
     
-    handleDeleteAiExplanation // משכנו את הפונקציה החדשה
+    handleDeleteAiExplanation,
+    
+    // Props חדשים לעריכת השנה
+    handleUpdateExamYear,
+    examYearsList
 }) {
 
     const allowedStudentYears = studentYears.filter(year => {
@@ -133,7 +136,6 @@ export default function ManageExamsTab({
                                                     saveClozeOptionText={saveClozeOptionText}
                                                     handleToggleClozeAppeal={handleToggleClozeAppeal}
                                                 />
-                                                {/* כאן מיקמנו את שורת הניהול החדשה מתחת לשאלה! */}
                                                 <AiExplanationManager 
                                                     questionIndex={realIndex} 
                                                     explanationData={q.explanationData} 
@@ -171,34 +173,77 @@ export default function ManageExamsTab({
                             if (!canEditThisExam) return null;
 
                             return (
-                                <div key={exam.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
-                                    <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-2 sm:gap-0">
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-                                            <div>
-                                                <span className="font-bold text-slate-800">{exam.title}</span>
-                                                <span className="text-xs text-slate-400 mr-2">({exam.questionCount || 0} שאלות)</span>
-                                            </div>
-                                            
-                                            <button 
-                                                onClick={() => handleToggleVerify(exam.id, exam.isVerified)}
-                                                className={`text-[10px] px-2 py-1 rounded-md font-bold transition-colors border shadow-sm ${exam.isVerified ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100'}`}
-                                                title="לחץ כדי לשנות סטטוס הגהה"
-                                            >
-                                                {exam.isVerified ? '✅ עבר הגהה' : '⚠️ ממתין להגהה'}
-                                            </button>
+                                <div key={exam.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md">
+                                    
+                                    {/* קומה 1: כותרת ומחיקה */}
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-slate-800 text-lg leading-tight">{exam.title}</span>
+                                            <span className="text-xs text-slate-400 font-bold mt-1">{exam.questionCount || 0} שאלות במאגר</span>
                                         </div>
-                                        <button onClick={() => handleDeleteExam(exam.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="מחק מבחן"><TrashIcon /></button>
+                                        <button 
+                                            onClick={() => handleDeleteExam(exam.id)} 
+                                            className="text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 transition-colors p-2 rounded-xl shrink-0" 
+                                            title="מחק מבחן"
+                                        >
+                                            <TrashIcon />
+                                        </button>
                                     </div>
-                                    <div className="flex gap-2 mt-2">
-                                        <button onClick={() => setEditingExamId(exam.id)} className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-100 transition flex items-center justify-center gap-1"><PaperclipIcon /> נספחים</button>
-                                        <button onClick={() => openQuestionsEditor(exam)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition flex items-center justify-center gap-1"><ImageIcon /> עריכת שאלות</button>
+                                    
+                                    {/* קומה 2: הגדרות (שנה וסטטוס AI) */}
+                                    <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        {/* בחירת שנה */}
+                                        {handleUpdateExamYear && examYearsList && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wide">שנת מבחן:</span>
+                                                <select
+                                                    value={exam.examYear || ""}
+                                                    onChange={(e) => handleUpdateExamYear(exam.id, e.target.value)}
+                                                    className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                                                >
+                                                    <option value="" disabled>בחר שנה...</option>
+                                                    {examYearsList.map(year => (
+                                                        <option key={year} value={year}>{year}</option>
+                                                    ))}
+                                                    {!examYearsList.includes(exam.examYear) && exam.examYear && (
+                                                        <option value={exam.examYear}>{exam.examYear}</option>
+                                                    )}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        <div className="w-px h-6 bg-slate-200 hidden sm:block"></div>
+
+                                        {/* כפתור אימות AI */}
+                                        <button 
+                                            onClick={() => handleToggleVerify(exam.id, exam.isVerified)}
+                                            className={`flex-1 sm:flex-none text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all border shadow-sm flex items-center justify-center gap-1 ${
+                                                exam.isVerified 
+                                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
+                                                : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                                            }`}
+                                        >
+                                            {exam.isVerified ? '✅ מאומת' : '⚠️ הגהת AI חסרה'}
+                                        </button>
                                     </div>
+
+                                    {/* קומה 3: פעולות ראשיות */}
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setEditingExamId(exam.id)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                                            <PaperclipIcon /> נספחים
+                                        </button>
+                                        <button onClick={() => openQuestionsEditor(exam)} className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 border border-blue-100 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                                            <ImageIcon /> עריכת שאלות
+                                        </button>
+                                    </div>
+
+                                    {/* שדה העלאת נספחים (נפתח בלחיצה) */}
                                     {editingExamId === exam.id && (
-                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2 animate-fade-in">
-                                            <input type="file" accept="application/pdf" onChange={e => setNewAppendicesFile(e.target.files[0])} className="block w-full text-sm text-slate-500" />
-                                            <div className="flex gap-2 mt-3">
-                                                <button onClick={() => handleUpdateAppendices(exam.id)} disabled={!newAppendicesFile || status === 'processing'} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition">שמור</button>
-                                                <button onClick={() => { setEditingExamId(null); setNewAppendicesFile(null); }} className="text-slate-400 px-4 py-2 text-sm font-bold hover:text-slate-600">ביטול</button>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-fade-in-quick mt-1">
+                                            <input type="file" accept="application/pdf" onChange={e => setNewAppendicesFile(e.target.files[0])} className="block w-full text-sm text-slate-500 mb-3 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleUpdateAppendices(exam.id)} disabled={!newAppendicesFile || status === 'processing'} className="bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition disabled:opacity-50">שמור קובץ</button>
+                                                <button onClick={() => { setEditingExamId(null); setNewAppendicesFile(null); }} className="text-slate-500 px-4 py-2 text-sm font-bold hover:text-slate-800 transition">ביטול</button>
                                             </div>
                                         </div>
                                     )}
