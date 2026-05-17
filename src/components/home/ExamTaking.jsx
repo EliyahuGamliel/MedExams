@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase'; 
-import { ref, onValue, get, push, update, remove, set } from "firebase/database"; 
+import { ref, get, push, set } from "firebase/database";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -10,8 +10,9 @@ const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
 const RefreshIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
-// אייקון חדש להורדת ה-PDF
 const PdfIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+const ClearIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 
 export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
@@ -26,6 +27,8 @@ export default function ExamTaking({ examsList }) {
   const [examImages, setExamImages] = useState({}); 
 
   const [resetTick, setResetTick] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const storageKey = `exam_state_${user ? user.uid : 'guest'}_${examId}_${mode}`;
   
@@ -50,55 +53,17 @@ export default function ExamTaking({ examsList }) {
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
   });
 
-  useEffect(() => {
-      if (!user || !selectedExam) return;
-      const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
-      get(stateRef).then((snapshot) => {
-          if (snapshot.exists()) {
-              const cloudData = snapshot.val();
-              if (cloudData.answers) setUserAnswers(cloudData.answers);
-              if (cloudData.score !== undefined) setFinalScore(cloudData.score);
-              if (cloudData.excluded) setUserExcludedQuestions(cloudData.excluded);
-              if (cloudData.flagged) setFlaggedQuestions(cloudData.flagged);
-              if (cloudData.stats) setModalStats(cloudData.stats);
-          }
-      }).catch(err => console.error("שגיאה במשיכת מצב המבחן מהענן:", err));
-  }, [user, examId, mode, selectedExam]);
-
+  // שמירה מקומית בלבד! (חסכנו פה המון תעבורה)
   useEffect(() => {
       localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
       localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
       localStorage.setItem(`${storageKey}_excluded`, JSON.stringify(userExcludedQuestions));
       localStorage.setItem(`${storageKey}_flagged`, JSON.stringify(flaggedQuestions));
       localStorage.setItem(`${storageKey}_stats`, JSON.stringify(modalStats));
+  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey]);
 
-      if (user) {
-          const timeoutId = setTimeout(() => {
-              const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
-              update(stateRef, {
-                  answers: userAnswers,
-                  score: finalScore,
-                  excluded: userExcludedQuestions,
-                  flagged: flaggedQuestions,
-                  stats: modalStats,
-                  lastUpdated: new Date().toISOString()
-              }).catch(err => console.error("שגיאה בסנכרון לענן:", err));
-          }, 1000); 
-          return () => clearTimeout(timeoutId); 
-      }
-  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey, user, examId, mode]);
-
-  const handleResetExam = async () => {
+  const handleResetExam = () => {
       if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
-          if (user) {
-              try {
-                  const stateRef = ref(db, `user_active_exams/${user.uid}/${examId}_${mode}`);
-                  await remove(stateRef);
-              } catch (error) {
-                  console.error("שגיאה במחיקה מהענן:", error);
-              }
-          }
-
           Object.keys(localStorage).forEach(key => {
               if (key.includes(examId)) {
                   localStorage.removeItem(key);
@@ -110,6 +75,7 @@ export default function ExamTaking({ examsList }) {
           setUserExcludedQuestions({});
           setFlaggedQuestions({});
           setModalStats({ total: 0, perfect: 0, mistakes: 0 });
+          setSearchTerm("");
           setResetTick(prev => prev + 1);
 
           toast.success("המבחן אופס והלוח נקי! בהצלחה 🚀");
@@ -123,36 +89,51 @@ export default function ExamTaking({ examsList }) {
   const [appendicesData, setAppendicesData] = useState(null);
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
-  const toggleUserExclude = useCallback((index) => {
-      setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
-  }, []);
+  const toggleUserExclude = useCallback((index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
+  const toggleFlag = useCallback((index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
 
-  const toggleFlag = useCallback((index) => {
-      setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] }));
-  }, []);
-
+  // --- טעינת המבחן עם מנגנון זיכרון (Cache) חדש! ---
   useEffect(() => {
     if (!selectedExam) return;
     setLoadingQuestions(true);
+
+    const questionsCacheKey = `cache_q_${selectedExam.id}`;
+    const imagesCacheKey = `cache_img_${selectedExam.id}`;
+    
+    // 1. טעינת שאלות
     if (selectedExam.questions && selectedExam.questions.length > 0) {
         setExamQuestionsData(selectedExam.questions);
         setLoadingQuestions(false);
     } else {
-        get(ref(db, `exam_contents/${selectedExam.id}`))
-          .then((snapshot) => {
-              setExamQuestionsData(snapshot.val() || []);
-              setLoadingQuestions(false);
-          }).catch(err => {
-              console.error(err);
-              setLoadingQuestions(false);
-          });
+        const cachedQuestions = sessionStorage.getItem(questionsCacheKey);
+        if (cachedQuestions) {
+            setExamQuestionsData(JSON.parse(cachedQuestions));
+            setLoadingQuestions(false);
+        } else {
+            get(ref(db, `exam_contents/${selectedExam.id}`))
+              .then((snapshot) => {
+                  const data = snapshot.val() || [];
+                  setExamQuestionsData(data);
+                  sessionStorage.setItem(questionsCacheKey, JSON.stringify(data)); // שומרים בזיכרון
+                  setLoadingQuestions(false);
+              }).catch(err => {
+                  console.error(err);
+                  setLoadingQuestions(false);
+              });
+        }
     }
 
-    const imagesRef = ref(db, `exam_images/${selectedExam.id}`);
-    const unsub = onValue(imagesRef, (snapshot) => {
-      setExamImages(snapshot.val() || {});
-    });
-    return () => unsub();
+    // 2. טעינת תמונות
+    const cachedImages = sessionStorage.getItem(imagesCacheKey);
+    if (cachedImages) {
+        setExamImages(JSON.parse(cachedImages));
+    } else {
+        get(ref(db, `exam_images/${selectedExam.id}`)).then((snapshot) => {
+          const data = snapshot.val() || {};
+          setExamImages(data);
+          sessionStorage.setItem(imagesCacheKey, JSON.stringify(data)); // שומרים בזיכרון
+        });
+    }
   }, [selectedExam]);
 
   const handleReturnToCourse = () => {
@@ -202,6 +183,7 @@ export default function ExamTaking({ examsList }) {
       setFinalScore(calculatedScore);
       setModalStats({ total: scorableQuestions.length, perfect: perfectCount, mistakes: actualMistakes });
 
+      // שמירת הציון הסופי בלבד לפרופיל
       if (user && finalScore === null) { 
           try {
               const resultRef = ref(db, `user_results/${user.uid}/${selectedExam.id}`);
@@ -214,7 +196,7 @@ export default function ExamTaking({ examsList }) {
                   totalQuestions: scorableQuestions.length,
                   correctAnswers: perfectCount
               });
-              toast.success("הציון עודכן באזור האישי! 🎉");
+              toast.success("הציון נשמר באזור האישי! 🎉");
           } catch (error) { 
               console.error("שגיאה בשמירת תוצאת המבחן:", error); 
           }
@@ -225,11 +207,15 @@ export default function ExamTaking({ examsList }) {
   };
 
   const scrollToQuestion = (index) => {
-    const element = document.getElementById(`question-${index}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (window.innerWidth < 768) setIsSidebarOpen(false);
-    }
+    setSearchTerm("");
+    setIsSearchOpen(false);
+    setTimeout(() => {
+        const element = document.getElementById(`question-${index}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (window.innerWidth < 768) setIsSidebarOpen(false);
+        }
+    }, 100);
   };
 
   const getSidebarButtonColor = (index) => {
@@ -263,6 +249,16 @@ export default function ExamTaking({ examsList }) {
   const isPass = finalScore >= 60;
   const isSubmitted = finalScore !== null;
 
+  const displayedQuestions = examQuestionsData.map((q, i) => ({ ...q, originalIndex: i }))
+    .filter(q => {
+        if (!searchTerm.trim()) return true;
+        const term = searchTerm.toLowerCase();
+        const textMatch = q.text && typeof q.text === 'string' && q.text.toLowerCase().includes(term);
+        const explanationMatch = q.explanation && typeof q.explanation === 'string' && q.explanation.toLowerCase().includes(term);
+        const optionsMatch = q.options && Array.isArray(q.options) && q.options.some(o => o.text && typeof o.text === 'string' && o.text.toLowerCase().includes(term));
+        return textMatch || explanationMatch || optionsMatch;
+    });
+
   return (
     <div className="animate-fade-in-up pb-10">
       
@@ -282,7 +278,6 @@ export default function ExamTaking({ examsList }) {
 
       {!loadingQuestions && (
         <>
-           {/* מוסתר בהדפסה print:hidden */}
            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white p-3 rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-blue-600 transition transform hover:scale-105 print:hidden">
              {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
            </button>
@@ -318,26 +313,54 @@ export default function ExamTaking({ examsList }) {
         </>
       )}
 
-      {/* בהדפסה: ביטול סטיקי, צל ורקע, הפיכה לסטטי */}
-      <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm flex flex-wrap gap-2 justify-between items-center border-b border-slate-100 mb-8 print:static print:bg-transparent print:shadow-none print:border-b-2 print:border-black print:pb-4 print:mb-12">
-        <div>
-          <span className="font-bold text-slate-700 block print:text-black print:text-xl">{selectedExam.course}</span>
-          <span className="text-xs text-slate-400 print:text-black print:text-base">{selectedExam.title}</span>
-        </div>
-        {/* אזור הכפתורים מוסתר בהדפסה */}
-        <div className="flex items-center gap-2 print:hidden">
-          {/* כפתור ה-PDF החדש! */}
-          <button onClick={() => window.print()} className="bg-slate-800 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
-             <PdfIcon /> ייצא ל-PDF
-          </button>
+      <div className="sticky top-16 z-20 bg-white/90 backdrop-blur p-4 rounded-b-xl shadow-sm border-b border-slate-100 mb-8 print:static print:bg-transparent print:shadow-none print:border-b-2 print:border-black print:pb-4 print:mb-12">
+        <div className="flex flex-wrap gap-2 justify-between items-center">
+            <div>
+              <span className="font-bold text-slate-700 block print:text-black print:text-xl">{selectedExam.course}</span>
+              <span className="text-xs text-slate-400 print:text-black print:text-base">{selectedExam.title}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 print:hidden">
+              <button 
+                  onClick={() => { setIsSearchOpen(!isSearchOpen); if(isSearchOpen) setSearchTerm(""); }} 
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${isSearchOpen ? 'bg-blue-100 text-blue-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`} 
+                  title="חיפוש"
+              >
+                 <SearchIcon /> חיפוש
+              </button>
 
-          {selectedExam.hasAppendices && <button onClick={handleOpenAppendices} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-200 transition flex items-center gap-1"><PaperclipIcon /> נספחים</button>}
-          
-          <button onClick={handleResetExam} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 border border-red-100" title="מחק את כל התשובות והתחל מחדש">
-             <RefreshIcon /> איפוס
-          </button>
-          <span className={`text-xs px-2 py-1.5 rounded font-bold ${mode==='test'?'bg-blue-100 text-blue-800':'bg-green-100 text-green-800'}`}>{mode==='test'?'מבחן':'תרגול'}</span>
+              <button onClick={() => window.print()} className="bg-slate-800 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
+                 <PdfIcon /> ייצא ל-PDF
+              </button>
+
+              {selectedExam.hasAppendices && <button onClick={handleOpenAppendices} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-200 transition flex items-center gap-1"><PaperclipIcon /> נספחים</button>}
+              
+              <button onClick={handleResetExam} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5 border border-red-100" title="מחק את כל התשובות והתחל מחדש">
+                 <RefreshIcon /> איפוס
+              </button>
+              <span className={`text-xs px-2 py-1.5 rounded font-bold ${mode==='test'?'bg-blue-100 text-blue-800':'bg-green-100 text-green-800'}`}>{mode==='test'?'מבחן':'תרגול'}</span>
+            </div>
         </div>
+
+        {isSearchOpen && (
+            <div className="mt-4 pt-4 border-t border-slate-100 print:hidden animate-fade-in">
+               <div className="relative max-w-lg mx-auto">
+                  <input 
+                    type="text" 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    placeholder="הקלד מילה לחיפוש במבחן..." 
+                    className="w-full bg-white border-2 border-blue-100 p-3 pl-10 pr-4 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition shadow-inner"
+                    autoFocus
+                  />
+                  {searchTerm && (
+                    <button onClick={() => setSearchTerm("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 bg-slate-100 rounded-full p-1 transition">
+                       <ClearIcon />
+                    </button>
+                  )}
+               </div>
+            </div>
+        )}
       </div>
 
       {selectedExam.isVerified === false && (
@@ -355,30 +378,37 @@ export default function ExamTaking({ examsList }) {
             <div className="text-center py-20 print:hidden"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 font-bold">טוען שאלות...</div></div>
         ) : examQuestionsData.length === 0 ? (
             <div className="text-center py-10 text-slate-400">לא נמצאו שאלות במבחן זה.</div>
+        ) : displayedQuestions.length === 0 && searchTerm ? (
+            <div className="text-center py-20 text-slate-500 animate-fade-in">
+                <div className="text-5xl mb-4">🔍</div>
+                לא נמצאו שאלות המכילות את המילה <b className="text-blue-600">"{searchTerm}"</b>
+            </div>
         ) : (
-            examQuestionsData.map((q, i) => (
-                <div key={`${i}-${resetTick}`} id={`question-${i}`} className="scroll-mt-36 print:break-inside-avoid print:pt-4">
-                  <QuestionCard 
-                    question={q} 
-                    index={i} 
-                    mode={mode} 
-                    onAnswer={handleAnswerUpdate} 
-                    isSubmitted={isSubmitted} 
-                    examId={selectedExam.id} 
-                    imageUrl={q.imageUrl || examImages[i]} 
-                    isFlagged={!!flaggedQuestions[i]}
-                    onToggleFlag={toggleFlag}
-                    onToggleUserExclude={toggleUserExclude}
-                    isUserExcluded={!!userExcludedQuestions[i]}
-                    resetTick={resetTick} 
-                  />
-                </div>
-            ))
+            displayedQuestions.map((q) => {
+                const i = q.originalIndex;
+                return (
+                    <div key={`${i}-${resetTick}`} id={`question-${i}`} className="scroll-mt-48 print:break-inside-avoid print:pt-4">
+                      <QuestionCard 
+                        question={q} 
+                        index={i} 
+                        mode={mode} 
+                        onAnswer={handleAnswerUpdate} 
+                        isSubmitted={isSubmitted} 
+                        examId={selectedExam.id} 
+                        imageUrl={q.imageUrl || examImages[i]} 
+                        isFlagged={!!flaggedQuestions[i]}
+                        onToggleFlag={toggleFlag}
+                        onToggleUserExclude={toggleUserExclude}
+                        isUserExcluded={!!userExcludedQuestions[i]}
+                        resetTick={resetTick} 
+                      />
+                    </div>
+                );
+            })
         )}
       </div>
 
-      {/* כפתורי הסיום מוסתרים בהדפסה */}
-      {!loadingQuestions && examQuestionsData.length > 0 && (
+      {!loadingQuestions && displayedQuestions.length > 0 && (
         <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4 print:hidden">
           {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 transition">הגש מבחן 🏆</button>}
           {isSubmitted && <button onClick={() => setShowScoreModal(true)} className="bg-green-100 text-green-700 px-8 py-3 rounded-full font-bold">הצג שוב ציון 📊</button>}

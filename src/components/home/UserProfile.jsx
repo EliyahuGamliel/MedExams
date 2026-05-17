@@ -2,39 +2,61 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
-import { ref, onValue } from "firebase/database";
+import { ref, get } from "firebase/database"; // שינינו ל-get
 
 export default function UserProfile() {
     const { user, userData, loading: authLoading } = useAuth();
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    // --- הסטייט החדש שמנהל את הטאבים ---
-    const [activeTab, setActiveTab] = useState('overview'); // overview | review | leaderboard
+    const [activeTab, setActiveTab] = useState('overview'); 
     
     const navigate = useNavigate();
 
+    // --- טעינת ציונים חכמה (ללא האזנות רשת כבדות + זיכרון מקומי) ---
     useEffect(() => {
         if (!user) {
             setLoading(false);
             return;
         }
-        const resultsRef = ref(db, `user_results/${user.uid}`);
-        return onValue(resultsRef, (snap) => {
-            const data = snap.val();
-            if (data) {
-                const arr = Object.values(data).sort((a, b) => new Date(b.date) - new Date(a.date));
-                setResults(arr);
-            } else {
-                setResults([]);
+
+        const fetchResults = async () => {
+            const cacheKey = `cache_results_${user.uid}`;
+            const cachedData = sessionStorage.getItem(cacheKey);
+
+            // 1. קודם כל נציג מהר מהזיכרון המקומי (אם יש) בשביל חווית משתמש חלקה
+            if (cachedData) {
+                setResults(JSON.parse(cachedData));
+                setLoading(false);
             }
-            setLoading(false);
-        });
+
+            // 2. תמיד נמשוך מהענן (פעם אחת) כדי לוודא שאין מבחן חדש שהוא הרגע עשה, 
+            // ואם יש שינוי, נעדכן בשקט את המסך.
+            try {
+                const resultsRef = ref(db, `user_results/${user.uid}`);
+                const snap = await get(resultsRef);
+                const data = snap.val();
+                
+                let freshResults = [];
+                if (data) {
+                    freshResults = Object.values(data).sort((a, b) => new Date(b.date) - new Date(a.date));
+                }
+                
+                // עדכון המסך והזיכרון רק אם זה השתנה באמת (או שלא היה קאש בכלל)
+                setResults(freshResults);
+                sessionStorage.setItem(cacheKey, JSON.stringify(freshResults));
+            } catch (error) {
+                console.error("Error fetching user results:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchResults();
     }, [user]);
 
     if (authLoading || loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-400">טוען את הממלכה שלך... ✨</div>;
 
-    // --- לוגיקת חישוב ממוצעים לפי קורס ---
     const courseStats = results.reduce((acc, res) => {
         if (!acc[res.courseName]) acc[res.courseName] = { sum: 0, count: 0 };
         acc[res.courseName].sum += res.score;
@@ -47,7 +69,6 @@ export default function UserProfile() {
         avg: Math.round(stats.sum / stats.count)
     }));
 
-    // --- תפריט הטאבים שלנו ---
     const TabButton = ({ id, icon, label }) => (
         <button
             onClick={() => setActiveTab(id)}
@@ -65,7 +86,6 @@ export default function UserProfile() {
     return (
         <div className="max-w-2xl mx-auto px-2 animate-fade-in pb-20" dir="rtl">
             
-            {/* Header */}
             <div className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 mb-6 mt-4 text-center relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
                 <div className="w-20 h-20 rounded-full bg-blue-600 text-white flex items-center justify-center text-3xl font-black shadow-xl mb-4 mx-auto border-4 border-white">
@@ -75,19 +95,14 @@ export default function UserProfile() {
                 <p className="text-slate-400 font-bold text-xs">סטודנט במקצועות הבריאות</p>
             </div>
 
-            {/* Navigation Tabs - שורת הניווט החדשה */}
             <div className="flex bg-slate-100 p-1.5 rounded-[24px] mb-8 mx-1">
                 <TabButton id="overview" icon="📊" label="סקירה" />
                 <TabButton id="review" icon="🚩" label="חזרה" />
                 <TabButton id="leaderboard" icon="🏆" label="דירוג" />
             </div>
 
-            {/* =========================================
-                TAB: סקירה כללית (Overview) 
-               ========================================= */}
             {activeTab === 'overview' && (
                 <div className="animate-fade-in-quick">
-                    {/* ממוצעים לפי קורסים */}
                     <h3 className="text-lg font-black text-slate-800 mb-4 px-2">ביצועים לפי קורס</h3>
                     <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
                         {courseAverages.length === 0 ? (
@@ -108,7 +123,6 @@ export default function UserProfile() {
                         )}
                     </div>
 
-                    {/* היסטוריית פעילות */}
                     <div className="mt-6">
                         <h3 className="text-lg font-black text-slate-800 mb-4 px-2">מבחנים אחרונים</h3>
                         <div className="space-y-3">
@@ -142,9 +156,6 @@ export default function UserProfile() {
                 </div>
             )}
 
-            {/* =========================================
-                TAB: לחיזרה (Review Placeholder) 
-               ========================================= */}
             {activeTab === 'review' && (
                 <div className="animate-fade-in-quick text-center py-16">
                     <div className="text-6xl mb-4 opacity-50">🚩</div>
@@ -156,9 +167,6 @@ export default function UserProfile() {
                 </div>
             )}
 
-            {/* =========================================
-                TAB: דירוג מובילים (Leaderboard Placeholder) 
-               ========================================= */}
             {activeTab === 'leaderboard' && (
                 <div className="animate-fade-in-quick text-center py-16">
                     <div className="text-6xl mb-4 opacity-50">🏆</div>

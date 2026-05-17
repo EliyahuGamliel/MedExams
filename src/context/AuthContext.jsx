@@ -1,31 +1,39 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { auth, db } from '../firebase'; // ודא שהנתיב ל-firebase.js נכון
+import { auth, db } from '../firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 
-// יצירת ה-Context
 const AuthContext = createContext();
 
-// פונקציה לשימוש מהיר ב-Context בכל רכיב במערכת
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);       // פרטי המשתמש מפיירבייס (אימייל, UID)
-    const [userData, setUserData] = useState(null); // נתוני הפרופיל מה-DB (תפקיד, שם)
-    const [loading, setLoading] = useState(true);   // סטטוס טעינה ראשונית
+    const [user, setUser] = useState(null);       
+    const [userData, setUserData] = useState(null); 
+    const [loading, setLoading] = useState(true);   
 
     useEffect(() => {
-        // מאזין לשינויים בסטטוס ההתחברות (Login/Logout)
+        // משתנה שיחזיק את פונקציית הניתוק של מסד הנתונים
+        let unsubscribeDb = null;
+
         const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+            // קודם כל: אם יש מאזין ישן ופתוח ל-DB, נסגור אותו מיד כדי למנוע כפילויות של תעבורה!
+            if (unsubscribeDb) {
+                unsubscribeDb();
+                unsubscribeDb = null;
+            }
+
             setUser(currentUser);
 
             if (currentUser) {
-                // אם המשתמש מחובר, נמשוך את נתוני הפרופיל שלו מה-Database
                 const userRef = ref(db, `users/${currentUser.uid}`);
                 
-                // שימוש ב-onValue מאפשר עדכון חי (Realtime) אם מנהל שינה לו את התפקיד למשל
-                onValue(userRef, (snapshot) => {
+                // שומרים את פונקציית הניתוק ש-onValue מחזירה
+                unsubscribeDb = onValue(userRef, (snapshot) => {
                     setUserData(snapshot.val());
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error fetching user data:", error);
                     setLoading(false);
                 });
             } else {
@@ -34,7 +42,11 @@ export const AuthProvider = ({ children }) => {
             }
         });
 
-        return () => unsubscribeAuth();
+        // בלוק הניקוי הראשי של ה-useEffect
+        return () => {
+            unsubscribeAuth(); // מנתק את המאזין של ה-Auth
+            if (unsubscribeDb) unsubscribeDb(); // מנתק את המאזין של ה-DB במידה ונשאר פתוח
+        };
     }, []);
 
     const value = {

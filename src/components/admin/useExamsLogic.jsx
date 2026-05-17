@@ -38,14 +38,16 @@ export function useExamsLogic(setStatus, canSeeReports) {
 
     // --- טעינת נתונים ראשונית (מבחנים ודיווחים) ---
     useEffect(() => {
+        // משיכת רשימת המבחנים (רק מטא-דאטה, פעם אחת)
         get(ref(db, 'uploaded_exams')).then((snap) => {
             const data = snap.val();
             setExamsList(data ? Object.values(data) : []);
-        }).catch(e => console.error(e));
+        }).catch(e => console.error("Error fetching exams meta:", e));
 
         if (!canSeeReports) return;
 
-        const unsubscribeReports = onValue(ref(db, 'reported_errors'), (snap) => {
+        // משיכת דיווחים עם get במקום onValue! חוסך מאזיני רשת מיותרים.
+        get(ref(db, 'reported_errors')).then((snap) => {
             const data = snap.val();
             if (data) {
                 const reportsArr = Object.entries(data).map(([id, val]) => ({ id, ...val }));
@@ -54,9 +56,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
             } else {
                 setReportsList([]);
             }
-        });
-
-        return () => unsubscribeReports();
+        }).catch(e => console.error("Error fetching reports:", e));
 
     }, [canSeeReports]);
 

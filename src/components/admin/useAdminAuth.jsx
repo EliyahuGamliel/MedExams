@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { db } from "../../firebase";
-import { ref, onValue, set, update, remove } from "firebase/database";
+import { ref, onValue, set, update, remove, get } from "firebase/database"; // הוספנו את get!
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+import toast from 'react-hot-toast'; 
 
 export function useAdminAuth() {
     const [user, setUser] = useState(null);
@@ -20,7 +21,7 @@ export function useAdminAuth() {
         return () => unsubscribeAuth();
     }, []);
 
-    // 2. בדיקת הרשאות במסד הנתונים
+    // 2. בדיקת הרשאות במסד הנתונים (כאן onValue זה בסדר כי זה רק אובייקט קטנצ'יק של המשתמש עצמו)
     useEffect(() => {
         if (!user) return;
         setAuthLoading(true);
@@ -40,15 +41,16 @@ export function useAdminAuth() {
         return () => unsubscribeDB();
     }, [user]);
 
-    // 3. טעינת כל המשתמשים (למנהל על)
+    // 3. טעינת כל המשתמשים (למנהל על) - הוחלף ל-get!
     useEffect(() => {
+        // שמנו כתלות רק את ה-role כדי שזה לא ייקרא מחדש סתם
         if (userData?.role === 'super_admin') {
-            onValue(ref(db, 'users'), (snapshot) => {
+            get(ref(db, 'users')).then((snapshot) => {
                 const data = snapshot.val();
                 setAllUsers(data ? Object.entries(data).map(([uid, val]) => ({ uid, ...val })) : []);
-            });
+            }).catch(e => console.error("Error fetching users:", e));
         }
-    }, [userData]);
+    }, [userData?.role]); 
 
     // --- פעולות ---
     const handleGoogleLogin = async () => {
@@ -64,6 +66,14 @@ export function useAdminAuth() {
         try {
             await update(ref(db, `users/${targetUid}`), { role: newRole });
             if (newRole !== 'editor') await update(ref(db, `users/${targetUid}`), { allowed_years: null });
+            
+            // עדכון מקומי של המסך כדי לחסוך קריאה לשרת
+            setAllUsers(prev => prev.map(u => 
+                u.uid === targetUid 
+                    ? { ...u, role: newRole, allowed_years: newRole === 'editor' ? u.allowed_years : null } 
+                    : u
+            ));
+            toast.success("תפקיד עודכן בהצלחה");
         } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
@@ -72,12 +82,29 @@ export function useAdminAuth() {
             const updates = {};
             updates[`users/${targetUid}/allowed_years/${year}`] = currentStatus ? null : true;
             await update(ref(db), updates);
+
+            // עדכון מקומי של המסך
+            setAllUsers(prev => prev.map(u => {
+                if (u.uid === targetUid) {
+                    const newYears = { ...(u.allowed_years || {}) };
+                    if (currentStatus) delete newYears[year]; 
+                    else newYears[year] = true;
+                    return { ...u, allowed_years: newYears };
+                }
+                return u;
+            }));
         } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
     const handleDeleteUser = async (targetUid) => {
         if (!window.confirm("למחוק משתמש זה?")) return;
-        try { await remove(ref(db, `users/${targetUid}`)); } catch (e) { toast.error("שגיאה: " + e.message); }
+        try { 
+            await remove(ref(db, `users/${targetUid}`)); 
+            
+            // מחיקה מקומית מהמסך
+            setAllUsers(prev => prev.filter(u => u.uid !== targetUid));
+            toast.success("משתמש נמחק");
+        } catch (e) { toast.error("שגיאה: " + e.message); }
     };
 
     const canEditYear = (yearToCheck) => {
@@ -87,7 +114,6 @@ export function useAdminAuth() {
         return false;
     };
 
-    // מחזירים את כל מה שה-UI יצטרך
     return {
         user, userData, isAdminLogin, authLoading, allUsers,
         handleGoogleLogin, handleLogout, handleUpdateUserRole,

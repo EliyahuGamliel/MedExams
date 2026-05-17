@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase';
-import { ref, onValue } from "firebase/database";
+import { ref, get } from "firebase/database"; 
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +23,6 @@ export default function HomePage() {
   const [examsList, setExamsList] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // === הזיכרון של דף הבית עבר לכאן! ===
   const [homeYear, setHomeYear] = useState(() => sessionStorage.getItem('savedHomeYear') || "");
   const [homeSemester, setHomeSemester] = useState(() => sessionStorage.getItem('savedHomeSemester') || "");
 
@@ -31,7 +30,6 @@ export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // סנכרון הזיכרון המקומי
   useEffect(() => {
     if (homeYear) sessionStorage.setItem('savedHomeYear', homeYear);
     else sessionStorage.removeItem('savedHomeYear');
@@ -49,29 +47,72 @@ export default function HomePage() {
     return () => document.removeEventListener('click', closeMenu);
   }, [showUserMenu]);
 
+  // מנגנון ה-Cache החכם והחסכוני ביותר!
   useEffect(() => {
-    onValue(ref(db, 'courses'), (snap) => setCoursesStructure(snap.val() || {}));
-    onValue(ref(db, 'uploaded_exams'), (snap) => {
-      const data = snap.val();
-      setExamsList(data ? Object.values(data) : []);
-      setLoading(false);
-    });
+    const fetchHomeData = async () => {
+        const cachedCourses = sessionStorage.getItem('cachedCourses');
+        const cachedExams = sessionStorage.getItem('cachedExams');
+        const cacheTimestamp = sessionStorage.getItem('cacheTime');
+        const now = new Date().getTime();
+        
+        // 3600000 מילישניות = שעה אחת
+        const isCacheFresh = cacheTimestamp && (now - parseInt(cacheTimestamp) < 3600000);
+
+        if (cachedCourses && cachedExams) {
+            setCoursesStructure(JSON.parse(cachedCourses));
+            setExamsList(JSON.parse(cachedExams));
+            setLoading(false);
+            
+            // אם הזיכרון רענן (בן פחות משעה) - אל תעשה שום קריאה ברקע! אפס תעבורה.
+            if (isCacheFresh) return;
+            
+            // אם עברה מעל שעה, עשה עדכון שקט ברקע
+            try {
+                const coursesSnap = await get(ref(db, 'courses'));
+                const examsSnap = await get(ref(db, 'uploaded_exams'));
+                sessionStorage.setItem('cachedCourses', JSON.stringify(coursesSnap.val() || {}));
+                sessionStorage.setItem('cachedExams', JSON.stringify(examsSnap.val() ? Object.values(examsSnap.val()) : []));
+                sessionStorage.setItem('cacheTime', now.toString());
+            } catch (e) { console.error("Error updating cache", e); }
+            return;
+        }
+
+        // טעינה ראשונית - המשתמש נכנס פעם ראשונה הבוקר
+        try {
+            const [coursesSnap, examsSnap] = await Promise.all([
+                get(ref(db, 'courses')),
+                get(ref(db, 'uploaded_exams'))
+            ]);
+
+            const coursesData = coursesSnap.val() || {};
+            const examsData = examsSnap.val() ? Object.values(examsSnap.val()) : [];
+
+            setCoursesStructure(coursesData);
+            setExamsList(examsData);
+            
+            sessionStorage.setItem('cachedCourses', JSON.stringify(coursesData));
+            sessionStorage.setItem('cachedExams', JSON.stringify(examsData));
+            sessionStorage.setItem('cacheTime', now.toString()); // שומרים את השעה המדויקת של הטעינה
+        } catch (error) {
+            console.error("Error fetching fresh data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchHomeData();
   }, []);
 
   const isExamMode = location.pathname.includes('/exam/');
   const isHome = location.pathname === '/';
   
-  // התיקון הגדול: מציגים כפתורי ניווט אם אנחנו *לא* בבית, או אם אנחנו בבית אבל נבחרה שנה!
   const showBackBtn = !isHome || homeYear !== "";
 
-  // מנגנון חזור משולב
   const handleGoBack = () => {
       if (isHome) {
-          // חזרה בתוך מסך הבית (מבטלים סמסטר, ואם אין אז שנה)
           if (homeSemester) setHomeSemester("");
           else if (homeYear) setHomeYear("");
       } else {
-          // חזרה רגילה בהיסטוריה מדפים אחרים
           navigate(-1);
       }
   };
@@ -155,7 +196,6 @@ export default function HomePage() {
 
       <main className="max-w-3xl mx-auto px-6 mt-8 flex-grow w-full">
         <Routes>
-          {/* הזרקנו לפה את השנה והסמסטר כפרמטרים */}
           <Route path="/" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
           <Route path="/course/:courseName" element={<CourseExams examsList={examsList} />} />
           <Route path="/exam/:examId/:mode" element={<ExamTaking examsList={examsList} />} />
@@ -163,13 +203,13 @@ export default function HomePage() {
         </Routes>
       </main>
 
-      <footer className="w-full text-center py-8 text-slate-400 bg-slate-50 mt-auto text-xs sm:text-sm">
+      <footer className="w-full text-center py-8 text-slate-400 bg-slate-50 mt-auto text-xs sm:text-sm print:hidden">
         <p className="mb-1 flex items-center justify-center gap-1">בפיתוח המערכת הושקעו זמן ומחשבה רבים <HeartIcon /></p>
         <p className="mb-4">נהניתם? מוזמנים לפרגן בביט: <span className="font-bold text-slate-700 select-all">053-2559635</span></p>
       </footer>
 
       {!isExamMode && (
-        <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden">
           <div className="flex flex-col items-center px-4 max-w-md mx-auto gap-0.5">
             <span className="text-[15px] font-bold text-slate-600">
               פותח באהבה עבורכם 💙 בהצלחה במבחנים! 🎓
