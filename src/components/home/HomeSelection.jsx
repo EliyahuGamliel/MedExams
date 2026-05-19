@@ -40,7 +40,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
             <div className="flex items-start gap-3 mb-4">
               <span className="text-3xl">👑</span>
               <div>
-                <h3 className="text-lg font-black text-slate-800">קיר הכבוד</h3>
+                <h3 className="text-lg font-black text-slate-800">קיר התהילה</h3>
                 <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">
                   תודה ענקית לכל הסטודנטים שהקדישו מזמנם לתרום לפיתוח האתר:
                 </p>
@@ -58,7 +58,18 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                   "זואי מזור", 
                   "שליו אביב", 
                   "אלישע קוך",
-                  "יובל דגן"
+                  "יובל דגן",
+                  "שגיא מלמד",
+                  "יערה נווה",
+                  "נועם לוין",
+                  "יעקב כהן",
+                  "יואב טרבלסי",
+                  "בן פרידמן🍫",
+                  "פריאל מנגיסטו",
+                  "רואי אהרוני",
+                  "אור קרבצקי",
+                                    "ליאור לובק"
+
               ].map((name, idx) => (
                 <span key={idx} className="bg-amber-50/50 border border-amber-200/60 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
                   <span className="text-amber-400 text-[10px]">✨</span> {name}

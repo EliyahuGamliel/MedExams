@@ -188,8 +188,8 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
 
         {/* --- כאן הוספנו את ה-replace לכל הטאבים --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
-          <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button>
-          <button onClick={() => navigate('/admin/bulk', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button>
+          <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button> 
+         {/*  <button onClick={() => navigate('/admin/bulk', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button> */}
           <button onClick={() => navigate('/admin/manage_exams', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
           <button onClick={() => navigate('/admin/manage_courses', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
           <button onClick={() => navigate('/admin/reports', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
@@ -228,7 +228,7 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
               debugLog={debugLog}
             />
           } />
-          
+          {/* 
           <Route path="bulk" element={
             <BulkUploadTab
               studentYears={studentYears}
@@ -248,7 +248,7 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
               handleBulkUpload={handleBulkUpload}
               debugLog={debugLog}
             />
-          } />
+          } /> */}
 
           <Route path="manage_exams" element={
             <ManageExamsTab

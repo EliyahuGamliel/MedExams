@@ -32,7 +32,21 @@ const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
 
-const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswer, isSubmitted, imageUrl, examId, isFlagged, onToggleFlag, isUserExcluded, onToggleUserExclude, resetTick }) {  
+const QuestionCard = memo(function QuestionCard({ 
+  question, 
+  index, 
+  mode, 
+  onAnswer, 
+  isSubmitted, 
+  imageUrl, 
+  examId, 
+  isFlagged, 
+  onToggleFlag, 
+  isUserExcluded, 
+  onToggleUserExclude, 
+  resetTick, 
+  examSessionId // <--- הפרופ החדש שהוספנו
+}) {  
   // הגנה ראשונית - אם אין שאלה לא מרנדרים
   if (!question) return null;
 
@@ -88,7 +102,7 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
   const [reportText, setReportText] = useState("");
   const [reportStatus, setReportStatus] = useState('idle');
 
-  // --- הכנת נתונים חכמה ---
+  // --- הכנת נתונים חכמה (מתוקן עם examSessionId כדי למנוע קפיצות) ---
   const shuffledOptions = useMemo(() => {
     if (question.type === 'cloze' || question.type === 'open_ended') return null;
 
@@ -110,7 +124,7 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
       };
     });
     return shuffleArray(optionsWithData);
-  }, [question, isMultiSelect]);
+  }, [question.text, isMultiSelect, examSessionId]); // <--- כאן נעלנו את הסטייט
 
   const shuffledClozeOptions = useMemo(() => {
     if (question.type !== 'cloze') return null;
@@ -125,11 +139,10 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
       }));
       return shuffleArray(opts);
     });
-  }, [question]);
+  }, [question.text, examSessionId]); // <--- וגם כאן
 
   // איפוס בחירות במעבר שאלה (אבל לא במקרה של רענון דף כשיש נתונים שמורים)
   useEffect(() => {
-    // תיקון נוסף: בודק גם את השמירות של מצב תרגול וקלוז כדי לא לאבד נתונים ברענון דף!
     const hasSavedData = localStorage.getItem(`${qStorageKey}_single`) || 
                          localStorage.getItem(`${qStorageKey}_multi`) ||
                          localStorage.getItem(`${qStorageKey}_prac`) ||
@@ -152,7 +165,7 @@ const QuestionCard = memo(function QuestionCard({ question, index, mode, onAnswe
             onAnswer(index, null);
         }
     }
-  }, [question, mode, question.isCanceled, isUserExcluded, qStorageKey, onAnswer, index]); // הוספת התלויות כדי למנוע אזהרות React
+  }, [question, mode, question.isCanceled, isUserExcluded, qStorageKey, onAnswer, index]);
 
   // --- חישוב סטטוס להשלמה (Cloze) ---
   const calculateClozeStatus = (currentSelections) => {
