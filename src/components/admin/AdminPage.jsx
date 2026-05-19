@@ -11,6 +11,7 @@ import ManageCoursesTab from './ManageCoursesTab';
 import BulkUploadTab from './BulkUploadTab';
 import ManageExamsTab from './ManageExamsTab';
 import UploadTab from './UploadTab';
+import SystemVersionManager from './SystemVersionManager'; 
 import { useAdminAuth } from './useAdminAuth';
 import { useCoursesLogic } from './useCoursesLogic';
 import { useExamsLogic } from './useExamsLogic';
@@ -22,10 +23,10 @@ const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
-const BulkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="m9 18 3-3-3-3" /></svg>;
 const TrashNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 const MegaphoneNavIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>;
 const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+const UpdateIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>;
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export default function AdminPage() {
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
-const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 + i}`);
+  const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 + i}`);
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
@@ -92,7 +93,6 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
   } = useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus);
 
   const handleNavigateToReportedQuestion = (examId) => {
-    // הוספנו פה גם את ה-replace כדי שניווט לדיווח לא יוסיף היסטוריה
     navigate('/admin/manage_exams', { replace: true });
     const examToEdit = examsList.find(e => e.id === examId);
     if (examToEdit) {
@@ -186,10 +186,8 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
       <div className="p-8 max-w-2xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-100">
         <h2 className="text-3xl font-black mb-6 text-slate-800 text-center">ממשק ניהול</h2>
 
-        {/* --- כאן הוספנו את ה-replace לכל הטאבים --- */}
         <div className="flex bg-slate-100 p-1 rounded-xl mb-8 overflow-x-auto">
           <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><UploadIcon /> העלאה</button> 
-         {/*  <button onClick={() => navigate('/admin/bulk', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk') ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}><BulkIcon /> המונית</button> */}
           <button onClick={() => navigate('/admin/manage_exams', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white shadow text-purple-600' : 'text-slate-500'}`}><EditIcon /> ניהול קיימים</button>
           <button onClick={() => navigate('/admin/manage_courses', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white shadow text-green-600' : 'text-slate-500'}`}><PlusIcon /> קורסים</button>
           <button onClick={() => navigate('/admin/reports', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white shadow text-red-600' : 'text-slate-500'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
@@ -197,6 +195,9 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}> <TrashNavIcon /> פח מיחזור</button>}
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white shadow text-teal-600' : 'text-slate-500'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
           {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white shadow text-sky-600' : 'text-slate-500'}`}><EyeIcon /> בקרת עורכים</button>}
+          
+          {/* הטאב החדש: עדכון גרסה - רק לסופר אדמין! */}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/system_update', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('system_update') ? 'bg-white shadow text-pink-600' : 'text-slate-500'}`}><UpdateIcon /> עדכון גרסה</button>}
         </div>
 
         <Routes>
@@ -228,27 +229,6 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
               debugLog={debugLog}
             />
           } />
-          {/* 
-          <Route path="bulk" element={
-            <BulkUploadTab
-              studentYears={studentYears}
-              semesters={semesters}
-              selectedStudentYear={selectedStudentYear}
-              setSelectedStudentYear={setSelectedStudentYear}
-              selectedSemester={selectedSemester}
-              setSelectedSemester={setSelectedSemester}
-              selectedCourseId={selectedCourseId}
-              setSelectedCourseId={setSelectedCourseId}
-              availableCourses={availableCourses}
-              parsingMode={parsingMode}
-              setParsingMode={setParsingMode}
-              bulkFiles={bulkFiles}
-              setBulkFiles={setBulkFiles}
-              status={status}
-              handleBulkUpload={handleBulkUpload}
-              debugLog={debugLog}
-            />
-          } /> */}
 
           <Route path="manage_exams" element={
             <ManageExamsTab
@@ -300,8 +280,8 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
               openQuestionsEditor={openQuestionsEditor}
               handleToggleVerify={handleToggleVerify}
               handleDeleteAiExplanation={handleDeleteAiExplanation}
-              handleUpdateExamYear={handleUpdateExamYear} // ה-prop החדש
-              examYearsList={examYearsList} // ה-prop החדש
+              handleUpdateExamYear={handleUpdateExamYear} 
+              examYearsList={examYearsList} 
             />
           } />
 
@@ -364,6 +344,17 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 +
         <Route path="audit_logs" element={
             userData?.role === 'super_admin' ? (
                 <AuditLogsTab />
+            ) : (
+                <Navigate to="/admin/upload" replace />
+            )
+        } />
+
+        {/* הראוט החדש לניהול הגרסאות! */}
+        <Route path="system_update" element={
+            userData?.role === 'super_admin' ? (
+                <div className="flex justify-center mt-8">
+                  <SystemVersionManager />
+                </div>
             ) : (
                 <Navigate to="/admin/upload" replace />
             )
