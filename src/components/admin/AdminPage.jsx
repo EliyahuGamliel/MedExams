@@ -78,7 +78,8 @@ export default function AdminPage() {
     handleRemoveOptionFromCloze, handleClozeOptionTextChange,
     saveClozeOptionText, handleToggleClozeAppeal, handleToggleVerify,
     handleDeleteAiExplanation,
-    handleUpdateExamYear
+    handleUpdateExamYear,
+    handleDeleteAppendices
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
@@ -282,6 +283,7 @@ export default function AdminPage() {
               handleDeleteAiExplanation={handleDeleteAiExplanation}
               handleUpdateExamYear={handleUpdateExamYear} 
               examYearsList={examYearsList} 
+              handleDeleteAppendices={handleDeleteAppendices}
             />
           } />
 

@@ -144,6 +144,40 @@ export function useExamsLogic(setStatus, canSeeReports) {
         }
     };
 
+    // ==========================================
+    // פונקציה חדשה: מחיקת נספחים קיימים
+    // ==========================================
+    const handleDeleteAppendices = async (examId) => {
+        if (!window.confirm("האם אתה בטוח שברצונך למחוק את הנספח ממבחן זה?")) return;
+        
+        setStatus('processing');
+        try {
+            // 1. מוחק את הקובץ הפיזי/הנתונים ממסד הנתונים של הנספחים
+            await remove(ref(db, `exam_appendices/${examId}`));
+            
+            // 2. מעדכן את המבחן ברשימת המבחנים הכללית שאין לו יותר נספח
+            await update(ref(db, `uploaded_exams/${examId}`), {
+                hasAppendices: false
+            });
+
+            // 3. מעדכן את הסטייט המקומי כדי שהכפתור ייעלם מיד מהמסך
+            setExamsList(prev => prev.map(exam => 
+                exam.id === examId ? { ...exam, hasAppendices: false } : exam
+            ));
+
+            // --- תיעוד ---
+            logAdminAction("מחיקת נספח", `קובץ הנספחים הוסר מהמבחן`, examId);
+
+            toast.success("הנספח נמחק בהצלחה!");
+            setEditingExamId(null); // סוגר את חלונית העריכה
+        } catch (error) {
+            console.error("Error deleting appendices:", error);
+            toast.error("אירעה שגיאה במחיקת הנספח.");
+        } finally {
+            setStatus('idle');
+        }
+    };
+
     const openQuestionsEditor = async (exam) => {
         setQuestionsEditorId(exam.id);
         setEditingExamId(null);
@@ -512,7 +546,10 @@ export function useExamsLogic(setStatus, canSeeReports) {
         newQuestionOptionsCount, setNewQuestionOptionsCount,
         editingExamId, setEditingExamId,
         newAppendicesFile, setNewAppendicesFile,
-        handleDeleteExam, handleUpdateAppendices, openQuestionsEditor,
+        handleDeleteExam, 
+        handleUpdateAppendices,
+        handleDeleteAppendices, // <--- הוספנו את הייצוא של הפונקציה כאן
+        openQuestionsEditor,
         handleAddQuestion, handleDeleteQuestion, handleAddOptionToQuestion,
         handleRemoveOptionFromQuestion, handleQuestionTextChange, saveQuestionText,
         handleOptionTextChange, saveOptionText, handleUploadQuestionImage,
