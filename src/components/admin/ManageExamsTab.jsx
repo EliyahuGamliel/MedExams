@@ -192,18 +192,15 @@ export default function ManageExamsTab({
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-wide">שנת מבחן:</span>
                                                 <select
-                                                    value={exam.examYear || ""}
-                                                    onChange={(e) => handleUpdateExamYear(exam.id, e.target.value)}
-                                                    className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
-                                                >
-                                                    <option value="" disabled>בחר שנה...</option>
-                                                    {examYearsList.map(year => (
-                                                        <option key={year} value={year}>{year}</option>
-                                                    ))}
-                                                    {!examYearsList.includes(exam.examYear) && exam.examYear && (
-                                                        <option value={exam.examYear}>{exam.examYear}</option>
-                                                    )}
-                                                </select>
+    value={exam.examYear || ""}
+    onChange={(e) => handleUpdateExamYear(exam.id, e.target.value)}
+    className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+>
+    <option value="" disabled>בחר שנה...</option>
+    {examYearsList.map(year => (
+        <option key={year} value={year}>{year}</option>
+    ))}
+</select>
                                             </div>
                                         )}
 

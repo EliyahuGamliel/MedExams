@@ -206,6 +206,22 @@ export default function ExamTaking({ examsList }) {
       setIsSidebarOpen(true);
   };
 
+  const handlePrint = () => {
+  // שומרים את הכותרת המקורית של האתר
+  const originalTitle = document.title;
+  
+  // משנים את הכותרת לשם המבחן (כדי שזה יהיה שם הקובץ ב-PDF)
+  document.title = `${selectedExam.course} - ${selectedExam.title}`; 
+  
+  // פותחים את חלון ההדפסה/שמירה
+  window.print();
+  
+  // מחזירים את הכותרת המקורית (אפשר עם עיכוב קליל כדי לוודא שהדפדפן תפס את השם)
+  setTimeout(() => {
+    document.title = originalTitle;
+  }, 100);
+};
+
   const scrollToQuestion = (index) => {
     setSearchTerm("");
     setIsSearchOpen(false);
@@ -329,7 +345,7 @@ export default function ExamTaking({ examsList }) {
                  <SearchIcon /> חיפוש
               </button>
 
-              <button onClick={() => window.print()} className="bg-slate-800 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
+              <button onClick={handlePrint} className="bg-slate-800 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
                  <PdfIcon /> ייצא ל-PDF
               </button>
 

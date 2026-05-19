@@ -496,44 +496,46 @@ export function useExamsLogic(setStatus, canSeeReports) {
     };
 
     const handleUpdateExamYear = async (examId, newYear) => {
-        try {
-            // 1. מוצאים את המבחן הנוכחי כדי לדעת מה הכותרת והשנה הישנה שלו
-            const currentExam = examsList.find(e => e.id === examId);
-            if (!currentExam) return;
+    try {
+        const currentExam = examsList.find(e => e.id === examId);
+        if (!currentExam) return;
 
-            const oldYear = currentExam.examYear || "";
-            let newTitle = currentExam.title;
+        const oldYear = currentExam.examYear || "";
+        let newTitle = currentExam.title;
 
-            // 2. אם הכותרת מכילה את השנה הישנה, נחליף אותה בשנה החדשה
-            if (oldYear && newTitle.includes(oldYear)) {
-                newTitle = newTitle.replace(oldYear, newYear);
-            } else {
-                // רשת ביטחון: למקרה שהשנה הישנה כבר שונתה אבל הכותרת נתקעה על 4 ספרות (למשל 2025)
-                const yearRegex = /\b202[0-9]\b/; 
-                if (yearRegex.test(newTitle)) {
-                    newTitle = newTitle.replace(yearRegex, newYear);
-                }
+        // 1. אם מוגדרת שנה ישנה והיא קיימת בכותרת - נחליף אותה
+        if (oldYear && newTitle.includes(oldYear)) {
+            newTitle = newTitle.replace(oldYear, newYear);
+        } else {
+            // 2. רשת ביטחון: אם השנה הישנה לא נמצאה, נחפש כל רצף של 4 ספרות שמתחיל ב-20 בכותרת ונחליף אותו
+            const yearRegex = /\b20[2-3][0-9]\b/; 
+            if (yearRegex.test(newTitle)) {
+                newTitle = newTitle.replace(yearRegex, newYear);
             }
-
-            // 3. מעדכנים ב-Firebase גם את המטא-דאטה וגם את הכותרת
-            await update(ref(db, `uploaded_exams/${examId}`), { 
-                examYear: newYear,
-                title: newTitle 
-            });
-            
-            // מנקים קאש כדי שדף הבית יתעדכן
-            sessionStorage.removeItem('cachedExams');
-            sessionStorage.removeItem('cacheTimeExams');
-
-            // 4. מעדכנים את המסך באותו רגע
-            setExamsList(prev => prev.map(e => e.id === examId ? { ...e, examYear: newYear, title: newTitle } : e));
-            
-            toast.success(`שנת המבחן והכותרת עודכנו ל-${newYear}! 📅`);
-        } catch (error) {
-            console.error("Error updating exam year:", error);
-            toast.error("שגיאה בעדכון שנת המבחן");
         }
-    };
+
+        // 3. עדכון הנתונים ב-Firebase
+        await update(ref(db, `uploaded_exams/${examId}`), { 
+            examYear: newYear,
+            title: newTitle 
+        });
+        
+        // ניקוי זיכרון המטמון של המבחנים
+        sessionStorage.removeItem('cachedExams');
+        sessionStorage.removeItem('cacheTimeExams');
+
+        // 4. עדכון מיידי של הסטייט במסך המנהל
+        setExamsList(prev => prev.map(e => e.id === examId ? { ...e, examYear: newYear, title: newTitle } : e));
+        
+        // רישום הפעולה ביומן הבקרה
+        logAdminAction("עדכון שנת מבחן", `שנת המבחן שונתה ל-${newYear}. כותרת חדשה: ${newTitle}`, examId);
+
+        toast.success(`שנת המבחן והכותרת עודכנו בהצלחה ל-${newYear}! 📅`);
+    } catch (error) {
+        console.error("Error updating exam year:", error);
+        toast.error("שגיאה בעדכון שנת המבחן");
+    }
+  };
 
 
 

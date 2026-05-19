@@ -34,7 +34,7 @@ export default function AdminPage() {
 
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
   const semesters = ["סמסטר א'", "סמסטר ב'"];
-  const examYearsList = Array.from({ length: 20 }, (_, i) => `${2012 + i}/${2013 + i}`);
+const examYearsList = Array.from({ length: 20 }, (_, i) => `${2015 + i}`);
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
