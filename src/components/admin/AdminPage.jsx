@@ -79,7 +79,9 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2015 + i}`);
     saveClozeOptionText, handleToggleClozeAppeal, handleToggleVerify,
     handleDeleteAiExplanation,
     handleUpdateExamYear,
-    handleDeleteAppendices
+    handleDeleteAppendices,
+    handleRemoveBlankFromCloze,
+    handleAddBlankToCloze
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
@@ -284,6 +286,8 @@ const examYearsList = Array.from({ length: 20 }, (_, i) => `${2015 + i}`);
               handleUpdateExamYear={handleUpdateExamYear} 
               examYearsList={examYearsList} 
               handleDeleteAppendices={handleDeleteAppendices}
+              handleRemoveBlankFromCloze={handleRemoveBlankFromCloze}
+              handleAddBlankToCloze={handleAddBlankToCloze}
             />
           } />
 

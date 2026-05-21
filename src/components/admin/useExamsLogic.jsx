@@ -376,6 +376,49 @@ export function useExamsLogic(setStatus, canSeeReports) {
         await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions/${blankIdx}/appealedIndexes`), newer);
     };
 
+    // הפונקציה החדשה למחיקת השלמה (Blank) שלמה
+    const handleRemoveBlankFromCloze = async (qIdx, blankIdx) => {
+        if (!window.confirm("האם למחוק השלמה זו לחלוטין? (אל תשכח למחוק את המספר שלה גם מטקסט השאלה למעלה)")) return;
+
+        const updated = [...examQuestions];
+        const currentClozeOptions = updated[qIdx].clozeOptions || [];
+        
+        // סינון החוצה של ההשלמה הספציפית
+        updated[qIdx].clozeOptions = currentClozeOptions.filter((_, i) => i !== blankIdx);
+        
+        setExamQuestions(updated);
+        
+        // שמירה ל-Firebase
+        await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions`), updated[qIdx].clozeOptions);
+        
+        // רישום ביומן
+        logAdminAction("מחיקת השלמה", `נמחקה השלמה מספר ${blankIdx + 1} משאלה ${qIdx + 1}`, questionsEditorId);
+        toast.success("ההשלמה נמחקה בהצלחה! 🗑️");
+    };
+
+    // פונקציה חדשה להוספת מיקום השלמה (Blank) חדש
+    const handleAddBlankToCloze = async (qIdx) => {
+        const updated = [...examQuestions];
+        const currentClozeOptions = updated[qIdx].clozeOptions || [];
+        
+        // יצירת מבנה השלמה חדש עם 2 אפשרויות דיפולטיביות
+        const newBlank = {
+            options: ["אפשרות 1", "אפשרות 2"],
+            correctIndex: 0,
+            appealedIndexes: []
+        };
+        
+        updated[qIdx].clozeOptions = [...currentClozeOptions, newBlank];
+        setExamQuestions(updated);
+        
+        // שמירה ל-Firebase
+        await set(ref(db, `exam_contents/${questionsEditorId}/${qIdx}/clozeOptions`), updated[qIdx].clozeOptions);
+        
+        // רישום ביומן
+        logAdminAction("הוספת השלמה חדשה", `נוספה השלמה מספר ${updated[qIdx].clozeOptions.length} לשאלה ${qIdx + 1}`, questionsEditorId);
+        toast.success("מיקום השלמה חדש נוסף בהצלחה! 🎉");
+    };
+
     const handleUploadQuestionImage = async (idx, f) => {
         if (!questionsEditorId) return;
         
@@ -565,6 +608,8 @@ export function useExamsLogic(setStatus, canSeeReports) {
         handleToggleClozeAppeal,
         handleToggleVerify,
         handleUpdateExamYear,
-        handleDeleteAiExplanation 
+        handleDeleteAiExplanation,
+        handleRemoveBlankFromCloze,
+        handleAddBlankToCloze
     };
 }

@@ -70,9 +70,9 @@ export default function ManageExamsTab({
     handleUpdateAppendices, 
     handleDeleteAppendices, // <--- הנה הפונקציה מה-props
     openQuestionsEditor,
-    
+    handleRemoveBlankFromCloze,
     handleDeleteAiExplanation,
-    
+    handleAddBlankToCloze,
     handleUpdateExamYear,
     examYearsList
 }) {
@@ -126,13 +126,14 @@ export default function ManageExamsTab({
                                                     handleAddOptionToQuestion={handleAddOptionToQuestion}
                                                     handleUploadQuestionImage={handleUploadQuestionImage}
                                                     handleToggleCancel={handleToggleCancel}
-                                                    
+                                                    handleRemoveBlankFromCloze={handleRemoveBlankFromCloze}
                                                     handleClozeCorrectIndexChange={handleClozeCorrectIndexChange}
                                                     handleAddOptionToCloze={handleAddOptionToCloze}
                                                     handleRemoveOptionFromCloze={handleRemoveOptionFromCloze}
                                                     handleClozeOptionTextChange={handleClozeOptionTextChange}
                                                     saveClozeOptionText={saveClozeOptionText}
                                                     handleToggleClozeAppeal={handleToggleClozeAppeal}
+                                                    handleAddBlankToCloze={handleAddBlankToCloze}
                                                 />
                                                 <AiExplanationManager 
                                                     questionIndex={realIndex} 

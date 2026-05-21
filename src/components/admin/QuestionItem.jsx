@@ -27,7 +27,10 @@ const QuestionItem = memo(({
   handleRemoveOptionFromCloze,
   handleClozeOptionTextChange,
   saveClozeOptionText,
-  handleToggleClozeAppeal
+  handleToggleClozeAppeal,
+  handleRemoveBlankFromCloze,
+  handleAddBlankToCloze // <--- הפונקציה החדשה נוספה לכאן
+  
 }) => {
   const isCanceled = q.isCanceled === true;
   // --- סטייט חדש: האם השאלה פתוחה לעריכה או סגורה (אקורדיון) ---
@@ -117,16 +120,16 @@ const QuestionItem = memo(({
           )}
 
           {/* --- אזור תצוגה לשאלות פתוחות --- */}
-      {q.type === 'open_ended' && (
-        <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm text-center space-y-2">
-          <div className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold mb-2">
-            📝 שאלה פתוחה (טקסט חופשי)
-          </div>
-          <p className="text-sm text-slate-600 font-medium">
-            שאלה זו לא דורשת בחירת תשובות. היא תוצג לסטודנטים במהלך המבחן לטובת הכרות בלבד, <b>ולא תשוקלל בציון הסופי</b>.
-          </p>
-        </div>
-      )}
+          {q.type === 'open_ended' && (
+            <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm text-center space-y-2">
+              <div className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold mb-2">
+                📝 שאלה פתוחה (טקסט חופשי)
+              </div>
+              <p className="text-sm text-slate-600 font-medium">
+                שאלה זו לא דורשת בחירת תשובות. היא תוצג לסטודנטים במהלך המבחן לטובת הכרות בלבד, <b>ולא תשוקלל בציון הסופי</b>.
+              </p>
+            </div>
+          )}
       
           {/* --- אזור עריכת שאלות מסוג Cloze --- */}
           {q.type === 'cloze' && (
@@ -140,9 +143,22 @@ const QuestionItem = memo(({
 
               {q.clozeOptions?.map((blank, blankIndex) => (
                 <div key={blankIndex} className="p-3 bg-slate-50 rounded-xl border border-slate-200 shadow-sm">
-                  <div className="font-bold text-indigo-600 mb-3 text-sm flex items-center gap-2">
-                     <span className="bg-indigo-100 px-2 py-0.5 rounded-md">מיקום {`{{${blankIndex}}}`}</span>
+                  
+                  {/* --- תחילת השינוי: הכותרת וכפתור המחיקה של ההשלמה --- */}
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="font-bold text-indigo-600 text-sm flex items-center gap-2">
+                       <span className="bg-indigo-100 px-2 py-0.5 rounded-md">מיקום {`{{${blankIndex}}}`}</span>
+                    </div>
+                    
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleRemoveBlankFromCloze(realIndex, blankIndex); }}
+                        className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors flex items-center gap-1 text-xs font-bold"
+                        title="מחק השלמה זו לחלוטין"
+                    >
+                        <TrashIcon /> מחק השלמה
+                    </button>
                   </div>
+                  {/* --- סוף השינוי --- */}
                   
                   <div className="space-y-2">
                     {blank.options?.map((opt, optIdx) => {
@@ -168,8 +184,16 @@ const QuestionItem = memo(({
                     })}
                     <button onClick={() => handleAddOptionToCloze(realIndex, blankIndex)} className="w-full text-center py-2 text-xs font-bold text-purple-500 hover:bg-purple-50 rounded-lg border border-dashed border-purple-200 mt-2 transition">+ הוסף מסיח למיקום זה</button>
                   </div>
+               
                 </div>
               ))}
+               {/* הכפתור החדש! שים אותו כאן מיד אחרי סגירת ה-map */}
+              <button 
+                onClick={() => handleAddBlankToCloze(realIndex)}
+                className="w-full text-center py-2.5 text-xs font-bold text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 rounded-xl border border-dashed border-indigo-300 mt-2 transition-all block"
+              >
+                + הוסף מיקום השלמה חדש {`{{${q.clozeOptions?.length || 0}}}`}
+              </button>
             </div>
           )}
 
