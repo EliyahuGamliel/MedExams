@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { db } from '../../firebase'; // ודא שהנתיב ל-firebase.js תקין אצלך
-import { ref, get, set, remove } from 'firebase/database';
-import { useAuth } from '../../context/AuthContext'; // ודא שהנתיב תקין
+import { db } from '../../firebase'; 
+import { ref, set, remove, onValue } from 'firebase/database'; // החלפנו כאן ל-onValue!
+import { useAuth } from '../../context/AuthContext'; 
 import toast from 'react-hot-toast';
 
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
@@ -23,32 +23,35 @@ export default function CourseExams({ examsList }) {
   const [completedExams, setCompletedExams] = useState({});
   const [loadingHistory, setLoadingHistory] = useState(true);
 
-  // משיכת היסטוריית הסימונים של הסטודנט
+  // משיכת היסטוריית הסימונים של הסטודנט בזמן אמת
   useEffect(() => {
     if (!user) {
       setLoadingHistory(false);
       return;
     }
 
-    const fetchCompletedExams = async () => {
-      try {
-        const snapshot = await get(ref(db, `user_completed_exams/${user.uid}`));
-        if (snapshot.exists()) {
-          setCompletedExams(snapshot.val()); 
-        }
-      } catch (error) {
-        console.error("Error fetching completed exams:", error);
-      } finally {
-        setLoadingHistory(false);
+    const examsRef = ref(db, `user_completed_exams/${user.uid}`);
+    
+    // onValue פותח "האזנה" חיה - מעדכן את המסך מיד כשיש שינוי ב-Firebase
+    const unsubscribe = onValue(examsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setCompletedExams(snapshot.val()); 
+      } else {
+        setCompletedExams({});
       }
-    };
+      setLoadingHistory(false);
+    }, (error) => {
+      console.error("Error fetching completed exams:", error);
+      setLoadingHistory(false);
+    });
 
-    fetchCompletedExams();
+    // ניקוי ההאזנה בעת עזיבת המסך
+    return () => unsubscribe();
   }, [user]);
 
   // פונקציית ה-Toggle לסימון מבחן כבוצע
   const handleToggleComplete = async (e, examId) => {
-    e.stopPropagation(); // קריטי: מונע את פתיחת מסך המבחן בלחיצה על כפתור הסימון
+    e.stopPropagation(); 
     if (!user) return;
 
     const isCurrentlyDone = !!completedExams[examId];
@@ -57,15 +60,10 @@ export default function CourseExams({ examsList }) {
     try {
       if (isCurrentlyDone) {
         await remove(examStatusRef);
-        setCompletedExams(prev => {
-          const updated = { ...prev };
-          delete updated[examId];
-          return updated;
-        });
+        // הסטייט יתעדכן אוטומטית בזכות ה-onValue
         toast.success("סימון המבחן בוטל");
       } else {
         await set(examStatusRef, true);
-        setCompletedExams(prev => ({ ...prev, [examId]: true }));
         toast.success("המבחן סומן כבוצע! 🎉");
       }
     } catch (error) {
@@ -177,7 +175,7 @@ export default function CourseExams({ examsList }) {
                               </div>
                               
                               <div className="flex items-center gap-3 shrink-0">
-                                  {/* כפתור הסימון הידני */}
+                                  {/* כפתור הסימון הידני מתעדכן בזמן אמת */}
                                   {user ? (
                                     loadingHistory ? (
                                       <div className="w-4 h-4 border-2 border-slate-200 dark:border-slate-700 border-t-slate-400 dark:border-t-slate-500 rounded-full animate-spin"></div>

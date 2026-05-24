@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase'; 
-import { ref, get, push, set } from "firebase/database";
+import { ref, get, push, set, update } from "firebase/database"; 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -181,17 +181,25 @@ export default function ExamTaking({ examsList }) {
 
       if (user && finalScore === null) { 
           try {
-              const resultRef = ref(db, `user_results/${user.uid}/${selectedExam.id}`);
-              set(resultRef, {
+              const updates = {};
+              
+              // 1. שמירת תוצאות המבחן תחת user_results
+              updates[`user_results/${user.uid}/${selectedExam.id}`] = {
                   examId: selectedExam.id,
                   examName: selectedExam.title, 
                   courseName: selectedExam.course,
                   score: calculatedScore,
                   date: new Date().toISOString(),
                   totalQuestions: scorableQuestions.length,
-                  correctAnswers: perfectCount
-              });
-              toast.success("הציון נשמר באזור האישי! 🎉");
+                  correctAnswers: perfectCount,
+                  status: 'completed'
+              };
+              
+              // 2. סימון מהיר בנתיב user_completed_exams שהחלפנו ב-CourseExams
+              updates[`user_completed_exams/${user.uid}/${selectedExam.id}`] = true;
+
+              update(ref(db), updates);
+              toast.success("הציון נשמר והמבחן סומן כהושלם! 🎉");
           } catch (error) { 
               console.error("שגיאה בשמירת תוצאת המבחן:", error); 
           }
