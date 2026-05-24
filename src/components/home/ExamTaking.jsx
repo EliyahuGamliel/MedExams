@@ -48,6 +48,11 @@ export default function ExamTaking({ examsList }) {
       const saved = localStorage.getItem(`${storageKey}_flagged`);
       return saved ? JSON.parse(saved) : {};
   });
+  // סטייט חדש: מסיחים שנפסלו
+  const [eliminatedOptions, setEliminatedOptions] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_eliminated`);
+      return saved ? JSON.parse(saved) : {};
+  });
   const [modalStats, setModalStats] = useState(() => {
       const saved = localStorage.getItem(`${storageKey}_stats`);
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
@@ -58,8 +63,9 @@ export default function ExamTaking({ examsList }) {
       localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
       localStorage.setItem(`${storageKey}_excluded`, JSON.stringify(userExcludedQuestions));
       localStorage.setItem(`${storageKey}_flagged`, JSON.stringify(flaggedQuestions));
+      localStorage.setItem(`${storageKey}_eliminated`, JSON.stringify(eliminatedOptions)); // שמירת המסיחים שנפסלו
       localStorage.setItem(`${storageKey}_stats`, JSON.stringify(modalStats));
-  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, modalStats, storageKey]);
+  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, eliminatedOptions, modalStats, storageKey]);
 
   const handleResetExam = () => {
       if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
@@ -73,6 +79,7 @@ export default function ExamTaking({ examsList }) {
           setFinalScore(null);
           setUserExcludedQuestions({});
           setFlaggedQuestions({});
+          setEliminatedOptions({}); // איפוס הפסילות
           setModalStats({ total: 0, perfect: 0, mistakes: 0 });
           setSearchTerm("");
           setResetTick(prev => prev + 1);
@@ -90,6 +97,20 @@ export default function ExamTaking({ examsList }) {
 
   const toggleUserExclude = useCallback((index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
   const toggleFlag = useCallback((index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
+  
+  // הפונקציה שמועברת לקומפוננטת השאלה לטובת פסילת מסיח בודד
+  const toggleEliminateOption = useCallback((questionIndex, optionIndex) => {
+      setEliminatedOptions(prev => {
+          const currentEliminated = prev[questionIndex] || [];
+          if (currentEliminated.includes(optionIndex)) {
+              // אם כבר נפסל - בטל פסילה
+              return { ...prev, [questionIndex]: currentEliminated.filter(i => i !== optionIndex) };
+          } else {
+              // הוסף לפסולים
+              return { ...prev, [questionIndex]: [...currentEliminated, optionIndex] };
+          }
+      });
+  }, []);
 
   useEffect(() => {
     if (!selectedExam) return;
@@ -183,7 +204,6 @@ export default function ExamTaking({ examsList }) {
           try {
               const updates = {};
               
-              // 1. שמירת תוצאות המבחן תחת user_results
               updates[`user_results/${user.uid}/${selectedExam.id}`] = {
                   examId: selectedExam.id,
                   examName: selectedExam.title, 
@@ -195,7 +215,6 @@ export default function ExamTaking({ examsList }) {
                   status: 'completed'
               };
               
-              // 2. סימון מהיר בנתיב user_completed_exams שהחלפנו ב-CourseExams
               updates[`user_completed_exams/${user.uid}/${selectedExam.id}`] = true;
 
               update(ref(db), updates);
@@ -274,7 +293,6 @@ export default function ExamTaking({ examsList }) {
   return (
     <div className="animate-fade-in-up pb-10">
       
-      {/* מודאל נספחים מותאם ללוק כהה */}
       {showAppendices && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in print:hidden">
            <div className="bg-white dark:bg-slate-800 w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border dark:border-slate-700">
@@ -289,7 +307,6 @@ export default function ExamTaking({ examsList }) {
         </div>
       )}
 
-      {/* תפריט הניווט הצף וסרגל צד מותאמים ללילה */}
       {!loadingQuestions && (
         <>
            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white dark:bg-slate-800 p-3 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition transform hover:scale-105 print:hidden">
@@ -327,7 +344,6 @@ export default function ExamTaking({ examsList }) {
         </>
       )}
 
-      {/* סרגל עליון צף קבוע המונע סנוור בלילה */}
       <div className="sticky top-16 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-b-xl shadow-sm border-b border-slate-100 dark:border-slate-800/80 mb-8 transition-colors print:static print:bg-transparent print:shadow-none print:border-b-2 print:border-black print:pb-4 print:mb-12">
         <div className="flex flex-wrap gap-2 justify-between items-center">
             <div>
@@ -357,7 +373,6 @@ export default function ExamTaking({ examsList }) {
             </div>
         </div>
 
-        {/* שדה החיפוש הפנימי מותאם ללילה */}
         {isSearchOpen && (
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 print:hidden animate-fade-in">
                <div className="relative max-w-lg mx-auto">
@@ -379,7 +394,6 @@ export default function ExamTaking({ examsList }) {
         )}
       </div>
 
-      {/* הודעת הגהת AI חסרה מותאמת ללילה */}
       {selectedExam.isVerified === false && (
         <div className="bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-900/60 text-orange-800 dark:text-orange-300 p-4 rounded-xl mb-6 text-sm flex items-start gap-4 shadow-sm animate-fade-in transition-colors print:hidden">
            <span className="text-3xl shrink-0">🤖</span>
@@ -390,7 +404,6 @@ export default function ExamTaking({ examsList }) {
         </div>
       )}
 
-      {/* אזור השאלות הראשי */}
       <div className="space-y-8 print:space-y-4">
         {loadingQuestions ? (
             <div className="text-center py-20 print:hidden"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 dark:text-slate-400 font-bold">טוען שאלות...</div></div>
@@ -418,6 +431,11 @@ export default function ExamTaking({ examsList }) {
                         onToggleFlag={toggleFlag}
                         onToggleUserExclude={toggleUserExclude}
                         isUserExcluded={!!userExcludedQuestions[i]}
+                        
+                        // כאן אנחנו מעבירים את המסיחים הפסולים והפונקציה
+                        eliminatedOptions={eliminatedOptions[i] || []}
+                        onToggleEliminate={toggleEliminateOption}
+                        user={user}
                         resetTick={resetTick} 
                       />
                     </div>
@@ -426,7 +444,6 @@ export default function ExamTaking({ examsList }) {
         )}
       </div>
 
-      {/* כפתורי סיום והגשה תחתונים */}
       {!loadingQuestions && displayedQuestions.length > 0 && (
         <div className="text-center pt-10 pb-10 flex flex-col items-center gap-4 print:hidden">
           {mode === 'test' && !isSubmitted && <button onClick={calculateScore} className="bg-blue-600 dark:bg-blue-500 text-white px-12 py-4 rounded-full font-black text-xl shadow-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition transform hover:scale-105">הגש מבחן 🏆</button>}
@@ -435,7 +452,6 @@ export default function ExamTaking({ examsList }) {
         </div>
       )}
 
-      {/* מודאל חישוב הציון הסופי מותאם במלואו ללילה */}
       {showScoreModal && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in print:hidden">
           <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden border border-transparent dark:border-slate-700">

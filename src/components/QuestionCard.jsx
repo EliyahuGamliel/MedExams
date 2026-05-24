@@ -2,12 +2,16 @@ import { useState, useEffect, useMemo, memo } from 'react';
 import { db } from '../firebase';
 import { ref, push, set } from "firebase/database";
 import toast from 'react-hot-toast';
-import ExplanationBox from './home/ExplanationBox'; 
+import ExplanationBox from './home/ExplanationBox';
+import { useAuth } from '../context/AuthContext'; 
 
 const BookmarkIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>;
 const EyeOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>;
 
-// פונקציית עזר לערבוב
+// --- אייקונים לפסילת תשובות ---
+const EliminateIconOpen = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+const EliminateIconClosed = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>;
+
 const shuffleArray = (array) => {
   if (!array) return [];
   const newArray = [...array];
@@ -18,7 +22,6 @@ const shuffleArray = (array) => {
   return newArray;
 };
 
-// פונקציה להשוואת תשובות (לטיפול במערכים - בדיקת זהות מלאה)
 const isArrayEqual = (arr1, arr2) => {
     if (!Array.isArray(arr1) || !Array.isArray(arr2)) return false;
     if (arr1.length !== arr2.length) return false;
@@ -27,7 +30,6 @@ const isArrayEqual = (arr1, arr2) => {
     return sorted1.every((val, index) => val === sorted2[index]);
 };
 
-// אייקונים
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
@@ -44,9 +46,13 @@ const QuestionCard = memo(function QuestionCard({
   onToggleFlag, 
   isUserExcluded, 
   onToggleUserExclude, 
+  eliminatedOptions = [], 
+  onToggleEliminate, 
   resetTick, 
-  examSessionId 
+  examSessionId,
+
 }) {  
+  const { user } = useAuth();
   if (!question) return null;
 
   const isMultiSelect = Array.isArray(question.correctIndex);
@@ -262,8 +268,18 @@ const QuestionCard = memo(function QuestionCard({
     }
   };
 
+  // --- הגבלת פתיחת חלון הדיווח למשתמשים מחוברים בלבד ---
+  const handleOpenReport = () => {
+    if (!user) {
+        toast.error("רק משתמשים מחוברים יכולים לדווח על טעויות 🔒");
+        return;
+    }
+    setIsReporting(true);
+  };
+
+  // --- שמירת הדיווח עם נתוני המשתמש ---
   const handleReportSubmit = async () => {
-    if (!reportText.trim()) return;
+    if (!reportText.trim() || !user) return;
     setReportStatus('submitting');
     
     try {
@@ -273,7 +289,10 @@ const QuestionCard = memo(function QuestionCard({
         questionIndex: index,
         questionText: question.text,
         reportText: reportText,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        reporterId: user.uid,
+        reporterEmail: user.email || 'לא סופק אימייל',
+        reporterName: user.displayName || 'ללא שם'
       });
       
       setReportStatus('success');
@@ -350,7 +369,7 @@ const QuestionCard = memo(function QuestionCard({
   return (
     <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
       
-      {/* מודאל דיווח מעודכן למצב לילה */}
+      {/* מודאל דיווח */}
       {isReporting && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
            <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">מצאת טעות בשאלה?</h4>
@@ -379,14 +398,12 @@ const QuestionCard = memo(function QuestionCard({
         </div>
       )}
 
-      {/* באנר שאלה מבוטלת */}
       {question.isCanceled && (
         <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-1 text-xs font-bold tracking-widest shadow-md">
           שאלה מבוטלת - אינה נכללת בציון (כל תשובה נכונה)
         </div>
       )}
 
-      {/* הודעת שגיאה אם חסר מידע */}
       {question.type === 'multiple_choice' && (!question.options || question.options.length === 0) && (
            <div className="text-center p-4 text-red-500 bg-red-50 dark:bg-red-950/20 rounded-xl mb-4 border border-red-200 dark:border-red-900/40">
                <div className="flex justify-center mb-1"><AlertIcon /></div>
@@ -418,7 +435,8 @@ const QuestionCard = memo(function QuestionCard({
             </button>
         )}
          </div>
-        <button onClick={() => setIsReporting(true)} className="text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2 py-1 rounded-lg border border-transparent">
+         {/* --- כפתור הדיווח המעודכן --- */}
+        <button onClick={handleOpenReport} className="text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2 py-1 rounded-lg border border-transparent">
            <FlagIcon /> דווח על טעות
         </button>
       </div>
@@ -477,17 +495,21 @@ const QuestionCard = memo(function QuestionCard({
              )}
          </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 relative">
           {shuffledOptions?.map((option) => {
              const isSelected = mode === 'practice' 
                 ? practiceSelections.includes(option.id) 
                 : (isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id);
+             
+             const isEliminated = mode === 'test' && eliminatedOptions.includes(option.id) && !isSelected;
 
-             let btnClass = "w-full text-right p-4 rounded-xl border-2 mb-3 flex flex-col sm:flex-row sm:items-center justify-between transition-all ";
+             let btnClass = "w-full text-right p-4 rounded-xl border-2 mb-3 flex flex-col sm:flex-row sm:items-center justify-between transition-all group ";
              let tagText = null;
              let tagColor = "";
              
-             if (mode === 'test' && isSubmitted) {
+             if (isEliminated) {
+                 btnClass += "bg-slate-50/50 dark:bg-slate-900/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
+             } else if (mode === 'test' && isSubmitted) {
                 if (option.isMainCorrect) { 
                   btnClass += "bg-green-100 dark:bg-green-950/30 border-green-600 dark:border-green-500 text-green-900 dark:text-green-300 font-bold shadow-md"; 
                   if (question.appealedIndexes?.length > 0) { tagText = "התשובה המקורית"; tagColor = "bg-green-200 dark:bg-green-900 text-green-800 dark:text-green-200"; }
@@ -521,10 +543,19 @@ const QuestionCard = memo(function QuestionCard({
              }
 
              return (
-               <button key={option.id} onClick={() => handleSelectStandard(option.id)} className={btnClass}>
+               <button 
+                  key={option.id} 
+                  onClick={() => {
+                      if (!isEliminated) handleSelectStandard(option.id);
+                  }} 
+                  className={`${btnClass} ${isEliminated ? 'cursor-default' : ''}`}
+               >
                  <div className={`flex items-start text-right ${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
                     {isMultiSelect && <span className="inline-block shrink-0 w-4 h-4 ml-2 mt-1 border border-slate-400 dark:border-slate-500 rounded-sm text-[10px] leading-3 text-center text-slate-700 dark:text-slate-300">{isSelected && '✓'}</span>}
-                    <span className="whitespace-pre-wrap">{option.text}</span>
+                    
+                    <span className={`whitespace-pre-wrap transition-all ${isEliminated ? 'line-through decoration-slate-400 dark:decoration-slate-500' : ''}`}>
+                        {option.text}
+                    </span>
                  </div>
                  
                  <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 shrink-0">
@@ -541,6 +572,24 @@ const QuestionCard = memo(function QuestionCard({
                           {option.isCorrect && (isSelected || (mode==='test' && isSubmitted)) && <span className="text-sm">✅</span>}
                           {!option.isCorrect && isSelected && <span className="text-sm">❌</span>}
                         </>
+                    )}
+
+                    {mode === 'test' && !isSubmitted && !isSelected && onToggleEliminate && (
+                        <div 
+                            className={`p-1.5 rounded-full cursor-pointer transition-all border sm:opacity-0 sm:group-hover:opacity-100 ${
+                                isEliminated 
+                                ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 opacity-100 hover:bg-slate-300 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200' 
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
+                            onClick={(e) => {
+                                e.preventDefault(); 
+                                e.stopPropagation(); 
+                                onToggleEliminate(index, option.id);
+                            }}
+                            title={isEliminated ? "בטל מחיקת מסיח" : "מחק מסיח זה"}
+                        >
+                            {isEliminated ? <EliminateIconClosed /> : <EliminateIconOpen />}
+                        </div>
                     )}
                  </div>
                </button>

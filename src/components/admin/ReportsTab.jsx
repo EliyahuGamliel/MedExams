@@ -1,5 +1,8 @@
 import React from 'react';
 
+// אייקון משתמש קטן שיוצג ליד שם המדווח
+const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
+
 export default function ReportsTab({ reportsList, onResolveReport, onNavigateToQuestion }) {
   return (
     <div className="space-y-4 animate-fade-in text-right">
@@ -13,7 +16,6 @@ export default function ReportsTab({ reportsList, onResolveReport, onNavigateToQ
         reportsList.map(report => {
           const examTitle = report.examId !== "unknown" ? report.examId.split('_').slice(0, -1).join(' ') : 'מבחן לא ידוע';
           return (
-            /* כרטיס הדיווח הראשי הותאם לרקע ובורדר אדום-אפל עמוק בלילה */
             <div key={report.id} className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 p-4 rounded-xl shadow-sm transition-all duration-300">
               <div className="flex justify-between items-start mb-2">
                 <div className="text-xs font-bold text-red-800 dark:text-red-300 bg-red-100 dark:bg-red-950 px-2 py-1 rounded transition-colors">
@@ -26,12 +28,20 @@ export default function ReportsTab({ reportsList, onResolveReport, onNavigateToQ
               
               <p className="text-sm text-slate-700 dark:text-slate-200 font-bold mb-2 line-clamp-2 transition-colors">{report.questionText}</p>
               
-              {/* תיבת טקסט הדיווח הפנימית הוחשכה למניעת סנוור */}
               <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-red-100 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-300 mb-3 transition-colors">
                 <span className="font-bold text-red-500 dark:text-red-400">דיווח: </span>{report.reportText}
               </div>
+
+              {/* === התוספת שלנו: פרטי המדווח === */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mb-4 bg-white/60 dark:bg-slate-900/50 w-fit px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">
+                <UserIcon />
+                <span>דווח ע"י: </span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">
+                  {report.reporterName || 'משתמש אנונימי (או דיווח ישן)'}
+                </span>
+                {report.reporterEmail && <span dir="ltr">({report.reporterEmail})</span>}
+              </div>
               
-              {/* כפתורי הפעולה הותאמו למצב לילה */}
               <div className="flex gap-2">
                 <button
                   onClick={() => onNavigateToQuestion(report.examId)}
