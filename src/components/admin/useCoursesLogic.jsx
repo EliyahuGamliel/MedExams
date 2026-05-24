@@ -1,41 +1,52 @@
 import { useState, useEffect } from 'react';
-import { db } from '../../firebase';
+import { db } from "../../firebase"; // ודא שהנתיב ל-firebase.js שלך נכון
 import { ref, get, set, push, update } from "firebase/database";
 import toast from 'react-hot-toast';
 
 export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStudentYear, selectedSemester) {
-    // --- States של קורסים ---
+    // --- States של ניהול קורסים ---
     const [coursesList, setCoursesList] = useState({});
     const [newCourseName, setNewCourseName] = useState("");
+    
+    // States לעריכת קורס קיים (מודאל עריכה)
     const [editingCourseOldData, setEditingCourseOldData] = useState(null);
     const [editCourseName, setEditCourseName] = useState("");
     const [editCourseYear, setEditCourseYear] = useState("");
     const [editCourseSemester, setEditCourseSemester] = useState("");
 
-    // שליפת הקורסים בטעינה הראשונית
+    // 1. שליפת מבנה הקורסים המלא בטעינה הראשונית של הפאנל
     useEffect(() => {
         get(ref(db, 'courses')).then((snap) => setCoursesList(snap.val() || {}));
     }, []);
 
-    // רענון רשימת הקורסים (לשימוש אחרי עדכון/הוספה/מחיקה)
+    // פונקציית עזר לרענון הסטייט המקומי לאחר ביצוע שינויים במסד הנתונים
     const refreshCourses = async () => {
         const snap = await get(ref(db, 'courses'));
         setCoursesList(snap.val() || {});
     };
 
-    // --- פעולות ---
+    // --- פעולות (Actions) ---
+
+    // הוספת קורס חדש תחת השנה והסמסטר שנבחרו בסרגל הניהול
     const handleAddCourse = async () => {
         if (!newCourseName) return toast.error("נא לכתוב שם קורס");
         if (!canEditYear(selectedStudentYear)) return toast.error("אין לך הרשאה לשנה זו");
+        
         try {
             const path = `courses/${selectedStudentYear}/${selectedSemester}`;
-            await set(push(ref(db, path)), { name: newCourseName, createdAt: new Date().toISOString() });
+            await set(push(ref(db, path)), { 
+                name: newCourseName, 
+                createdAt: new Date().toISOString() 
+            });
             toast.success(`הקורס "${newCourseName}" נוסף בהצלחה!`);
             setNewCourseName("");
             refreshCourses();
-        } catch (e) { toast.error("שגיאה: " + e.message); }
+        } catch (e) { 
+            toast.error("שגיאה בהוספת הקורס: " + e.message); 
+        }
     };
 
+    // פתיחת מודאל עריכה וטעינת נתוני הקורס הנוכחיים לסטייט
     const startEditingCourse = (year, sem, id, name) => {
         setEditingCourseOldData({ year, sem, id });
         setEditCourseName(name);
@@ -43,25 +54,33 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
         setEditCourseSemester(sem);
     };
 
+    // עדכון פרטי קורס קיים (כולל תמיכה בהעברת קורס בין שנים/סמסטרים ועדכון המבחנים שלו)
     const handleUpdateCourse = async () => {
         if (!editCourseName) return toast.error("נא לכתוב שם קורס");
-        if (!canEditYear(editingCourseOldData.year) || !canEditYear(editCourseYear)) return toast.error("אין לך הרשאה לשנה זו");
+        if (!canEditYear(editingCourseOldData.year) || !canEditYear(editCourseYear)) {
+            return toast.error("אין לך הרשאה לשנה זו");
+        }
+        
         try {
             setStatus('processing');
             const { year: oldYear, sem: oldSem, id: courseId } = editingCourseOldData;
+            
+            // משיכת הנתונים המקוריים של הקורס לשמירה על תאריך היצירה
             const oldCourseSnap = await get(ref(db, `courses/${oldYear}/${oldSem}/${courseId}`));
             const courseData = oldCourseSnap.val() || { createdAt: new Date().toISOString() };
             courseData.name = editCourseName;
 
             const updates = {};
+            
+            // בדיקה: האם המשתמש שינה את המיקום הפיזי של הקורס (שנה/סמסטר)?
             if (oldYear !== editCourseYear || oldSem !== editCourseSemester) {
-                updates[`courses/${oldYear}/${oldSem}/${courseId}`] = null;
-                updates[`courses/${editCourseYear}/${editCourseSemester}/${courseId}`] = courseData;
+                updates[`courses/${oldYear}/${oldSem}/${courseId}`] = null; // מחיקה מהמיקום הישן
+                updates[`courses/${editCourseYear}/${editCourseSemester}/${courseId}`] = courseData; // העברה למיקום החדש
             } else {
-                updates[`courses/${oldYear}/${oldSem}/${courseId}`] = courseData;
+                updates[`courses/${oldYear}/${oldSem}/${courseId}`] = courseData; // עדכון שם בלבד
             }
 
-            // עדכון השם של הקורס גם בתוך המבחנים המשויכים אליו
+            // סנכרון: עדכון השם והמיקום החדש בכל המבחנים המשויכים לקורס זה
             examsList.filter(e => e.courseId === courseId).forEach(exam => {
                 updates[`uploaded_exams/${exam.id}/course`] = editCourseName;
                 updates[`uploaded_exams/${exam.id}/studentYear`] = editCourseYear;
@@ -74,12 +93,12 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
             setStatus('idle');
             refreshCourses();
         } catch (e) {
-            toast.error("שגיאה: " + e.message);
+            toast.error("שגיאה בעדכון הקורס: " + e.message);
             setStatus('idle');
         }
     };
 
-    // --- הוספת פונקציית המחיקה (מחיקה מדורגת) ---
+    // מחיקה מדורגת (Cascade Delete) - מוחק קורס, ואוטומטית משמיד את כל המבחנים והשאלות שלו
     const handleDeleteCourse = async (year, semester, courseId, courseName) => {
         if (!canEditYear(year)) return toast.error("אין לך הרשאה למחוק קורס משנה זו.");
         
@@ -95,31 +114,32 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
             
             const updates = {};
             
-            // מחיקת הקורס עצמו
+            // 1. הגדרת מחיקת הקורס עצמו
             updates[`courses/${year}/${semester}/${courseId}`] = null;
 
-            // ריצה על כל המבחנים ומחיקת כל מה שמשויך ל-courseId הזה
+            // 2. ריצה אטומית על כל המבחנים במערכת ומחיקת כל התוכן הקשור אליהם מהדאטאבייס
             Object.keys(allExams).forEach(examId => {
                 if (allExams[examId].courseId === courseId) {
-                    updates[`uploaded_exams/${examId}`] = null;
-                    updates[`exam_contents/${examId}`] = null;
-                    updates[`exam_appendices/${examId}`] = null;
-                    updates[`exam_images/${examId}`] = null; 
+                    updates[`uploaded_exams/${examId}`] = null; // מטא-דאטה של המבחן
+                    updates[`exam_contents/${examId}`] = null;  // רשימת שאלות
+                    updates[`exam_appendices/${examId}`] = null; // נספחים
+                    updates[`exam_images/${examId}`] = null;     // הפניות לתמונות
                 }
             });
 
+            // 3. ביצוע כל המחיקות בפעולת שרת אטומית אחת (Multi-path Update)
             await update(ref(db), updates);
-            toast.success(`הקורס "${courseName}" נמחק בהצלחה! 🗑️`);
+            toast.success(`הקורס "${courseName}" וכל המבחנים שלו הושמדו! 🗑️`);
             
-            // סגירת חלון העריכה אם היה פתוח על הקורס הזה
+            // הגנה: סגירת חלון העריכה אם המנהל מחק את הקורס שהוא עמד לערוך באותו הרגע
             if (editingCourseOldData?.id === courseId) {
                 setEditingCourseOldData(null);
             }
             
             refreshCourses();
         } catch (error) {
-            console.error("Error deleting course:", error);
-            toast.error("שגיאה במחיקת הקורס.");
+            console.error("Error deleting course cascaded:", error);
+            toast.error("שגיאה בתהליך מחיקת הקורס והמבחנים.");
         } finally {
             setStatus('idle');
         }
@@ -133,6 +153,6 @@ export function useCoursesLogic(canEditYear, examsList, setStatus, selectedStude
         editCourseYear, setEditCourseYear,
         editCourseSemester, setEditCourseSemester,
         handleAddCourse, startEditingCourse, handleUpdateCourse, 
-        handleDeleteCourse // החזרת פונקציית המחיקה
+        handleDeleteCourse 
     };
 }

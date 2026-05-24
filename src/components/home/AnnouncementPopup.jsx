@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase'; 
+import { db } from '../../firebase'; // ודא שהנתיב ל-firebase נכון!
 import { ref, get } from 'firebase/database';
 
 export default function AnnouncementPopup() {
@@ -42,7 +42,8 @@ export default function AnnouncementPopup() {
     if (!isVisible || !announcement) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 backdrop-blur-sm p-4 sm:p-6 transition-all duration-500">
+        /* הרקע האחורי מוחשך בצורה אגרסיבית יותר בלילה (dark:bg-black/60) ליצירת פוקוס ונוחות מקסימלית */
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 dark:bg-black/60 backdrop-blur-sm p-4 sm:p-6 transition-all duration-500">
             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-8 sm:p-12 md:p-16 rounded-3xl shadow-2xl relative w-full max-w-3xl border border-white/20 flex flex-col items-center text-center max-h-[85vh] overflow-y-auto">
                 
                 <button 
@@ -54,8 +55,8 @@ export default function AnnouncementPopup() {
                 </button>
                 
                 <div className="mb-6 p-4 bg-white/15 rounded-full shadow-inner">
-    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
-</div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+                </div>
 
                 <div className="text-xl sm:text-2xl md:text-3xl font-bold whitespace-pre-wrap break-words leading-relaxed text-white drop-shadow-md w-full px-2 sm:px-6">
                     {announcement}

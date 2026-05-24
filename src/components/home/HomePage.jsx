@@ -26,15 +26,31 @@ export default function HomePage() {
   const [homeYear, setHomeYear] = useState(() => sessionStorage.getItem('savedHomeYear') || "");
   const [homeSemester, setHomeSemester] = useState(() => sessionStorage.getItem('savedHomeSemester') || "");
 
+  // --- סטייט למצב לילה (משיכה ראשונית מ-localStorage) ---
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
   const { user, userData, loading: authLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const isExamMode = location.pathname.includes('/exam/');
-  const isHome = location.pathname === '/';
   
-  // הגדרת הטריגר לטעינה עצלה: אם המשתמש בחר סמסטר, או שהוא נכנס ישירות לקישור פנימי
-  const needsExams = (homeYear && homeSemester) || !isHome;
+  const isHomeRoute = location.pathname === '/' || (!location.pathname.includes('/exam/') && !location.pathname.includes('/course/') && !location.pathname.includes('/profile') && !location.pathname.includes('/admin'));
+
+  const needsExams = homeYear || !isHomeRoute;
+
+  // --- אפקט לסנכרון מחלקת ה-dark על ה-HTML הראשי של הדף ---
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
 
   useEffect(() => {
     if (homeYear) sessionStorage.setItem('savedHomeYear', homeYear);
@@ -53,7 +69,6 @@ export default function HomePage() {
     return () => document.removeEventListener('click', closeMenu);
   }, [showUserMenu]);
 
-  // טעינה 1: קורסים בלבד (עולה מיד כשהאתר נפתח)
   useEffect(() => {
     const fetchCoursesOnly = async () => {
         const cachedCourses = sessionStorage.getItem('cachedCourses');
@@ -77,7 +92,6 @@ export default function HomePage() {
     fetchCoursesOnly();
   }, []);
 
-  // טעינה 2: טעינה עצלה (Lazy Fetch) של המבחנים - מופעלת רק כשהטריגר needsExams הופך לחיובי
   useEffect(() => {
     if (!needsExams) return;
 
@@ -85,11 +99,11 @@ export default function HomePage() {
         const cachedExams = sessionStorage.getItem('cachedExams');
         const cacheTimestamp = sessionStorage.getItem('cacheTimeExams');
         const now = new Date().getTime();
-        const isCacheFresh = cacheTimestamp && (now - parseInt(cacheTimestamp) < 3600000); // תוקף של שעה
+        const isCacheFresh = cacheTimestamp && (now - parseInt(cacheTimestamp) < 3600000);
 
         if (cachedExams) {
             setExamsList(JSON.parse(cachedExams));
-            if (isCacheFresh) return; // זיכרון טרי = עצירה מוחלטת, 0 קריאות לשרת
+            if (isCacheFresh) return;
         }
 
         try {
@@ -106,12 +120,17 @@ export default function HomePage() {
     fetchExamsLazy();
   }, [needsExams]);
 
-  const showBackBtn = !isHome || homeYear !== "";
+  const showBackBtn = !isHomeRoute || homeYear !== "";
 
   const handleGoBack = () => {
-      if (isHome) {
-          if (homeSemester) setHomeSemester("");
-          else if (homeYear) setHomeYear("");
+      if (isHomeRoute) {
+          if (homeSemester) {
+              setHomeSemester("");
+              navigate(`/${encodeURIComponent(homeYear)}`, { replace: true });
+          } else if (homeYear) {
+              setHomeYear("");
+              navigate('/', { replace: true });
+          }
       } else {
           navigate(-1);
       }
@@ -120,50 +139,66 @@ export default function HomePage() {
   const handleGoHome = () => {
       setHomeYear("");
       setHomeSemester("");
-      navigate('/');
+      navigate('/', { replace: true });
   };
 
-  if (loadingCourses || authLoading) return <div className="min-h-screen flex items-center justify-center text-blue-600 font-bold text-xl bg-slate-50">טוען מערכת...</div>;
+  if (loadingCourses || authLoading) return <div className="min-h-screen flex items-center justify-center text-blue-600 font-bold text-xl bg-slate-50 dark:bg-slate-900 transition-colors">טוען מערכת...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans relative flex flex-col pb-20" dir="rtl">
-      <header className="sticky print:hidden top-0 z-[100] bg-white/90 backdrop-blur border-b border-slate-100 p-4 flex justify-between items-center shadow-sm h-16 shrink-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans relative flex flex-col pb-20 transition-colors duration-300" dir="rtl">
+      
+      {/* ה-Header הותאם למצב לילה עם רקע כהה וגבול עדין */}
+      <header className="sticky print:hidden top-0 z-[100] bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-100 dark:border-slate-800 p-4 flex justify-between items-center shadow-sm h-16 shrink-0 transition-colors">
         
         <div className="w-1/3 flex items-center gap-2">
           {showBackBtn && (
-            <button onClick={handleGoBack} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 hover:text-blue-600 font-bold text-sm transition">
+            <button onClick={handleGoBack} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold text-sm transition rounded-full">
               <BackIcon /> <span className="hidden sm:inline">חזור</span>
             </button>
           )}
           {showBackBtn && (
-            <button onClick={handleGoHome} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition" title="ראשי">
+            <button onClick={handleGoHome} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full transition" title="ראשי">
               <HomeIcon />
             </button>
           )}
         </div>
         
-        <h1 className="text-xl font-black text-slate-800 tracking-tight cursor-pointer w-1/3 text-center" onClick={handleGoHome}>
-          Eliko<span className="text-blue-600">Med</span>
+        <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight cursor-pointer w-1/3 text-center transition-colors" onClick={handleGoHome}>
+          Eliko<span className="text-blue-600 dark:text-blue-400">Med</span>
         </h1>
         
-        <div className="w-1/3 flex justify-end">
+        <div className="w-1/3 flex justify-end items-center gap-2">
+          
+          {/* --- כפתור Toggle מעוצב להחלפת מצב לילה/יום --- */}
+          <button 
+            onClick={() => setDarkMode(!darkMode)} 
+            className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-amber-400 hover:scale-105 transition-all shadow-sm shrink-0 border border-transparent dark:border-slate-700"
+            title={darkMode ? "מצב יום" : "מצב לילה"}
+          >
+            {darkMode ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            )}
+          </button>
+
           {user ? (
               <div className="user-menu-area flex items-center gap-2 relative">
                   <div className="hidden sm:block text-left mr-1">
-                      <div className="text-xs font-bold text-slate-800 leading-tight">{user.displayName?.split(' ')[0]}</div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">{user.displayName?.split(' ')[0]}</div>
                   </div>
                   
                   <div 
                       onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm cursor-pointer border-2 border-white shadow-sm hover:bg-blue-200 transition select-none"
+                      className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-sm cursor-pointer border-2 border-white dark:border-slate-800 shadow-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition select-none"
                   >
                       {user.displayName?.charAt(0) || 'U'}
                   </div>
 
                   {showUserMenu && (
-                    <div className="absolute top-full left-0 mt-2 bg-white border border-slate-100 shadow-lg rounded-xl p-2 flex flex-col gap-1 min-w-[140px] z-50">
-                        <div className="text-slate-400 text-[10px] p-2 leading-tight text-right">שלום,<br /><b>{user.displayName}</b></div>
-                        <hr className="border-slate-100 mb-1" />
+                    <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-lg rounded-xl p-2 flex flex-col gap-1 min-w-[140px] z-50 animate-fade-in-quick">
+                        <div className="text-slate-400 dark:text-slate-400 text-[10px] p-2 leading-tight text-right">שלום,<br /><b className="text-slate-700 dark:text-slate-200">{user.displayName}</b></div>
+                        <hr className="border-slate-100 dark:border-slate-700 mb-1" />
                         {isAdmin && (
                            <button 
                                onClick={() => { 
@@ -171,21 +206,21 @@ export default function HomePage() {
                                    navigate('/admin', { replace: true }); 
                                    setShowUserMenu(false); 
                                }} 
-                               className="text-xs font-bold text-slate-600 hover:text-purple-600 hover:bg-purple-50 p-2 rounded-lg text-right transition w-full"
+                               className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 p-2 rounded-lg text-right transition w-full"
                            >
                                ניהול מערכת
                            </button>
                         )}
-                        <button onClick={() => { navigate('/profile'); setShowUserMenu(false)}} className="text-xs font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-lg text-right transition w-full">אזור אישי</button>
-                        <hr className="my-1 border-slate-100" />
-                        <button onClick={() => { logoutUser(); setShowUserMenu(false); }} className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg text-right transition w-full">התנתק</button>
+                        <button onClick={() => { navigate('/profile'); setShowUserMenu(false)}} className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 p-2 rounded-lg text-right transition w-full">אזור אישי</button>
+                        <hr className="my-1 border-slate-100 dark:border-slate-700" />
+                        <button onClick={() => { logoutUser(); setShowUserMenu(false); }} className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 p-2 rounded-lg text-right transition w-full">התנתק</button>
                     </div>
                   )}
               </div>
           ) : (
               <button 
                   onClick={loginWithGoogle}
-                  className="bg-white text-blue-600 border border-blue-200 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-50 transition flex items-center gap-1.5 shadow-sm"
+                  className="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm"
                   title="התחברות לאזור אישי"
               >
                   <GoogleIcon /> <span className="hidden sm:inline">התחברות</span>
@@ -196,32 +231,32 @@ export default function HomePage() {
 
       <main className="max-w-3xl mx-auto px-6 mt-8 flex-grow w-full">
         <Routes>
-          <Route path="/" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
+          <Route path="/:urlYear?/:urlSemester?" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
           <Route path="/course/:courseName" element={<CourseExams examsList={examsList} />} />
           <Route path="/exam/:examId/:mode" element={<ExamTaking examsList={examsList} />} />
           <Route path="/profile" element={<UserProfile />} />
         </Routes>
       </main>
 
-      <footer className="w-full text-center py-8 text-slate-400 bg-slate-50 mt-auto text-xs sm:text-sm print:hidden">
+      <footer className="w-full text-center py-8 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 mt-auto text-xs sm:text-sm print:hidden border-t border-transparent dark:border-slate-800/50 transition-colors">
         <p className="mb-1 flex items-center justify-center gap-1">בפיתוח המערכת הושקעו זמן ומחשבה רבים <HeartIcon /></p>
-        <p className="mb-4">נהניתם? מוזמנים לפרגן בביט: <span className="font-bold text-slate-700 select-all">053-2559635</span></p>
+        <p className="mb-4">נהניתם? מוזמנים לפרגן בביט: <span className="font-bold text-slate-700 dark:text-slate-300 select-all">053-2559635</span></p>
       </footer>
 
       {!isExamMode && (
-        <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden">
+        <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 dark:text-slate-400 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden transition-colors">
           <div className="flex flex-col items-center px-4 max-w-md mx-auto gap-0.5">
-            <span className="text-[15px] font-bold text-slate-600">
+            <span className="text-[15px] font-bold text-slate-600 dark:text-slate-300">
               פותח באהבה עבורכם 💙 בהצלחה במבחנים! 🎓
             </span>
-            <span className="text-[10px] text-slate-400 leading-tight">
-            ⚠️ שימו לב: המערכת נמצאת בשלב הרצה (פיילוט). ייתכנו אי-דיוקים או שגיאות בתשובות, וישנה אפשרות שהפרויקט לא יתוחזק בעתיד. ט.ל.ח.
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">
+            ⚠️ שימו לב: המערכת נמצאת בשלב הרצה (פיילוט). יייתכנו אי-דיוקים או שגיאות בתשובות, וישנה אפשרות שהפרויקט לא יתוחזק בעתיד. ט.ל.ח.
             </span>
             
             <button onClick={() => {
                     sessionStorage.setItem('lastAppUrl', location.pathname + location.search);
                     navigate('/admin', { replace: true });
-                }} className="text-slate-300 hover:text-blue-500 transition-colors flex items-center justify-center gap-1 mx-auto mt-0.5 text-[10px] font-bold opacity-50 hover:opacity-100">
+                }} className="text-slate-300 dark:text-slate-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors flex items-center justify-center gap-1 mx-auto mt-0.5 text-[10px] font-bold opacity-50 hover:opacity-100">
               <LockIcon /> כניסת מנהל
             </button>
           </div>

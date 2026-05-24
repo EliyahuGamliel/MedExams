@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../../firebase'; // ודא שהנתיב ל-firebase.js תקין אצלך
 import { ref, get, set, remove } from 'firebase/database';
@@ -94,42 +94,44 @@ export default function CourseExams({ examsList }) {
           return getMoedPriority(a.examMoed) - getMoedPriority(b.examMoed);
       });
 
+  // --- תצוגת בחירת מצב (מבחן / תרגול) ---
   if (selectedExamForMode) {
     return (
       <div className="animate-fade-in-up text-center pt-8">
-        <h2 className="text-2xl font-black text-slate-800 mb-2">{selectedExamForMode.title}</h2>
-        <p className="text-slate-500 mb-10">איך נפתור את המבחן?</p>
+        <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2 transition-colors">{selectedExamForMode.title}</h2>
+        <p className="text-slate-500 dark:text-slate-400 mb-10 transition-colors">איך נפתור את המבחן?</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
             <button 
                 onClick={() => navigate(`/exam/${selectedExamForMode.id}/test`, { replace: true, state: { fromCourse: true } })} 
-                className="relative bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 hover:border-blue-500 hover:shadow-xl transition-all group text-right"
+                className="relative bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl transition-all group text-right"
             >
                 <div className="text-4xl mb-4 group-hover:scale-110 transition transform">📝</div>
-                <h3 className="text-xl font-bold text-slate-700">מצב מבחן</h3>
-                <p className="text-sm text-slate-400 mt-2 leading-relaxed">סימולציה מלאה. התשובות ייחשפו בסוף.</p>
+                <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 transition-colors">מצב מבחן</h3>
+                <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 leading-relaxed transition-colors">סימולציה מלאה. התשובות ייחשפו בסוף.</p>
             </button>
             
             <button 
                 onClick={() => navigate(`/exam/${selectedExamForMode.id}/practice`, { replace: true, state: { fromCourse: true } })} 
-                className="relative bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 hover:border-green-500 hover:shadow-xl transition-all group text-right"
+                className="relative bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-400 hover:shadow-xl transition-all group text-right"
             >
                 <div className="text-4xl mb-4 group-hover:scale-110 transition transform">🎯</div>
-                <h3 className="text-xl font-bold text-slate-700">מצב תרגול</h3>
-                <p className="text-sm text-slate-400 mt-2 leading-relaxed">משוב מיידי עם סימון כל תשובה.</p>
+                <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 transition-colors">מצב תרגול</h3>
+                <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 leading-relaxed transition-colors">משוב מיידי עם סימון כל תשובה.</p>
             </button>
         </div>
-        <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600 font-bold underline underline-offset-4">ביטול וחזרה לרשימה</button>
+        <button onClick={() => navigate(-1)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 font-bold underline underline-offset-4 transition-colors">ביטול וחזרה לרשימה</button>
       </div>
     );
   }
 
+  // --- תצוגת רשימת המבחנים בקורס ---
   return (
     <div className="animate-fade-in-up">
-      <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">{courseName}</h2>
-      <p className="text-slate-500 text-center mb-8">יש לבחור שחזור לתרגול</p>
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 text-center transition-colors">{courseName}</h2>
+      <p className="text-slate-500 dark:text-slate-400 text-center mb-8 transition-colors">יש לבחור שחזור לתרגול</p>
       
       {relevantExams.length === 0 ? (
-          <p className="text-center text-slate-400">אין מבחנים.</p>
+          <p className="text-center text-slate-400 dark:text-slate-500 transition-colors">אין מבחנים.</p>
       ) : (
           <div className="grid grid-cols-1 gap-3">
               {relevantExams.map((exam, index) => { 
@@ -138,41 +140,54 @@ export default function CourseExams({ examsList }) {
 
                   return (
                       <div key={exam.id}>
-                          {showYearHeader && <div className="text-xs font-bold text-slate-400 mt-4 mb-2 mr-2">{exam.examYear || "שונות"}</div>}
+                          {showYearHeader && (
+                            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-4 mb-2 mr-2 transition-colors">
+                              {exam.examYear || "שונות"}
+                            </div>
+                          )}
                           
-                          {/* הפכנו את המעטפת ל-div לחיץ כדי לאפשר כפתור פנימי */}
                           <div 
                             onClick={() => setSearchParams({ exam: exam.id })} 
                             className={`w-full p-5 rounded-2xl border cursor-pointer transition-all flex justify-between items-center flex-wrap gap-4 sm:gap-0 group ${
-                              isDone ? 'border-green-200 bg-green-50/20 hover:shadow-md' : 'border-slate-200 bg-white hover:border-indigo-400 hover:shadow-sm'
+                              isDone 
+                                ? 'border-green-200 dark:border-green-900 bg-green-50/20 dark:bg-green-950/10 hover:shadow-md' 
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-sm'
                             }`}
                           >
                               <div className="flex items-center gap-3 flex-wrap">
-                                  <span className={`font-bold text-lg transition-colors ${isDone ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'}`}>
+                                  <span className={`font-bold text-lg transition-all ${
+                                    isDone 
+                                      ? 'text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-600' 
+                                      : 'text-slate-800 dark:text-slate-200'
+                                  }`}>
                                     {exam.title}
                                   </span>
                                   
                                   {exam.isVerified === false && (
-                                     <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded-md mr-1 border border-orange-200 shadow-sm whitespace-nowrap">
+                                     <span className="bg-orange-100 dark:bg-orange-950/50 text-orange-800 dark:text-orange-300 text-[10px] font-bold px-2 py-1 rounded-md mr-1 border border-orange-200 dark:border-orange-900 shadow-sm whitespace-nowrap transition-colors">
                                        🤖 AI (טרם עבר אימות אנושי)
                                      </span>
                                   )}
                                   
-                                  {exam.hasAppendices && <span className="bg-indigo-100 text-indigo-700 p-1 rounded"><PaperclipIcon /></span>}
+                                  {exam.hasAppendices && (
+                                    <span className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 p-1 rounded transition-colors">
+                                      <PaperclipIcon />
+                                    </span>
+                                  )}
                               </div>
                               
                               <div className="flex items-center gap-3 shrink-0">
-                                  {/* כפתור הסימון הידני (רק לרשומים) */}
+                                  {/* כפתור הסימון הידני */}
                                   {user ? (
                                     loadingHistory ? (
-                                      <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-400 rounded-full animate-spin"></div>
+                                      <div className="w-4 h-4 border-2 border-slate-200 dark:border-slate-700 border-t-slate-400 dark:border-t-slate-500 rounded-full animate-spin"></div>
                                     ) : (
                                       <button
                                         onClick={(e) => handleToggleComplete(e, exam.id)}
                                         className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm ${
                                           isDone 
-                                            ? 'bg-green-100 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 group/btn' 
-                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                            ? 'bg-green-100 dark:bg-green-900/60 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900 group/btn' 
+                                            : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                                         }`}
                                       >
                                         {isDone ? (
@@ -186,10 +201,12 @@ export default function CourseExams({ examsList }) {
                                       </button>
                                     )
                                   ) : (
-                                    <span className="text-[10px] bg-slate-50 text-slate-400 px-2.5 py-1 rounded-md">התחבר לשמירת התקדמות</span>
+                                    <span className="text-[10px] bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-md transition-colors">
+                                      התחבר לשמירת התקדמות
+                                    </span>
                                   )}
 
-                                  <span className="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 font-medium shrink-0">
+                                  <span className="text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full text-slate-500 dark:text-slate-400 font-medium shrink-0 transition-colors">
                                       {exam.questionCount ? `${exam.questionCount} שאלות` : 'כניסה למבחן'}
                                   </span>
                               </div>

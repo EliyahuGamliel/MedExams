@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase';
+import { db } from '../../firebase'; // ודא שהנתיב ל-firebase נכון!
 import { ref, get, set } from 'firebase/database';
 import toast from 'react-hot-toast';
 
@@ -36,43 +36,45 @@ export default function AnnouncementAdminTab() {
         }
     };
 
-    if (loading) return <div className="text-center py-10 font-bold text-slate-500">טוען נתונים...</div>;
+    if (loading) return <div className="text-center py-10 font-bold text-slate-500 dark:text-slate-400 transition-colors">טוען נתונים...</div>;
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 max-w-lg mx-auto">
+        <div className="space-y-6 animate-fade-in text-right">
+            {/* כרטיס המודעות המרכזי מותאם לסטייל הכהה */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 max-w-lg mx-auto transition-all duration-300">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><MegaphoneIcon /></div>
-                    <h3 className="text-xl font-bold text-slate-800">הודעה קופצת לאתר</h3>
+                    <div className="p-3 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl transition-colors"><MegaphoneIcon /></div>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white transition-colors">הודעה קופצת לאתר</h3>
                 </div>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-bold text-slate-600 mb-2">תוכן ההודעה:</label>
+                        <label className="block text-sm font-bold text-slate-600 dark:text-slate-400 mb-2 transition-colors">תוכן ההודעה:</label>
                         <textarea 
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                             placeholder="למשל: בהצלחה בתקופת המבחנים שנה ג'!"
-                            className="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-24"
+                            className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-24 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors"
                         />
                     </div>
 
-                    <label className="flex items-center gap-3 cursor-pointer p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition">
+                    {/* כרטיס תיבת הסימון מותאם ללילה */}
+                    <label className="flex items-center gap-3 cursor-pointer p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200">
                         <input 
                             type="checkbox" 
                             checked={isActive} 
                             onChange={(e) => setIsActive(e.target.checked)}
-                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" 
+                            className="w-5 h-5 text-blue-600 dark:text-blue-500 rounded focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-600" 
                         />
-                        <div>
-                            <div className="font-bold text-slate-800">הפעל מודעה</div>
-                            <div className="text-xs text-slate-500">כאשר מסומן, ההודעה תקפוץ לסטודנטים בראש האתר</div>
+                        <div className="text-right">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 transition-colors">הפעל מודעה</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 transition-colors">כאשר מסומן, ההודעה תקפוץ לסטודנטים בראש האתר</div>
                         </div>
                     </label>
 
                     <button 
                         onClick={handleSave}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
                     >
                         שמור ופרסם באתר
                     </button>

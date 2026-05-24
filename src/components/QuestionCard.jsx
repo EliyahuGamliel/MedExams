@@ -45,17 +45,13 @@ const QuestionCard = memo(function QuestionCard({
   isUserExcluded, 
   onToggleUserExclude, 
   resetTick, 
-  examSessionId // <--- הפרופ החדש שהוספנו
+  examSessionId 
 }) {  
-  // הגנה ראשונית - אם אין שאלה לא מרנדרים
   if (!question) return null;
 
-  // זיהוי אם השאלה היא מרובת בחירות
   const isMultiSelect = Array.isArray(question.correctIndex);
-
   const qStorageKey = `q_state_${examId}_${mode}_${index}`;
 
-  // State למצב מבחן (עם שמירה מקומית)
   const [selectedOptionId, setSelectedOptionId] = useState(() => {
       const saved = localStorage.getItem(`${qStorageKey}_single`);
       return saved ? JSON.parse(saved) : null;
@@ -65,20 +61,17 @@ const QuestionCard = memo(function QuestionCard({
       return saved ? JSON.parse(saved) : [];
   });
   
-  // State למצב תרגול
   const [practiceSelections, setPracticeSelections] = useState(() => {
       const saved = localStorage.getItem(`${qStorageKey}_prac`);
       return saved ? JSON.parse(saved) : [];
   });
 
-  // Cloze State
   const [clozeSelections, setClozeSelections] = useState(() => {
       const saved = localStorage.getItem(`${qStorageKey}_cloze`);
       return saved ? JSON.parse(saved) : {};
   });
   const [clozeWrongAttempts, setClozeWrongAttempts] = useState({}); 
 
-  // --- תיקון שורש לבעיית האיפוס: האזנה ישירה מהעמוד הראשי ---
   useEffect(() => {
       if (resetTick > 0) {
           setSelectedOptionId(null);
@@ -89,7 +82,6 @@ const QuestionCard = memo(function QuestionCard({
       }
   }, [resetTick]);
 
-  // שמירה אוטומטית של בחירות השאלה
   useEffect(() => {
       localStorage.setItem(`${qStorageKey}_single`, JSON.stringify(selectedOptionId));
       localStorage.setItem(`${qStorageKey}_multi`, JSON.stringify(testSelections));
@@ -97,12 +89,10 @@ const QuestionCard = memo(function QuestionCard({
       localStorage.setItem(`${qStorageKey}_cloze`, JSON.stringify(clozeSelections));
   }, [selectedOptionId, testSelections, practiceSelections, clozeSelections, qStorageKey]);
 
-  // --- States לדיווח תקלות ---
   const [isReporting, setIsReporting] = useState(false);
   const [reportText, setReportText] = useState("");
   const [reportStatus, setReportStatus] = useState('idle');
 
-  // --- הכנת נתונים חכמה (מתוקן עם examSessionId כדי למנוע קפיצות) ---
   const shuffledOptions = useMemo(() => {
     if (question.type === 'cloze' || question.type === 'open_ended') return null;
 
@@ -124,11 +114,10 @@ const QuestionCard = memo(function QuestionCard({
       };
     });
     return shuffleArray(optionsWithData);
-  }, [question.text, isMultiSelect, examSessionId]); // <--- כאן נעלנו את הסטייט
+  }, [question.text, isMultiSelect, examSessionId]); 
 
   const shuffledClozeOptions = useMemo(() => {
     if (question.type !== 'cloze') return null;
-    
     const clozeOptsSafe = question.clozeOptions || [];
     
     return clozeOptsSafe.map(blank => {
@@ -139,9 +128,8 @@ const QuestionCard = memo(function QuestionCard({
       }));
       return shuffleArray(opts);
     });
-  }, [question.text, examSessionId]); // <--- וגם כאן
+  }, [question.text, examSessionId]); 
 
-  // איפוס בחירות במעבר שאלה (אבל לא במקרה של רענון דף כשיש נתונים שמורים)
   useEffect(() => {
     const hasSavedData = localStorage.getItem(`${qStorageKey}_single`) || 
                          localStorage.getItem(`${qStorageKey}_multi`) ||
@@ -167,7 +155,6 @@ const QuestionCard = memo(function QuestionCard({
     }
   }, [question, mode, question.isCanceled, isUserExcluded, qStorageKey, onAnswer, index]);
 
-  // --- חישוב סטטוס להשלמה (Cloze) ---
   const calculateClozeStatus = (currentSelections) => {
     if (!shuffledClozeOptions || shuffledClozeOptions.length === 0) return { correctCount: 0, total: 0, status: 'empty' };
     
@@ -199,7 +186,6 @@ const QuestionCard = memo(function QuestionCard({
 
   const clozeState = calculateClozeStatus(clozeSelections);
 
-  // --- לוגיקה לאמריקאיות ---
   const handleSelectStandard = (optionId) => {
     if (mode === 'test' && isSubmitted) return;
 
@@ -254,7 +240,6 @@ const QuestionCard = memo(function QuestionCard({
     }
   };
 
-  // --- לוגיקה ל-Cloze ---
   const handleSelectCloze = (blankIndex, selectedId) => {
     if (mode === 'test' && isSubmitted) return;
 
@@ -277,7 +262,6 @@ const QuestionCard = memo(function QuestionCard({
     }
   };
 
-  // --- פונקציית הדיווח ---
   const handleReportSubmit = async () => {
     if (!reportText.trim()) return;
     setReportStatus('submitting');
@@ -305,35 +289,34 @@ const QuestionCard = memo(function QuestionCard({
     }
   };
 
-  // --- רינדור Cloze ---
   const renderClozeContent = () => {
     if (!question.text) return null;
     return (
-      <div className="text-lg text-slate-800 whitespace-pre-line leading-loose" dir="rtl">
+      <div className="text-lg text-slate-800 dark:text-slate-200 whitespace-pre-line leading-loose transition-colors" dir="rtl">
         {question.text.split(/(\{\{\d+\}\})/g).map((part, i) => {
           const match = part.match(/\{\{(\d+)\}\}/);
           if (match) {
             const blankIndex = parseInt(match[1]);
-            if (!shuffledClozeOptions || !shuffledClozeOptions[blankIndex]) return <span key={i} className="text-red-400 font-bold">[חסר]</span>;
+            if (!shuffledClozeOptions || !shuffledClozeOptions[blankIndex]) return <span key={i} className="text-red-400 dark:text-red-500 font-bold">[חסר]</span>;
 
             const options = shuffledClozeOptions[blankIndex];
             const currentSelection = clozeSelections[blankIndex];
             
-            let borderClass = "border-slate-300";
-            let bgClass = "bg-white";
-            let textClass = "text-slate-700";
+            let borderClass = "border-slate-300 dark:border-slate-600";
+            let bgClass = "bg-white dark:bg-slate-800";
+            let textClass = "text-slate-700 dark:text-slate-200";
 
             const selectedOpt = options.find(o => o.id === currentSelection);
             const isCorrect = selectedOpt?.isCorrect || question.isCanceled;
 
             if (mode === 'test' && isSubmitted) {
-                if (isCorrect) { borderClass = "border-green-500"; bgClass = "bg-green-50"; textClass = "text-green-800 font-bold"; }
-                else { borderClass = "border-red-500"; bgClass = "bg-red-50"; textClass = "text-red-800 line-through"; }
+                if (isCorrect) { borderClass = "border-green-500"; bgClass = "bg-green-50 dark:bg-green-950/30"; textClass = "text-green-800 dark:text-green-400 font-bold"; }
+                else { borderClass = "border-red-500"; bgClass = "bg-red-50 dark:bg-red-950/30"; textClass = "text-red-800 dark:text-red-400 line-through"; }
             } else if (mode === 'practice' && currentSelection !== undefined) {
-                if (isCorrect) { borderClass = "border-green-500"; bgClass = "bg-green-50"; textClass = "text-green-800"; }
-                else { borderClass = "border-red-500"; bgClass = "bg-red-50"; textClass = "text-red-800"; }
+                if (isCorrect) { borderClass = "border-green-500"; bgClass = "bg-green-50 dark:bg-green-950/20"; textClass = "text-green-800 dark:text-green-400"; }
+                else { borderClass = "border-red-500"; bgClass = "bg-red-50 dark:bg-red-950/20"; textClass = "text-red-800 dark:text-red-400"; }
             } else if (currentSelection !== undefined) {
-                borderClass = "border-blue-500"; bgClass = "bg-blue-50"; textClass = "text-blue-800";
+                borderClass = "border-blue-500 dark:border-blue-500"; bgClass = "bg-blue-50 dark:bg-blue-950/40"; textClass = "text-blue-800 dark:text-blue-300";
             }
 
             return (
@@ -342,7 +325,7 @@ const QuestionCard = memo(function QuestionCard({
                     value={currentSelection ?? ""}
                     onChange={(e) => handleSelectCloze(blankIndex, parseInt(e.target.value))}
                     disabled={mode === 'test' && isSubmitted}
-                    className={`px-2 py-1 rounded-lg border-2 focus:outline-none cursor-pointer text-sm ${borderClass} ${bgClass} ${textClass}`}
+                    className={`px-2 py-1 rounded-lg border-2 focus:outline-none cursor-pointer text-sm transition-all ${borderClass} ${bgClass} ${textClass}`}
                     dir="rtl"
                   >
                     <option value="" disabled>...</option>
@@ -351,7 +334,7 @@ const QuestionCard = memo(function QuestionCard({
                     ))}
                   </select>
                   {(mode === 'test' && isSubmitted && !isCorrect && !question.isCanceled) && (
-                      <span className="text-xs text-green-600 font-bold mr-1">
+                      <span className="text-xs text-green-600 dark:text-green-400 font-bold mr-1">
                           ({options.find(o=>o.isCorrect)?.text})
                       </span>
                   )}
@@ -365,31 +348,31 @@ const QuestionCard = memo(function QuestionCard({
   };
 
   return (
-    <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 border-slate-300' : 'bg-white border-slate-100'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
+    <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
       
-      {/* מודאל דיווח */}
+      {/* מודאל דיווח מעודכן למצב לילה */}
       {isReporting && (
-      <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
-           <h4 className="font-bold text-slate-800 mb-2">מצאת טעות בשאלה?</h4>
+        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
+           <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">מצאת טעות בשאלה?</h4>
            {reportStatus === 'success' ? (
-             <div className="flex-1 flex flex-col items-center justify-center text-green-600 font-bold text-center">
+             <div className="flex-1 flex flex-col items-center justify-center text-green-600 dark:text-green-400 font-bold text-center">
                <span className="text-4xl mb-2">✅</span>
                תודה! הדיווח נשלח למנהל המערכת.
              </div>
            ) : (
              <>
-               <p className="text-xs text-slate-500 mb-3">תאר בקצרה מה הבעיה.</p>
+               <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">תאר בקצרה מה הבעיה.</p>
                <textarea 
                  value={reportText} 
                  onChange={(e) => setReportText(e.target.value)}
-                 className="flex-1 w-full border border-slate-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white"
+                 className="flex-1 w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                  placeholder="פירוט הטעות..."
                />
                <div className="flex gap-2 mt-4">
-                 <button onClick={handleReportSubmit} disabled={!reportText.trim() || reportStatus === 'submitting'} className="flex-1 bg-red-500 text-white font-bold py-2 rounded-xl text-sm hover:bg-red-600 disabled:bg-slate-300 transition">
+                 <button onClick={handleReportSubmit} disabled={!reportText.trim() || reportStatus === 'submitting'} className="flex-1 bg-red-500 text-white font-bold py-2 rounded-xl text-sm hover:bg-red-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 transition">
                    {reportStatus === 'submitting' ? 'שולח...' : 'שלח דיווח'}
                  </button>
-                 <button onClick={() => setIsReporting(false)} className="px-4 bg-slate-100 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-200 transition">ביטול</button>
+                 <button onClick={() => setIsReporting(false)} className="px-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition">ביטול</button>
                </div>
              </>
            )}
@@ -405,7 +388,7 @@ const QuestionCard = memo(function QuestionCard({
 
       {/* הודעת שגיאה אם חסר מידע */}
       {question.type === 'multiple_choice' && (!question.options || question.options.length === 0) && (
-           <div className="text-center p-4 text-red-500 bg-red-50 rounded-xl mb-4 border border-red-200">
+           <div className="text-center p-4 text-red-500 bg-red-50 dark:bg-red-950/20 rounded-xl mb-4 border border-red-200 dark:border-red-900/40">
                <div className="flex justify-center mb-1"><AlertIcon /></div>
                <span className="font-bold text-sm">שגיאה: נתוני השאלה חסרים.</span>
            </div>
@@ -413,12 +396,12 @@ const QuestionCard = memo(function QuestionCard({
 
       <div className={`flex justify-between items-center mb-4 ${question.isCanceled ? 'mt-4' : ''}`}>
         <div className="flex items-center gap-3">
-         <span className="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded-full">
+         <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full transition-colors">
           שאלה {index + 1}
         </span>
             <button 
                 onClick={() => onToggleFlag(index)}
-                className={`print:hidden flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 border border-red-200' : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-red-500 border border-transparent'}`}
+                className={`print:hidden flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50' : 'text-slate-400 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-red-500 dark:hover:text-red-400 border border-transparent'}`}
                 title="סמן שאלה זו כדי לחזור אליה מאוחר יותר"
             >
                 <BookmarkIcon filled={isFlagged} />
@@ -427,7 +410,7 @@ const QuestionCard = memo(function QuestionCard({
         {mode === 'test' && (
             <button 
                 onClick={() => onToggleUserExclude(index)}
-                className={`print:hidden flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 border border-purple-200' : 'text-slate-400 bg-slate-50 hover:bg-purple-50 hover:text-purple-500 border border-transparent'}`}
+                className={`print:hidden flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50' : 'text-slate-400 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-500 dark:hover:text-purple-400 border border-transparent'}`}
                 title="התעלם משאלה זו בחישוב הציון"
             >
                 <EyeOffIcon />
@@ -435,57 +418,57 @@ const QuestionCard = memo(function QuestionCard({
             </button>
         )}
          </div>
-        <button onClick={() => setIsReporting(true)} className="text-slate-400 hover:text-red-500 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 hover:bg-red-50 px-2 py-1 rounded-lg">
+        <button onClick={() => setIsReporting(true)} className="text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2 py-1 rounded-lg border border-transparent">
            <FlagIcon /> דווח על טעות
         </button>
       </div>
 
       {(question.type === 'multiple_choice' || question.type === 'open_ended') && (
-         <h3 className={`text-xl font-bold mb-4 whitespace-pre-wrap leading-relaxed ${question.isCanceled ? 'text-slate-500' : 'text-slate-800'}`}>
+         <h3 className={`text-xl font-bold mb-4 whitespace-pre-wrap leading-relaxed transition-colors ${question.isCanceled ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
            {question.text}
-           {isMultiSelect && question.type === 'multiple_choice' && <span className="block text-sm text-blue-500 font-normal mt-2">(זוהי שאלה מרובת בחירות - סמן את כל התשובות הנכונות)</span>}
+           {isMultiSelect && question.type === 'multiple_choice' && <span className="block text-sm text-blue-500 dark:text-blue-400 font-normal mt-2">(זוהי שאלה מרובת בחירות - סמן את כל התשובות הנכונות)</span>}
          </h3>
       )}
 
       {question.hasImage && imageUrl && (
-          <div className="mb-6 rounded-xl overflow-hidden border border-slate-200 bg-white flex justify-center">
+          <div className="mb-6 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white flex justify-center">
             <img 
               src={imageUrl} 
               alt="Question illustration" 
-              className="w-full max-h-96 object-contain" 
+              className="w-full max-h-96 object-contain dark:bg-slate-800" 
               loading="lazy"
             />
           </div>
       )}
       {question.hasImage && !imageUrl && (
-        <div className="mb-6 h-48 bg-slate-50 border border-slate-200 border-dashed rounded-xl flex items-center justify-center animate-pulse text-slate-400">
+        <div className="mb-6 h-48 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 border-dashed rounded-xl flex items-center justify-center animate-pulse text-slate-400 dark:text-slate-500">
            <span className="font-bold text-sm">טוען תמונה... 🖼️</span>
         </div>
       )}
 
       {question.type === 'open_ended' ? (
-        <div className="mt-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-center">
-          <div className="flex justify-center mb-3 text-blue-500">
-            <div className="bg-blue-100 p-3 rounded-full">
+        <div className="mt-4 p-5 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/60 text-center">
+          <div className="flex justify-center mb-3 text-blue-500 dark:text-blue-400">
+            <div className="bg-blue-100 dark:bg-blue-950 p-3 rounded-full">
               <PenIcon />
             </div>
           </div>
-          <h4 className="font-bold text-blue-900 mb-2">שאלה פתוחה (טקסט חופשי)</h4>
-          <p className="text-sm text-blue-700/80 max-w-sm mx-auto">
+          <h4 className="font-bold text-blue-900 dark:text-blue-200 mb-2">שאלה פתוחה (טקסט חופשי)</h4>
+          <p className="text-sm text-blue-700/80 dark:text-blue-400 max-w-sm mx-auto">
             שאלה זו דורשת כתיבת תשובה חופשית במבחן האמיתי. <br/>היא מוצגת כאן לטובת הכרות עם החומר בלבד ואינה משוקללת בציון.
           </p>
         </div>
       ) : question.type === 'cloze' ? (
-         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+         <div className="bg-slate-50 dark:bg-slate-900/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 transition-colors">
              {renderClozeContent()}
              
              {((mode === 'practice' && clozeState.status !== 'empty') || (mode === 'test' && isSubmitted)) && !question.isCanceled && (
-                <div className={`mt-4 p-3 rounded-xl text-center font-bold text-sm animate-fade-in
-                    ${clozeState.status === 'perfect' ? 'bg-green-100 text-green-700' : 
-                      clozeState.status === 'wrong' ? 'bg-red-100 text-red-700' : 
-                      clozeState.status === 'empty' ? 'bg-slate-100 text-slate-500' : 
-                      'bg-orange-100 text-orange-700 border border-orange-200'}
-                `}>
+                <div className={`mt-4 p-3 rounded-xl text-center font-bold text-sm animate-fade-in transition-colors
+                    ${clozeState.status === 'perfect' ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 
+                      clozeState.status === 'wrong' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 
+                      clozeState.status === 'empty' ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400' : 
+                      'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-900'}`}
+                >
                     {clozeState.status === 'perfect' && "🏆 מצוין! כל ההשלמות נכונות."}
                     {clozeState.status === 'wrong' && "😕 כל התשובות שגויות."}
                     {clozeState.status === 'partial' && `🧐 תשובה חלקית: צדקת ב-${clozeState.correctCount} מתוך ${clozeState.total} סעיפים.`}
@@ -506,47 +489,47 @@ const QuestionCard = memo(function QuestionCard({
              
              if (mode === 'test' && isSubmitted) {
                 if (option.isMainCorrect) { 
-                  btnClass += isSelected ? "bg-green-100 border-green-600 text-green-900 font-bold shadow-md" : "bg-green-50 border-green-300 text-green-800"; 
-                  if (question.appealedIndexes?.length > 0) { tagText = "התשובה המקורית"; tagColor = "bg-green-200 text-green-800"; }
+                  btnClass += "bg-green-100 dark:bg-green-950/30 border-green-600 dark:border-green-500 text-green-900 dark:text-green-300 font-bold shadow-md"; 
+                  if (question.appealedIndexes?.length > 0) { tagText = "התשובה המקורית"; tagColor = "bg-green-200 dark:bg-green-900 text-green-800 dark:text-green-200"; }
                 } else if (option.isAppealed) { 
-                  btnClass += isSelected ? "bg-orange-100 border-orange-600 text-orange-900 font-bold shadow-md" : "bg-orange-50 border-orange-300 text-orange-800"; 
-                  tagText = "התקבל בערעור"; tagColor = "bg-orange-200 text-orange-800"; 
+                  btnClass += "bg-orange-100 dark:bg-orange-950/30 border-orange-600 dark:border-orange-500 text-orange-900 dark:text-orange-300 font-bold shadow-md"; 
+                  tagText = "התקבל בערעור"; tagColor = "bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200"; 
                 } else if (isSelected) { 
-                  btnClass += "bg-red-50 border-red-500 text-red-900 shadow-md"; 
+                  btnClass += "bg-red-50 dark:bg-red-950/30 border-red-500 dark:border-red-600 text-red-900 dark:text-red-300 shadow-md"; 
                 } else { 
-                  btnClass += "bg-slate-50 border-slate-100 opacity-50"; 
+                  btnClass += "bg-slate-50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800 opacity-50 text-slate-400 dark:text-slate-500"; 
                 }
              } else if (mode === 'practice') {
                 if (isSelected && option.isMainCorrect) { 
-                  btnClass += "bg-green-100 border-green-600 text-green-900 font-bold shadow-md"; 
+                  btnClass += "bg-green-100 dark:bg-green-950/30 border-green-600 dark:border-green-500 text-green-900 dark:text-green-300 font-bold shadow-md"; 
                 } else if (isSelected && option.isAppealed) { 
-                  btnClass += "bg-orange-100 border-orange-600 text-orange-900 font-bold shadow-md"; 
-                  tagText = "התקבל בערעור"; tagColor = "bg-orange-200 text-orange-800"; 
+                  btnClass += "bg-orange-100 dark:bg-orange-950/30 border-orange-600 dark:border-orange-500 text-orange-900 dark:text-orange-300 font-bold shadow-md"; 
+                  tagText = "התקבל בערעור"; tagColor = "bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200"; 
                 } else if (isSelected && question.isCanceled) { 
-                  btnClass += "bg-green-50 border-green-400 text-green-800 shadow-md"; 
+                  btnClass += "bg-green-50 dark:bg-green-950/20 border-green-400 dark:border-green-500 text-green-800 dark:text-green-300 shadow-md"; 
                 } else if (isSelected) { 
-                  btnClass += "bg-red-50 border-red-500 text-red-900 shadow-md"; 
+                  btnClass += "bg-red-50 dark:bg-red-950/30 border-red-500 dark:border-red-600 text-red-900 dark:text-red-300 shadow-md"; 
                 } else { 
-                  btnClass += "bg-white border-slate-200 hover:bg-slate-50"; 
+                  btnClass += "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"; 
                 }
              } else {
                 if (isSelected) { 
-                  btnClass += "bg-blue-600 border-blue-600 text-white font-bold shadow-md"; 
+                  btnClass += "bg-blue-600 dark:bg-blue-500 border-blue-600 dark:border-blue-500 text-white font-bold shadow-md"; 
                 } else { 
-                  btnClass += "bg-white border-slate-200 hover:border-blue-300"; 
+                  btnClass += "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-400"; 
                 }
              }
 
              return (
                <button key={option.id} onClick={() => handleSelectStandard(option.id)} className={btnClass}>
                  <div className={`flex items-start text-right ${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
-                    {isMultiSelect && <span className="inline-block shrink-0 w-4 h-4 ml-2 mt-1 border border-slate-400 rounded-sm text-[10px] leading-3 text-center text-slate-700">{isSelected && '✓'}</span>}
+                    {isMultiSelect && <span className="inline-block shrink-0 w-4 h-4 ml-2 mt-1 border border-slate-400 dark:border-slate-500 rounded-sm text-[10px] leading-3 text-center text-slate-700 dark:text-slate-300">{isSelected && '✓'}</span>}
                     <span className="whitespace-pre-wrap">{option.text}</span>
                  </div>
                  
                  <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 shrink-0">
                     {isSelected && mode === 'test' && isSubmitted && (
-                        <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm font-bold">
+                        <span className="text-[10px] bg-blue-600 dark:bg-blue-500 text-white px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm font-bold">
                             הבחירה שלך 👈
                         </span>
                     )}
@@ -565,7 +548,7 @@ const QuestionCard = memo(function QuestionCard({
           })}
           
           {mode === 'test' && isSubmitted && selectedOptionId === null && testSelections.length === 0 && !question.isCanceled && (
-              <div className="mt-4 p-3 bg-slate-100 text-slate-500 rounded-xl text-center font-bold text-sm border border-slate-200">
+              <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-xl text-center font-bold text-sm border border-slate-200 dark:border-slate-700 transition-colors">
                   ⚪ השאלה לא נענתה
               </div>
           )}
@@ -583,5 +566,6 @@ const QuestionCard = memo(function QuestionCard({
 
     </div>
   );
-})
+});
+
 export default QuestionCard;

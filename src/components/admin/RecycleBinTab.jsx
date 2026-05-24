@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase';
-import { ref, get, update } from "firebase/database";
+import { db } from '../../firebase'; // ודא שהנתיב ל-firebase.js שלך נכון
+import { ref, get, update } from 'firebase/database';
 import { getStorage, ref as storageRef, deleteObject, listAll } from "firebase/storage";
 import toast from 'react-hot-toast';
 
@@ -93,29 +93,43 @@ export default function RecycleBinTab() {
         }
     };
 
-    if (loading) return <div className="text-center py-10 font-bold text-slate-500">בודק נתונים...</div>;
+    if (loading) return <div className="text-center py-10 font-bold text-slate-500 dark:text-slate-400 transition-colors">בודק נתונים...</div>;
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+        <div className="space-y-6 animate-fade-in text-right">
+            {/* המעטפת הראשית הותאמה לרקע וגבול כהים בלילה */}
+            <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2 transition-colors">
                     <TrashIcon /> פח מיחזור (ניקוי אוטומטי של 30 יום פעיל)
                 </h3>
 
                 {deletedExams.length === 0 ? (
-                    <div className="text-center text-slate-400 py-10 font-bold">אין מבחנים בפח המיחזור ✨</div>
+                    <div className="text-center text-slate-400 dark:text-slate-500 py-10 font-bold transition-colors">אין מבחנים בפח המיחזור ✨</div>
                 ) : (
                     <div className="space-y-4">
                         {deletedExams.map(exam => (
-                            <div key={exam.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-slate-800">{exam.meta?.title || 'מבחן ללא שם'}</h4>
-                                    <div className="text-[10px] text-slate-400 mt-1 uppercase">ID: {exam.id}</div>
-                                    <div className="text-xs text-slate-500 mt-1">נמחק ב: {new Date(exam.deletedAt).toLocaleString('he-IL')}</div>
+                            /* כרטיס פח המיחזור הותאם למצב לילה */
+                            <div key={exam.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 transition-colors duration-300">
+                                <div className="flex-1 text-right">
+                                    <h4 className="font-bold text-slate-800 dark:text-slate-200 transition-colors">{exam.meta?.title || 'מבחן ללא שם'}</h4>
+                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase font-mono tracking-wider transition-colors">ID: {exam.id}</div>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 transition-colors">נמחק ב: {new Date(exam.deletedAt).toLocaleString('he-IL')}</div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleRestore(exam)} className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-bold hover:bg-green-100 transition flex items-center gap-1"><RestoreIcon /> שחזר</button>
-                                    <button onClick={() => handlePermanentDelete(exam.id)} className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition flex items-center gap-1"><TrashIcon /> השמד</button>
+                                
+                                {/* כפתורי השחזור וההשמדה הליליים */}
+                                <div className="flex gap-2 shrink-0">
+                                    <button 
+                                        onClick={() => handleRestore(exam)} 
+                                        className="px-4 py-2 bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border border-transparent dark:border-green-900/30 rounded-lg text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/50 transition flex items-center gap-1 shadow-sm"
+                                    >
+                                        <RestoreIcon /> שחזר
+                                    </button>
+                                    <button 
+                                        onClick={() => handlePermanentDelete(exam.id)} 
+                                        className="px-4 py-2 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-transparent dark:border-red-900/30 rounded-lg text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/50 transition flex items-center gap-1 shadow-sm"
+                                    >
+                                        <TrashIcon /> השמד
+                                    </button>
                                 </div>
                             </div>
                         ))}

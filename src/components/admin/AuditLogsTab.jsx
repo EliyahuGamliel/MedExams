@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase'; // ודא שהנתיב ל-firebase.js שלך נכון
 import { ref, query, orderByChild, startAt, get } from "firebase/database";
 
@@ -42,24 +42,26 @@ export default function AuditLogsTab() {
     }, []);
 
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 animate-fade-in">
+        /* מעטפת הטבלה המרכזית מותאמת ל-Dark Mode */
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 animate-fade-in text-right">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black text-slate-800">מרכז בקרת שינויים 🕵️‍♂️</h2>
-                <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold">
+                <h2 className="text-2xl font-black text-slate-800 dark:text-white transition-colors">מרכז בקרת שינויים 🕵️‍♂️</h2>
+                <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-bold transition-colors">
                     30 ימים אחרונים
                 </span>
             </div>
             
             {loading ? (
-                <div className="text-center py-10 text-slate-500 font-bold">טוען יומן פעולות...</div>
+                <div className="text-center py-10 text-slate-500 dark:text-slate-400 font-bold transition-colors">טוען יומן פעולות...</div>
             ) : logs.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 rounded-xl text-slate-500">
+                <div className="text-center py-10 bg-slate-50 dark:bg-slate-900 rounded-xl text-slate-500 dark:text-slate-400 transition-colors">
                     לא נמצאו פעולות ניהוליות ב-30 הימים האחרונים.
                 </div>
             ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-sm text-right">
-                        <thead className="bg-slate-50 text-slate-600 font-bold border-b-2 border-slate-200">
+                        {/* ראש הטבלה הותאם לקונטרסט כהה עם בורדר עדין */}
+                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-bold border-b-2 border-slate-200 dark:border-slate-700 transition-colors">
                             <tr>
                                 <th className="p-3 rounded-tr-xl">תאריך ושעה</th>
                                 <th className="p-3">מנהל מבצע</th>
@@ -70,17 +72,18 @@ export default function AuditLogsTab() {
                         </thead>
                         <tbody>
                             {logs.map(log => (
-                                <tr key={log.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
-                                    <td className="p-3 whitespace-nowrap text-slate-500" dir="ltr">
+                                /* גוף הטבלה והשורות משנים צבעים עם אפקט הובר רך בלילה */
+                                <tr key={log.id} className="border-b border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                    <td className="p-3 whitespace-nowrap text-slate-500 dark:text-slate-400" dir="ltr">
                                         {new Date(log.timestamp).toLocaleString('he-IL', {
                                             day: '2-digit', month: '2-digit', year: 'numeric',
                                             hour: '2-digit', minute: '2-digit'
                                         })}
                                     </td>
-                                    <td className="p-3 font-bold text-slate-800">{log.email}</td>
-                                    <td className="p-3 text-blue-600 font-bold">{log.action}</td>
-                                    <td className="p-3 text-slate-400 text-xs font-mono">{log.examId}</td>
-                                    <td className="p-3 text-slate-600">{log.details}</td>
+                                    <td className="p-3 font-bold text-slate-800 dark:text-slate-200 transition-colors">{log.email}</td>
+                                    <td className="p-3 text-blue-600 dark:text-blue-400 font-bold transition-colors">{log.action}</td>
+                                    <td className="p-3 text-slate-400 dark:text-slate-500 text-xs font-mono transition-colors">{log.examId}</td>
+                                    <td className="p-3 text-slate-600 dark:text-slate-300 transition-colors">{log.details}</td>
                                 </tr>
                             ))}
                         </tbody>

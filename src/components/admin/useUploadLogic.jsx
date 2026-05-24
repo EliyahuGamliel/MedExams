@@ -1,24 +1,24 @@
-import { useState } from 'react';
-import { db } from '../../firebase';
-import { ref, update } from "firebase/database";
+import { useState, useEffect } from 'react';
+import { db } from '../../firebase'; // ודא שהנתיב ל-firebase.js תקין אצלך!
+import { ref, get, set, update } from "firebase/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import toast from 'react-hot-toast'; 
 
-// ==========================================
-// פונקציית מגן - מנרמלת ומנקה את המידע מג'מיני
-// ==========================================
+// =========================================================================
+// פונקציית מגן (Sanitizer) - מנרמלת ומנקה את מבנה השאלות המתקבל מ-Gemini
+// =========================================================================
 const normalizeGeminiQuestion = (q, idx) => {
     let text = String(q.text || q.question || q.title || q.body || "⚠️ שאלה ללא טקסט");
     let type = q.type;
     let options = q.options || q.answers || q.choices || q.items || [];
     let correctIndex = q.correctIndex;
 
-    // מתירים גם multiple_choice, גם cloze (אם נשאר לך במקרה ישן), וגם open_ended!
+    // וידוא תאימות לסוגי השאלות הנתמכים במערכת
     if (type !== 'multiple_choice' && type !== 'cloze' && type !== 'open_ended') {
         type = 'multiple_choice'; 
     }
     
-    // מוודאים ששאלות אמריקאיות יקבלו אפשרויות גיבוי במקרה של שגיאה
+    // רשת ביטחון: הוספת מסיחים זמניים לשאלות אמריקאיות אם הפיענוח נכשל
     if (type === 'multiple_choice' && (!Array.isArray(options) || options.length === 0)) {
         options = ["אפשרות 1 (לא פוענח)", "אפשרות 2 (לא פוענח)", "אפשרות 3 (לא פוענח)"];
     }
@@ -31,7 +31,7 @@ const normalizeGeminiQuestion = (q, idx) => {
         type: type, 
         options: options, 
         clozeOptions: Array.isArray(q.clozeOptions) ? q.clozeOptions : [],
-        correctIndex: type === 'open_ended' ? null : correctIndex, // לשאלה פתוחה אין אינדקס נכון
+        correctIndex: type === 'open_ended' ? null : correctIndex, // לשאלה פתוחה אין אינדקס מענה נכון
         imageNeeded: q.imageNeeded === true,
         hasImage: false, 
         isCanceled: false, 
@@ -39,12 +39,15 @@ const normalizeGeminiQuestion = (q, idx) => {
     };
 };
 
+// פונקציית עזר להמרת קובץ PDF לשרשרת Base64 עבור ה-Cloud Function
 const fileToBase64 = (file) => new Promise((resolve) => { 
-    const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(file); 
+    const r = new FileReader(); 
+    r.onload = () => resolve(r.result.split(',')[1]); 
+    r.readAsDataURL(file); 
 });
 
 export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus) {
-  // --- States הקשורים להעלאה ---
+  // --- States הקשורים לתהליכי ההעלאה ---
   const [examYear, setExamYear] = useState("2026");
   const [examMoed, setExamMoed] = useState("מועד א'");
   const [file, setFile] = useState(null);
@@ -55,7 +58,9 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
 
   const addLog = (msg) => setDebugLog(prev => prev + "\n" + msg);
 
-  // --- העלאה בודדת ---
+  // =========================================================================
+  // 1. תהליך העלאה ופיענוח של מבחן בודד
+  // =========================================================================
   const handleUploadExam = async () => {
     if (!file) return toast.error("אנא בחר קובץ PDF");
     if (!selectedCourseId) return toast.error("יש לבחור קורס");
@@ -75,6 +80,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
       if (appendicesFile) appendicesBase64 = await fileToBase64(appendicesFile);
       
       const functions = getFunctions();
+      // הגדרת Timeout מקסימלי של 9 דקות לעיבוד קבצים ארוכים
       const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
       const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
       
@@ -95,10 +101,13 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
         hasAppendices: !!appendicesFile, 
         parsingMode, 
         uploadedAt: new Date().toISOString(),
-        isVerified: false // 🆕 התוספת שלנו - המבחן מסומן אוטומטית כממתין להגהה
+        isVerified: false // ברירת מחדל: המבחן ממתין להגהת אנוש של מנהל
       };
       updates[`exam_contents/${examId}`] = questions;
-      if (appendicesFile && appendicesBase64) { updates[`exam_appendices/${examId}`] = { fileData: appendicesBase64 }; }
+      
+      if (appendicesFile && appendicesBase64) { 
+          updates[`exam_appendices/${examId}`] = { fileData: appendicesBase64 }; 
+      }
 
       await update(ref(db), updates);
       setFile(null); 
@@ -118,7 +127,9 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
     }
   };
 
-  // --- העלאה המונית ---
+  // =========================================================================
+  // 2. תהליך העלאה המונית באצווה (Batch Bulk Upload) עם זיהוי שמות חכם
+  // =========================================================================
   const handleBulkUpload = async () => {
     if (!bulkFiles || bulkFiles.length === 0) return toast.error("אנא בחר קבצים להעלאה.");
     if (!selectedCourseId) return toast.error("אנא בחר קורס לשיוך המבחנים.");
@@ -141,6 +152,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
           let extractedMoed = "מועד א'";
           let currentParsingMode = parsingMode; 
 
+          // ביטוי רגולרי לזיהוי הפורמט: P2022A (Print, 2022, מועד א') או S2023B (Screen, 2023, מועד ב')
           const match = filename.match(/([PS])?(20\d{2})([ABC]?)/);
 
           if (match) {
@@ -151,6 +163,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
               else if (match[3] === 'B') extractedMoed = "מועד ב'";
               else if (match[3] === 'C') extractedMoed = "מועד מיוחד";
           } else {
+              // רשת ביטחון במידה והעורך לא קרא לקובץ לפי הפורמט הקשיח
               const lowerName = currentFile.name.toLowerCase();
               const yearFallbackMatch = lowerName.match(/(20\d{2})/);
               if (yearFallbackMatch) extractedYear = yearFallbackMatch[1];
@@ -185,15 +198,15 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
                 hasAppendices: false, 
                 parsingMode: currentParsingMode, 
                 uploadedAt: new Date().toISOString(),
-                isVerified: false // 🆕 התוספת שלנו - המבחן מסומן אוטומטית כממתין להגהה
+                isVerified: false 
               };
               updates[`exam_contents/${examId}`] = questions;
 
               await update(ref(db), updates);
-              addLog(`✅ קובץ עבר בהצלחה ושומר במסד הנתונים!`);
+              addLog(`¼ קובץ עבר בהצלחה ונשמר במסד הנתונים!`);
           } catch(e) {
               console.error(`שגיאה בקובץ ${currentFile.name}:`, e);
-              addLog(`❌ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
+              addLog(`מ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
           }
       }
       setBulkFiles([]);
