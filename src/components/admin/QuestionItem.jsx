@@ -29,7 +29,8 @@ const QuestionItem = memo(({
   saveClozeOptionText,
   handleToggleClozeAppeal,
   handleRemoveBlankFromCloze,
-  handleAddBlankToCloze 
+  handleAddBlankToCloze,
+  handleRemoveQuestionImage
 }) => {
   const isCanceled = q.isCanceled === true;
   const [isExpanded, setIsExpanded] = useState(false);
@@ -217,12 +218,27 @@ const QuestionItem = memo(({
             </div>
           )}
 
-          {/* שורת כפתורי פעולה תחתונים של הרכיב (העלאת תמונה / פסילת שאלה) */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* שורת כפתורי פעולה תחתונים של הרכיב (העלאת תמונה / מחיקת תמונה / פסילת שאלה) */}
+          <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 transition-colors">
+            
             <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 dark:hover:bg-blue-600 transition shadow-sm border border-transparent">
-              <ImageIcon /> {q.hasImage ? 'החלף תמונה' : 'העלה תמונה לשאלה'}
+              <ImageIcon /> {q.hasImage ? 'החלף תמונה' : 'העלה תמונה'}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadQuestionImage(realIndex, e.target.files[0])} />
             </label>
+
+            {/* הכפתור החדש - מופיע רק אם יש תמונה לשאלה */}
+            {q.hasImage && (
+                <button 
+                    onClick={() => handleRemoveQuestionImage(realIndex)}
+                    className="px-4 py-2 rounded-lg text-xs font-bold transition-all border bg-white dark:bg-slate-800 text-red-500 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 shadow-sm"
+                >
+                    <TrashIcon /> הסר תמונה
+                </button>
+            )}
+
+            {/* רווח גמיש שידחוף את כפתור הפסילה שמאלה (או ימינה תלוי ב-RTL) כדי להפריד פעולות מחיקה מפעולות תמונה */}
+            <div className="flex-1"></div>
+
             <button onClick={() => handleToggleCancel(realIndex)} className={`px-4 py-2 rounded-lg text-xs font-bold transition border ${isCanceled ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 shadow-inner' : 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/40'}`}>
               {isCanceled ? 'שחזר שאלה' : 'פסול שאלה'}
             </button>

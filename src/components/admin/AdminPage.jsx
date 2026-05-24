@@ -80,7 +80,7 @@ export default function AdminPage() {
     handleRemoveOptionFromCloze, handleClozeOptionTextChange,
     saveClozeOptionText, handleToggleClozeAppeal, handleToggleVerify,
     handleDeleteAiExplanation, handleUpdateExamYear, handleDeleteAppendices,
-    handleRemoveBlankFromCloze, handleAddBlankToCloze
+    handleRemoveBlankFromCloze, handleAddBlankToCloze, handleRemoveQuestionImage
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
@@ -294,6 +294,7 @@ export default function AdminPage() {
               handleDeleteAppendices={handleDeleteAppendices}
               handleRemoveBlankFromCloze={handleRemoveBlankFromCloze}
               handleAddBlankToCloze={handleAddBlankToCloze}
+              handleRemoveQuestionImage={handleRemoveQuestionImage}
             />
           } />
 

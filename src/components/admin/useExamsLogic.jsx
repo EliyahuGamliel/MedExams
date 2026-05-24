@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from '../../firebase';
 import { ref, get, set, update, remove, query, orderByChild, startAt, push } from "firebase/database";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 
@@ -486,6 +486,47 @@ export function useExamsLogic(setStatus, canSeeReports) {
         }
     };
 
+    // מחיקת תמונה משאלה ספציפית (מסד נתונים + Storage)
+    const handleRemoveQuestionImage = async (idx) => {
+        if (!questionsEditorId) return;
+        const q = examQuestions[idx];
+        
+        if (!window.confirm("האם אתה בטוח שברצונך למחוק את התמונה משאלה זו?")) return;
+
+        setStatus('processing');
+        try {
+            // 1. מחיקת התמונה מה-Storage (Firebase חכם מספיק להבין את ה-URL)
+            if (q.imageUrl) {
+                const storage = getStorage();
+                const imageRef = storageRef(storage, q.imageUrl);
+                await deleteObject(imageRef).catch(e => console.log("תמונה לא נמצאה ב-Storage, ממשיך במחיקה מה-DB", e));
+            }
+
+            // 2. מחיקת הנתונים מה-Database
+            const updates = {};
+            updates[`exam_contents/${questionsEditorId}/${idx}/imageUrl`] = null;
+            updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = false;
+            await update(ref(db), updates);
+            
+            // 3. תיעוד הפעולה
+            logAdminAction("מחיקת תמונה משאלה", `נמחקה התמונה של שאלה ${idx + 1}`, questionsEditorId);
+
+            // 4. עדכון המסך המקומי
+            setExamQuestions(prev => {
+                const updated = [...prev];
+                updated[idx] = { ...updated[idx], imageUrl: null, hasImage: false };
+                return updated;
+            });
+
+            toast.success("התמונה נמחקה בהצלחה! 🗑️");
+        } catch (error) {
+            console.error("שגיאה במחיקת תמונה:", error);
+            toast.error("שגיאה במחיקת התמונה.");
+        } finally {
+            setStatus('idle');
+        }
+    };
+
     // סימון תשובה נכונה (תומך במצב יחיד או במצב מרובה תשובות-מערך)
     const handleSetMainCorrect = async (idx, optIdx, isMultiSelectMode = false) => {
         const q = examQuestions[idx];
@@ -584,6 +625,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         handleUpdateExamYear,
         handleDeleteAiExplanation,
         handleRemoveBlankFromCloze,
-        handleAddBlankToCloze
+        handleAddBlankToCloze,
+        handleRemoveQuestionImage
     };
 }

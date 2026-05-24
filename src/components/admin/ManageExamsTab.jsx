@@ -59,7 +59,7 @@ export default function ManageExamsTab({
     handleRemoveOptionFromQuestion, handleSetMainCorrect,
     handleToggleAppeal, handleAddOptionToQuestion,
     handleUploadQuestionImage, handleToggleCancel,
-    
+    handleRemoveQuestionImage,
     handleClozeCorrectIndexChange, handleAddOptionToCloze, 
     handleRemoveOptionFromCloze, handleClozeOptionTextChange, 
     saveClozeOptionText, handleToggleClozeAppeal,
@@ -140,6 +140,7 @@ export default function ManageExamsTab({
                                                     saveClozeOptionText={saveClozeOptionText}
                                                     handleToggleClozeAppeal={handleToggleClozeAppeal}
                                                     handleAddBlankToCloze={handleAddBlankToCloze}
+                                                    handleRemoveQuestionImage={handleRemoveQuestionImage}
                                                 />
                                                 <AiExplanationManager 
                                                     questionIndex={realIndex} 
