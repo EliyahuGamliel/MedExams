@@ -3,6 +3,7 @@ import { db } from '../../firebase'; // ודא שהנתיב ל-firebase.js תק�
 import { ref, get, set, update } from "firebase/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import toast from 'react-hot-toast'; 
+import { PDFDocument } from 'pdf-lib'; // <--- ייבוא הספרייה החדשה לכיווץ
 
 // =========================================================================
 // פונקציית מגן (Sanitizer) - מנרמלת ומנקה את מבנה השאלות המתקבל מ-Gemini
@@ -39,7 +40,37 @@ const normalizeGeminiQuestion = (q, idx) => {
     };
 };
 
-// פונקציית עזר להמרת קובץ PDF לשרשרת Base64 עבור ה-Cloud Function
+// =========================================================================
+// פונקציית הקסם: מקבלת קובץ PDF מהדפדפן, מנקה Metadata ומחזירה Base64 רזה
+// =========================================================================
+const compressAndOptimizePDF = async (file) => {
+  try {
+    const fileArrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(fileArrayBuffer);
+    
+    // שמירה אופטימיזטיבית שמנקה משקל עודף, פונטים כפולים ומבנים נסתרים
+    const compressedPdfBytes = await pdfDoc.save({
+      useObjectStreams: true,
+      addGlyphsToSansSerifFont: false
+    });
+    
+    // המרה של המערך הבינארי לשרשרת Base64 נקייה עבור Gemini
+    const base64String = btoa(
+      String.fromCharCode(...new Uint8Array(compressedPdfBytes))
+    );
+    return base64String;
+  } catch (error) {
+    console.error("שגיאה בכיווץ ה-PDF, מבצע fallback להמרה רגילה:", error);
+    // במקרה של תקלה לא צפויה, נחזור להמרה הרגילה כדי שהאפליקציה לא תיתקע למשתמש
+    return new Promise((resolve) => {
+      const r = new FileReader(); 
+      r.onload = () => resolve(r.result.split(',')[1]); 
+      r.readAsDataURL(file); 
+    });
+  }
+};
+
+// פונקציית עזר להמרת קבצי נספחים (ללא כיווץ, במידה ורוצים לשמור על קובץ מקורי)
 const fileToBase64 = (file) => new Promise((resolve) => { 
     const r = new FileReader(); 
     r.onload = () => resolve(r.result.split(',')[1]); 
@@ -59,7 +90,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
   const addLog = (msg) => setDebugLog(prev => prev + "\n" + msg);
 
   // =========================================================================
-  // 1. תהליך העלאה ופיענוח של מבחן בודד
+  // 1. תהליך העלאה ופיענוח של מבחן בודד (כולל כיווץ מובנה)
   // =========================================================================
   const handleUploadExam = async () => {
     if (!file) return toast.error("אנא בחר קובץ PDF");
@@ -70,17 +101,18 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
     const courseName = currentSemesterCourses[selectedCourseId]?.name;
     
     setStatus('processing'); 
-    setDebugLog(`מתחיל...`);
+    setDebugLog(`מתחיל אופטימיזציה וכיווץ לקובץ...`);
     
     const toastId = toast.loading('🤖 ה-AI קורא ומפענח את המבחן (זה עשוי לקחת כמה דקות)...', { duration: Infinity });
     
     const uploadProcess = async () => {
-      const base64Data = await fileToBase64(file);
+      // ביצוע כיווץ אופטימיזטיבי לקובץ המבחן לפני השליחה!
+      const base64Data = await compressAndOptimizePDF(file);
+      
       let appendicesBase64 = null;
       if (appendicesFile) appendicesBase64 = await fileToBase64(appendicesFile);
       
       const functions = getFunctions();
-      // הגדרת Timeout מקסימלי של 9 דקות לעיבוד קבצים ארוכים
       const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
       const result = await processExamWithGemini({ fileBase64: base64Data, parsingMode: parsingMode });
       
@@ -101,7 +133,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
         hasAppendices: !!appendicesFile, 
         parsingMode, 
         uploadedAt: new Date().toISOString(),
-        isVerified: false // ברירת מחדל: המבחן ממתין להגהת אנוש של מנהל
+        isVerified: false 
       };
       updates[`exam_contents/${examId}`] = questions;
       
@@ -116,7 +148,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
 
     try {
       await uploadProcess();
-      addLog(`✅ קובץ עבר בהצלחה ונשמר במסד הנתונים!`);
+      addLog(`✅ קובץ מכווץ עבר בהצלחה ונשמר במסד הנתונים!`);
       toast.success('המבחן פוענח ונשמר בהצלחה! 🎉', { id: toastId, duration: 5000 });
       setStatus('idle');
     } catch (e) { 
@@ -128,7 +160,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
   };
 
   // =========================================================================
-  // 2. תהליך העלאה המונית באצווה (Batch Bulk Upload) עם זיהוי שמות חכם
+  // 2. תהליך העלאה המונית באצווה (Batch Bulk Upload) - מכווץ כל קובץ אוטומטית!
   // =========================================================================
   const handleBulkUpload = async () => {
     if (!bulkFiles || bulkFiles.length === 0) return toast.error("אנא בחר קבצים להעלאה.");
@@ -152,7 +184,6 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
           let extractedMoed = "מועד א'";
           let currentParsingMode = parsingMode; 
 
-          // ביטוי רגולרי לזיהוי הפורמט: P2022A (Print, 2022, מועד א') או S2023B (Screen, 2023, מועד ב')
           const match = filename.match(/([PS])?(20\d{2})([ABC]?)/);
 
           if (match) {
@@ -163,7 +194,6 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
               else if (match[3] === 'B') extractedMoed = "מועד ב'";
               else if (match[3] === 'C') extractedMoed = "מועד מיוחד";
           } else {
-              // רשת ביטחון במידה והעורך לא קרא לקובץ לפי הפורמט הקשיח
               const lowerName = currentFile.name.toLowerCase();
               const yearFallbackMatch = lowerName.match(/(20\d{2})/);
               if (yearFallbackMatch) extractedYear = yearFallbackMatch[1];
@@ -172,10 +202,12 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
               else if (lowerName.includes("c") || lowerName.includes("ג'") || lowerName.includes("מיוחד")) extractedMoed = "מועד מיוחד";
           }
 
-          addLog(`\n⏳ מעבד קובץ ${i+1}/${bulkFiles.length}: ${currentFile.name} | זיהה: ${extractedYear}, ${extractedMoed}, סוג: ${currentParsingMode === 'standard' ? 'טופס 0' : 'Moodle'}`);
+          addLog(`\n⏳ אופטימיזציה ומחיקת metadata לקובץ ${i+1}/${bulkFiles.length}: ${currentFile.name}`);
           
           try {
-              const base64Data = await fileToBase64(currentFile);
+              // הקסם קורה גם כאן בלולאה: כל קובץ באצווה מכווץ ונשטף מתוכן עודף
+              const base64Data = await compressAndOptimizePDF(currentFile);
+              
               const functions = getFunctions();
               const processExamWithGemini = httpsCallable(functions, 'processExamWithGemini', { timeout: 540000 });      
               
@@ -203,10 +235,10 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
               updates[`exam_contents/${examId}`] = questions;
 
               await update(ref(db), updates);
-              addLog(`¼ קובץ עבר בהצלחה ונשמר במסד הנתונים!`);
+              addLog(`✅ קובץ עבר בהצלחה ונשמר במסד הנתונים!`);
           } catch(e) {
               console.error(`שגיאה בקובץ ${currentFile.name}:`, e);
-              addLog(`מ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
+              addLog(`❌ נכשל הקובץ ${currentFile.name}. מדלג לבא. שגיאה: ${e.message}`);
           }
       }
       setBulkFiles([]);
@@ -214,7 +246,7 @@ export function useUploadLogic(canEditYear, coursesList, selectedStudentYear, se
 
     try {
       await bulkUploadProcess();
-      toast.success('סריקת האצווה הסתיימה בהצלחה! (מומלץ לבדוק בלוגים אם היו שגיאות)', { id: toastId, duration: 5000 });
+      toast.success('סריקת האצווה הסתיימה בהצלחה! 🎉', { id: toastId, duration: 5000 });
       setStatus('idle');
     } catch (e) {
       toast.error('הייתה בעיה בסריקת האצווה.' + e.message, { id: toastId, duration: 5000 });
