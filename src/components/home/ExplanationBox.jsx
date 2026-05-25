@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase'; // ודא שהנתיב ל-firebase נכון!
 import { ref, get, update } from 'firebase/database';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// ---- הוספנו את הפונקציות של Firebase Cloud Functions במקום ה-SDK של Gemini ----
+import { getFunctions, httpsCallable } from 'firebase/functions'; 
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,7 +12,7 @@ const ThumbsUpIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" wid
 const ThumbsDownIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>;
 const LoaderIcon = () => <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
 
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_KEY);
+// הסרנו אתחול ה-Gemini מהלקוח כדי למנוע חשיפת מפתחות!
 
 export default function ExplanationBox({ examId, questionIndex, questionData, forceClose }) {
     const { user } = useAuth();
@@ -71,10 +72,13 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
         }
 
         setIsOpen(true);
+        
+        // אם ההסבר כבר קיים (ב-state או ב-cache), אין צורך לקרוא שוב לשרת
         if (explanationText) return;
 
         setIsLoading(true);
         try {
+            // 1. קודם בודקים אם יש כבר הסבר מוכן ב-Firebase (כדי לחסוך קריאה יקרה ל-AI)
             const existSnap = await get(ref(db, jsonExplanationPath));
             if (existSnap.exists() && existSnap.val().text) {
                 const textFromServer = existSnap.val().text;
@@ -84,6 +88,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                 return;
             }
 
+            // 2. מכינים את הנתונים לשליחה לשרת (Cloud Function)
             let correctAnswerText = "לא נמצאה תשובה";
             if (questionData.options) {
                 if (Array.isArray(questionData.correctIndex)) {
@@ -93,28 +98,22 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                 }
             }
 
-            const optionsText = questionData.options ? questionData.options.join('\n') : 'שאלה פתוחה/השלמה';
-            const questionText = questionData.text || "טקסט השאלה חסר";
+            const requestData = {
+                questionText: questionData.text || "טקסט השאלה חסר",
+                options: questionData.options || [],
+                correctAnswers: Array.isArray(questionData.correctIndex) ? questionData.correctIndex : [questionData.correctIndex],
+                correctAnswerText: correctAnswerText // שולחים גם את הטקסט למקרה שהפרומפט בשרת צריך אותו
+            };
 
-            const prompt = `
-            אתה מומחה רפואי ומרצה בכיר באקדמיה. הסטודנט נבחן על השאלה הבאה ורוצה לדעת למה התשובה המסומנת היא הנכונה.
+            // 3. הפעלת הפונקציה המאובטחת בשרת ה-Firebase
+            const functions = getFunctions();
+            // ודא שהשם הזה זהה לשם הפונקציה בקובץ index.js
+            const generateExplanation = httpsCallable(functions, 'generateExplanationWithGemini');
+            
+            const result = await generateExplanation(requestData);
+            const generatedText = result.data.explanation;
 
-            השאלה: "${questionText}"
-            התשובה הנכונה: "${correctAnswerText}"
-            כל האפשרויות שהוצגו: 
-            ${optionsText}
-
-            חובה עליך לפעול לפי הכללים הבאים:
-            1. התבסס אך ורק על ספרות מקצועית ועובדות מדעיות מוכחות.
-            2. אל תמציא מידע! אם אינך בטוח בוודאות מוחלטת בהסבר, כתוב בדיוק את המשפט הבא ואל תוסיף מילה: "המידע הקיים אינו מספיק כדי לספק הסבר ודאי לשאלה זו."
-            3. אם התשובה הנכונה נראית לך שגויה קלינית, הסבר מדוע אך עדיין נסה להבין את כוונת השאלה.
-            4. כתוב הסבר קליני ממוקד בעברית (עד 3 פסקאות), כולל הסבר קצר מדוע המסיחים האחרים שגויים.
-            `;
-
-            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" }); 
-            const result = await model.generateContent(prompt);
-            const generatedText = result.response.text();
-
+            // 4. שמירת התוצאה במסד הנתונים כדי שמשתמשים הבאים לא יפעילו שוב את ה-AI
             const updates = {};
             updates[`${jsonExplanationPath}/text`] = generatedText;
             updates[`${questionDbPath}/likes`] = likes || 0;
@@ -122,12 +121,18 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
 
             await update(ref(db), updates);
 
+            // 5. עדכון ה-UI וה-Cache
             setExplanationText(generatedText);
             sessionStorage.setItem(`cache_exp_${examId}_${questionIndex}`, generatedText);
 
         } catch (error) {
-            console.error("AI Generation Error:", error);
-            setExplanationText("מצטערים, התרחשה שגיאה ביצירת ההסבר. נסה שוב מאוחר יותר.");
+            console.error("AI Generation Error (Server):", error);
+            // אם הלקוח לא מחובר, נוכל להציג הודעה מתאימה
+            if (error.code === 'unauthenticated') {
+                setExplanationText("מצטערים, רק משתמשים מחוברים יכולים לקבל הסברי AI.");
+            } else {
+                setExplanationText("מצטערים, התרחשה שגיאה ביצירת ההסבר. נסה שוב מאוחר יותר.");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -193,7 +198,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-6 text-amber-600 dark:text-amber-400 space-y-3">
                             <LoaderIcon />
-                            <span className="text-sm font-bold animate-pulse">Gemini מנתח את השאלה ומנסח הסבר...</span>
+                            <span className="text-sm font-bold animate-pulse">Gemini מנתח את השאלה ומנסח הסבר (מאובטח)...</span>
                         </div>
                     ) : (
                         <>

@@ -159,3 +159,56 @@ exports.processExamWithGemini = onCall(
     }
   }
 );
+
+// הוסף את הקוד הזה בתחתית הקובץ index.js הקיים שלך
+
+exports.generateExplanationWithGemini = onCall(
+  {
+    cors: true,
+    timeoutSeconds: 60, // הסבר לוקח פחות זמן מפענוח מבחן שלם
+    memory: "512MiB",
+    secrets: [apiKey],
+  },
+  async (request) => {
+    // 1. אבטחה: וידוא שהמשתמש מחובר
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "רק משתמש מחובר רשאי לקבל הסברים.");
+    }
+
+    // 2. קליטת הנתונים מהלקוח
+    const { questionText, options, correctAnswers } = request.data;
+    
+    if (!questionText) {
+      throw new HttpsError("invalid-argument", "חסר טקסט השאלה ליצירת הסבר.");
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey.value());
+      // אפשר להשתמש במודל המהיר flash להסברים
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+      // 3. בניית הפרומפט להסבר (შנה את הטקסט בהתאם לאיך שהפרומפט שלך היה כתוב בלקוח)
+      const prompt = `
+        You are an expert tutor. 
+        Explain clearly and concisely WHY the correct answer(s) are correct, and briefly why the other options are wrong.
+        
+        Question: ${questionText}
+        Options: ${JSON.stringify(options || [])}
+        Correct Answers: ${JSON.stringify(correctAnswers || [])}
+        
+        Respond in Hebrew. Be direct, educational, and easy to read. Use formatting (like bolding) if necessary.
+      `;
+
+      // 4. הפעלת המודל
+      const result = await model.generateContent(prompt);
+      const explanation = result.response.text();
+
+      // 5. החזרת ההסבר ללקוח
+      return { explanation };
+
+    } catch (error) {
+      logger.error("Gemini Explanation Error:", error);
+      throw new HttpsError("internal", "אירעה שגיאה ביצירת ההסבר. נסה שוב.");
+    }
+  }
+);
