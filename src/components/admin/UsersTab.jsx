@@ -48,7 +48,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
             </div>
 
             {/* סרגל כלים: חיפוש וסינון */}
-            <div className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors duration-300">
+            <div className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-dark-panel p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors duration-300">
                 <div className="relative flex-1">
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                         <SearchIcon />
@@ -58,7 +58,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                         placeholder="חפש לפי אימייל או מזהה משתמש (UID)..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pr-10 p-2.5 transition-colors"
+                        className="w-full bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pr-10 p-2.5 transition-colors"
                     />
                 </div>
                 
@@ -69,7 +69,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                     <select 
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pr-10 p-2.5 font-bold transition-colors appearance-none cursor-pointer"
+                        className="w-full bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pr-10 p-2.5 font-bold transition-colors appearance-none cursor-pointer"
                     >
                         <option value="all">כל המשתמשים</option>
                         <option value="guest">אורחים (ממתינים לאישור)</option>
@@ -81,14 +81,14 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
 
             {/* טבלת הנתונים */}
             {filteredUsers.length === 0 ? (
-                <div className="text-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-10 text-slate-400 dark:text-slate-500 font-bold transition-colors">
+                <div className="text-center bg-white dark:bg-dark-panel border border-slate-200 dark:border-slate-700 rounded-xl p-10 text-slate-400 dark:text-slate-500 font-bold transition-colors">
                     {allUsers.length === 0 ? "אין משתמשים במערכת." : "לא נמצאו משתמשים התואמים לחיפוש."}
                 </div>
             ) : (
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden transition-colors duration-300">
+                <div className="bg-white dark:bg-dark-panel border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden transition-colors duration-300">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-right text-slate-600 dark:text-slate-300">
-                            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase font-bold border-b border-slate-200 dark:border-slate-700 transition-colors">
+                            <thead className="bg-slate-50 dark:bg-dark-bg/50 text-slate-500 dark:text-slate-400 uppercase font-bold border-b border-slate-200 dark:border-slate-700 transition-colors">
                                 <tr>
                                     <th className="px-6 py-4">משתמש</th>
                                     <th className="px-6 py-4 w-48">תפקיד במערכת</th>
@@ -111,7 +111,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                                                 className={`w-full p-2 rounded-lg border text-xs font-bold transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                                     u.role === 'guest' || !u.role
                                                         ? 'bg-yellow-50 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/40' 
-                                                        : 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200'
+                                                        : 'bg-slate-50 dark:bg-dark-bg border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200'
                                                 }`}
                                                 disabled={u.uid === currentUser.uid}
                                             >
@@ -130,7 +130,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                                                             <label key={year} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border cursor-pointer transition-all ${
                                                                 isAllowed 
                                                                     ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold' 
-                                                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                                                    : 'bg-slate-50 dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                                                             }`}>
                                                                 <input 
                                                                     type="checkbox" 
@@ -158,7 +158,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                                                     <TrashIcon />
                                                 </button>
                                             ) : (
-                                                <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-400 dark:text-slate-500 whitespace-nowrap">זה אתה</span>
+                                                <span className="text-[10px] bg-slate-100 dark:bg-dark-border px-2 py-1 rounded text-slate-400 dark:text-slate-500 whitespace-nowrap">זה אתה</span>
                                             )}
                                         </td>
                                     </tr>
@@ -169,7 +169,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
 
                     {/* פס ניווט עמודים (Pagination Footer) */}
                     {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 transition-colors">
+                        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-dark-bg/50 transition-colors">
                             <span className="text-sm text-slate-500 dark:text-slate-400 mb-4 sm:mb-0">
                                 מציג <span className="font-bold text-slate-800 dark:text-slate-200">{indexOfFirstUser + 1}</span> עד <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(indexOfLastUser, filteredUsers.length)}</span> מתוך <span className="font-bold text-slate-800 dark:text-slate-200">{filteredUsers.length}</span> משתמשים
                             </span>
@@ -178,7 +178,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                                 <button 
                                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
-                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold bg-white dark:bg-dark-panel border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     <PrevPageIcon /> הקודם
                                 </button>
@@ -190,7 +190,7 @@ export default function UsersTab({ allUsers, currentUser, onUpdateRole, onToggle
                                 <button 
                                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
-                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold bg-white dark:bg-dark-panel border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     הבא <NextPageIcon />
                                 </button>

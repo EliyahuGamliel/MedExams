@@ -69,7 +69,7 @@ export default function SoftwareUpdate() {
 
   // --- תצוגת עדכון זמין (תוצג רק אם באמת יש קובץ חדש להתקין) ---
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-6 text-slate-800 dark:text-white shadow-xl dark:shadow-2xl relative overflow-hidden max-w-sm w-full mx-auto transition-all duration-300 text-right">
+    <div className="bg-white dark:bg-dark-panel border border-slate-100 dark:border-slate-700 rounded-2xl p-6 text-slate-800 dark:text-white shadow-xl dark:shadow-2xl relative overflow-hidden max-w-sm w-full mx-auto transition-all duration-300 text-right">
       <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500 rounded-full blur-[80px] opacity-20 dark:opacity-30"></div>
       
       <div className="relative z-10">
@@ -89,7 +89,7 @@ export default function SoftwareUpdate() {
               <span className="text-blue-600 dark:text-blue-400">{statusText}</span>
               <span className="text-slate-700 dark:text-white">{progress}%</span>
             </div>
-            <div className="h-2 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div className="h-2 w-full bg-slate-100 dark:bg-dark-bg rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
               <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full transition-all duration-300 ease-out relative" style={{ width: `${progress}%` }}>
                 <div className="absolute top-0 right-0 bottom-0 left-0 bg-white/20 animate-pulse"></div>
               </div>

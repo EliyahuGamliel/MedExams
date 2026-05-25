@@ -27,14 +27,14 @@ export default function ManageCoursesTab({
                     <select
                         value={selectedStudentYear}
                         onChange={e => setSelectedStudentYear(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors"
+                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors"
                     >
                         {studentYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                     <select
                         value={selectedSemester}
                         onChange={e => setSelectedSemester(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors"
+                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors"
                     >
                         {semesters.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -44,7 +44,7 @@ export default function ManageCoursesTab({
                     value={newCourseName}
                     onChange={e => setNewCourseName(e.target.value)}
                     placeholder="שם הקורס (למשל: המטולוגיה)"
-                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 mb-4 focus:ring-2 focus:ring-green-500 outline-none transition-colors"
+                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 mb-4 focus:ring-2 focus:ring-green-500 outline-none transition-colors"
                 />
                 <button
                     onClick={onAddCourse}
@@ -66,7 +66,7 @@ export default function ManageCoursesTab({
                                 <h4 className="text-sm font-black text-slate-500 dark:text-slate-400 mb-2 border-b dark:border-slate-700 pb-1 transition-colors">{year} | {sem}</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {Object.entries(courses).map(([id, course]) => (
-                                        <div key={id} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-sm transition-colors duration-300">
+                                        <div key={id} className="bg-white dark:bg-dark-panel p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-sm transition-colors duration-300">
                                             <span className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate ml-2 transition-colors" title={course.name}>{course.name}</span>
                                             
                                             {/* אזור כפתורי עריכה/מחיקה מותאמים ללילה */}

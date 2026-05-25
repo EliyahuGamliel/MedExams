@@ -45,7 +45,7 @@ const QuestionItem = memo(({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3 overflow-hidden">
-          <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black px-2 py-1 rounded-lg shrink-0 transition-colors">
+          <span className="bg-slate-200 dark:bg-dark-border text-slate-700 dark:text-slate-200 text-xs font-black px-2 py-1 rounded-lg shrink-0 transition-colors">
             שאלה {realIndex + 1}
           </span>
           {!isExpanded && (
@@ -67,7 +67,7 @@ const QuestionItem = memo(({
             <TrashIcon />
           </button>
 
-          <div className="text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/80 rounded-full p-1 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+          <div className="text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-dark-border/80 rounded-full p-1 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
             {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
           </div>
         </div>
@@ -82,13 +82,13 @@ const QuestionItem = memo(({
             value={q.text} 
             onChange={(e) => handleQuestionTextChange(realIndex, e.target.value)}
             onBlur={(e) => saveQuestionText(realIndex, e.target.value)}
-            className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-400 outline-none resize-y transition-colors"
+            className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-bold bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-400 outline-none resize-y transition-colors"
             rows={3}
           />
 
           {/* ניהול שאלות אמריקאיות רגילות */}
           {q.type === 'multiple_choice' && (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2 transition-colors duration-300">
+            <div className="bg-white dark:bg-dark-panel p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2 transition-colors duration-300">
               <div className="flex justify-between items-end mb-2">
                 <div className="text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors">ניהול התשובות:</div>
               </div>
@@ -100,7 +100,7 @@ const QuestionItem = memo(({
                   <div key={optIdx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg border text-sm transition-colors ${
                     isMainCorrect 
                       ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40' 
-                      : 'bg-slate-50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-700/60'
+                      : 'bg-slate-50 dark:bg-dark-bg/40 border-slate-100 dark:border-slate-700/60'
                   }`}>
                     <div className="flex items-center flex-1 w-full">
                       <span className="font-bold text-slate-400 dark:text-slate-500 w-6 shrink-0">{optIdx + 1}.</span>
@@ -121,8 +121,8 @@ const QuestionItem = memo(({
                     
                     <div className="flex gap-1 shrink-0 items-center justify-end mr-auto sm:mr-0">
                       <button onClick={() => handleRemoveOptionFromQuestion(realIndex, optIdx)} className="text-slate-300 dark:text-slate-600 hover:text-red-500 p-1 mr-1 transition-colors" title="מחק תשובה"><MinusIcon /></button>
-                      <button onClick={() => handleSetMainCorrect(realIndex, optIdx, false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-sm ${(!Array.isArray(q.correctIndex) && isMainCorrect) ? 'bg-green-600 dark:bg-green-500 text-white' : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>נכונה</button>
-                      <button onClick={() => handleSetMainCorrect(realIndex, optIdx, true)} title="הוסף כתשובה נכונה נוספת" className={`px-2 py-1 rounded-lg text-xs font-bold transition border ${Array.isArray(q.correctIndex) && isMainCorrect ? 'bg-green-700 text-white border-green-800 dark:border-green-900' : 'bg-slate-50 dark:bg-slate-900/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400'}`}>+</button>
+                      <button onClick={() => handleSetMainCorrect(realIndex, optIdx, false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-sm ${(!Array.isArray(q.correctIndex) && isMainCorrect) ? 'bg-green-600 dark:bg-green-500 text-white' : 'bg-white dark:bg-dark-panel border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>נכונה</button>
+                      <button onClick={() => handleSetMainCorrect(realIndex, optIdx, true)} title="הוסף כתשובה נכונה נוספת" className={`px-2 py-1 rounded-lg text-xs font-bold transition border ${Array.isArray(q.correctIndex) && isMainCorrect ? 'bg-green-700 text-white border-green-800 dark:border-green-900' : 'bg-slate-50 dark:bg-dark-bg/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400'}`}>+</button>
                       <button onClick={() => handleToggleAppeal(realIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isAppealed ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-800/80' : 'text-slate-300 dark:text-slate-600 hover:text-orange-500'}`} disabled={isMainCorrect}>{isAppealed ? 'התקבל' : 'ערעור'}</button>
                     </div>
                   </div>
@@ -134,7 +134,7 @@ const QuestionItem = memo(({
 
           {/* תצוגת שאלות פתוחות חופשיות */}
           {q.type === 'open_ended' && (
-            <div className="mb-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center space-y-2 transition-colors">
+            <div className="mb-4 bg-slate-50 dark:bg-dark-bg/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center space-y-2 transition-colors">
               <div className="inline-block bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full text-xs font-bold mb-2">
                 📝 שאלה פתוחה (טקסט חופשי)
               </div>
@@ -146,7 +146,7 @@ const QuestionItem = memo(({
       
           {/* עריכת שאלות מסוג השלמת טקסט (Cloze) */}
           {q.type === 'cloze' && (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 transition-colors duration-300">
+            <div className="bg-white dark:bg-dark-panel p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 transition-colors duration-300">
               <div className="flex justify-between items-end mb-2 border-b dark:border-slate-700 pb-2 transition-colors">
                 <div className="text-xs font-bold text-slate-500 dark:text-slate-400">ניהול השלמות (Cloze) מתקדם:</div>
                 <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-bold transition-colors">
@@ -155,7 +155,7 @@ const QuestionItem = memo(({
               </div>
 
               {q.clozeOptions?.map((blank, blankIndex) => (
-                <div key={blankIndex} className="p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+                <div key={blankIndex} className="p-3 bg-slate-50 dark:bg-dark-bg/40 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
                   
                   <div className="flex justify-between items-center mb-3">
                     <div className="font-bold text-indigo-600 dark:text-indigo-400 text-sm flex items-center gap-2 transition-colors">
@@ -180,7 +180,7 @@ const QuestionItem = memo(({
                         <div key={optIdx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg border text-sm transition-colors ${
                           isMainCorrect 
                             ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40' 
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                            : 'bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700'
                         }`}>
                           <input 
                             type="text" 
@@ -197,7 +197,7 @@ const QuestionItem = memo(({
                           />
                           <div className="flex gap-1 shrink-0 items-center justify-end mr-auto sm:mr-0">
                             <button onClick={(e) => { e.stopPropagation(); handleRemoveOptionFromCloze(realIndex, blankIndex, optIdx); }} className="text-slate-300 dark:text-slate-600 hover:text-red-500 p-1 mr-1 transition-colors" title="מחק תשובה"><MinusIcon /></button>
-                            <button onClick={() => handleClozeCorrectIndexChange(realIndex, blankIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-sm ${isMainCorrect ? 'bg-green-600 dark:bg-green-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>נכונה</button>
+                            <button onClick={() => handleClozeCorrectIndexChange(realIndex, blankIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-sm ${isMainCorrect ? 'bg-green-600 dark:bg-green-500 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>נכונה</button>
                             <button onClick={() => handleToggleClozeAppeal(realIndex, blankIndex, optIdx)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isAppealed ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-800/80' : 'text-slate-300 dark:text-slate-600 hover:text-orange-500'}`} disabled={isMainCorrect}>{isAppealed ? 'התקבל' : 'ערעור'}</button>
                           </div>
                         </div>
@@ -230,7 +230,7 @@ const QuestionItem = memo(({
             {q.hasImage && (
                 <button 
                     onClick={() => handleRemoveQuestionImage(realIndex)}
-                    className="px-4 py-2 rounded-lg text-xs font-bold transition-all border bg-white dark:bg-slate-800 text-red-500 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 shadow-sm"
+                    className="px-4 py-2 rounded-lg text-xs font-bold transition-all border bg-white dark:bg-dark-panel text-red-500 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 shadow-sm"
                 >
                     <TrashIcon /> הסר תמונה
                 </button>
@@ -239,7 +239,7 @@ const QuestionItem = memo(({
             {/* רווח גמיש שידחוף את כפתור הפסילה שמאלה (או ימינה תלוי ב-RTL) כדי להפריד פעולות מחיקה מפעולות תמונה */}
             <div className="flex-1"></div>
 
-            <button onClick={() => handleToggleCancel(realIndex)} className={`px-4 py-2 rounded-lg text-xs font-bold transition border ${isCanceled ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 shadow-inner' : 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/40'}`}>
+            <button onClick={() => handleToggleCancel(realIndex)} className={`px-4 py-2 rounded-lg text-xs font-bold transition border ${isCanceled ? 'bg-slate-200 dark:bg-dark-border text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 shadow-inner' : 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-950/40'}`}>
               {isCanceled ? 'שחזר שאלה' : 'פסול שאלה'}
             </button>
           </div>

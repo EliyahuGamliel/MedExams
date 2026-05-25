@@ -7,8 +7,7 @@ import AnnouncementPopup from './components/home/AnnouncementPopup'; // ודא �
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" dir="rtl">
-        
+<div className="min-h-screen bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300" dir="rtl">        
         {/* --- הנה המודעה שלנו! היא תצוץ מעל הכל --- */}
         <AnnouncementPopup />
 

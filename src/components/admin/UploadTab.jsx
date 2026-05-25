@@ -33,17 +33,17 @@ export default function UploadTab({
         <div className="space-y-6 animate-fade-in text-right">
             
             {/* 1. שיוך הקורס - מותאם למצב לילה */}
-            <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+            <div className="bg-slate-50 dark:bg-dark-bg/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 transition-colors duration-300">
                 <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 text-sm uppercase tracking-wider transition-colors">1. שיוך הקורס</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                    <select value={selectedStudentYear} onChange={e => { setSelectedStudentYear(e.target.value); setSelectedCourseId(""); }} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors">
+                    <select value={selectedStudentYear} onChange={e => { setSelectedStudentYear(e.target.value); setSelectedCourseId(""); }} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors">
                         {studentYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedCourseId(""); }} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors">
+                    <select value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedCourseId(""); }} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors">
                         {semesters.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
-                <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
                     <option value="">-- בחר מהרשימה --</option>
                     {availableCourses.map(([id, course]) => (<option key={id} value={id}>{course.name}</option>))}
                 </select>
@@ -54,10 +54,10 @@ export default function UploadTab({
                 <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/50 animate-fade-in-up transition-colors duration-300">
                     <h3 className="font-bold text-blue-800 dark:text-blue-400 mb-3 text-sm uppercase tracking-wider transition-colors">2. פרטי המבחן</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <select value={examYear} onChange={e => setExamYear(e.target.value)} className="w-full p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-blue-900 dark:text-blue-400 font-bold transition-colors">
+                        <select value={examYear} onChange={e => setExamYear(e.target.value)} className="w-full p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-dark-bg text-blue-900 dark:text-blue-400 font-bold transition-colors">
                             {examYearsList.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
-                        <select value={examMoed} onChange={e => setExamMoed(e.target.value)} className="w-full p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-blue-900 dark:text-blue-400 font-bold transition-colors">
+                        <select value={examMoed} onChange={e => setExamMoed(e.target.value)} className="w-full p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-dark-bg text-blue-900 dark:text-blue-400 font-bold transition-colors">
                             {moedList.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                     </div>
@@ -66,7 +66,7 @@ export default function UploadTab({
 
             {/* 3. סוג הקובץ לפענוח - כפתורי רדיו גדולים מותאמים ללילה */}
             {selectedCourseId && (
-                <div className="bg-white dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 animate-fade-in-up transition-colors duration-300">
+                <div className="bg-white dark:bg-dark-bg/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 animate-fade-in-up transition-colors duration-300">
                     <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 text-sm uppercase tracking-wider transition-colors">3. סוג הקובץ לפענוח</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button 

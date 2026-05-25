@@ -98,7 +98,7 @@ export default function RecycleBinTab() {
     return (
         <div className="space-y-6 animate-fade-in text-right">
             {/* המעטפת הראשית הותאמה לרקע וגבול כהים בלילה */}
-            <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+            <div className="bg-slate-50 dark:bg-dark-bg/40 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 transition-colors duration-300">
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2 transition-colors">
                     <TrashIcon /> פח מיחזור (ניקוי אוטומטי של 30 יום פעיל)
                 </h3>
@@ -109,7 +109,7 @@ export default function RecycleBinTab() {
                     <div className="space-y-4">
                         {deletedExams.map(exam => (
                             /* כרטיס פח המיחזור הותאם למצב לילה */
-                            <div key={exam.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 transition-colors duration-300">
+                            <div key={exam.id} className="bg-white dark:bg-dark-panel p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 transition-colors duration-300">
                                 <div className="flex-1 text-right">
                                     <h4 className="font-bold text-slate-800 dark:text-slate-200 transition-colors">{exam.meta?.title || 'מבחן ללא שם'}</h4>
                                     <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 uppercase font-mono tracking-wider transition-colors">ID: {exam.id}</div>

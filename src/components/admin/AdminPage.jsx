@@ -116,16 +116,16 @@ export default function AdminPage() {
   const filteredExamsForEdit = selectedCourseId ? examsList.filter(exam => exam.courseId === selectedCourseId) : [];
   const filteredQuestions = showMissingImagesOnly ? examQuestions.filter(q => q.imageNeeded && !q.hasImage) : examQuestions;
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 transition-colors">בודק הרשאות...</div>;
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-dark-bg transition-colors">בודק הרשאות...</div>;
 
   // --- דף התחברות אדמין מותאם ללילה ---
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-6 transition-colors duration-300" dir="rtl">
-        <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl p-8 border border-slate-100 dark:border-slate-700 transition-all">
+      <div className="min-h-screen bg-slate-50 dark:bg-dark-bg flex flex-col items-center justify-center p-6 transition-colors duration-300" dir="rtl">
+        <div className="max-w-md w-full bg-white dark:bg-dark-panel rounded-3xl shadow-xl p-8 border border-slate-100 dark:border-slate-700 transition-all">
           <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2 text-center transition-colors">כניסה למנהלים</h2>
           <p className="text-center text-slate-400 dark:text-slate-400 mb-8 text-sm transition-colors">הזן פרטי גישה כדי לנהל את המאגר</p>
-          <button onClick={handleGoogleLogin} className="w-full bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 p-4 rounded-xl font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600/50 transition flex items-center justify-center gap-3">
+          <button onClick={handleGoogleLogin} className="w-full bg-white dark:bg-dark-border text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 p-4 rounded-xl font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600/50 transition flex items-center justify-center gap-3">
             <svg width="24" height="24" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
             התחבר עם Google
           </button>
@@ -140,7 +140,7 @@ export default function AdminPage() {
   // --- דף המתנה לאישור הרשאות מותאם ללילה ---
   if (user && !isAdminLogin) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 gap-4 text-center px-4 transition-colors duration-300">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-dark-bg gap-4 text-center px-4 transition-colors duration-300">
         <div className="text-5xl">⏳</div>
         <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200 transition-colors">הבקשה בבדיקה</h2>
         <p className="text-slate-500 dark:text-slate-400 max-w-md transition-colors">שלום <b>{user.email}</b>,<br />חשבונך נוצר בהצלחה!<br />כעת עליך להמתין שמנהל ראשי יאשר את הרשאותיך.</p>
@@ -153,12 +153,12 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 transition-colors duration-300" dir="rtl">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg p-6 transition-colors duration-300" dir="rtl">
       
       {/* מודאל עריכת קורס מהירה מותאם ללילה */}
       {editingCourseOldData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 max-w-md w-full border border-transparent dark:border-slate-700">
+          <div className="bg-white dark:bg-dark-panel rounded-3xl shadow-2xl p-6 max-w-md w-full border border-transparent dark:border-slate-700">
             <h3 className="text-xl font-bold mb-4 text-slate-800 dark:text-white transition-colors">עריכת קורס</h3>
             <input type="text" value={editCourseName} onChange={e => setEditCourseName(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 mb-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -167,7 +167,7 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={handleUpdateCourse} disabled={status === 'processing'} className="flex-1 bg-blue-600 dark:bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition shadow-md">{status === 'processing' ? 'שומר...' : 'שמור שינויים'}</button>
-              <button onClick={() => setEditingCourseOldData(null)} className="px-6 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition">ביטול</button>
+              <button onClick={() => setEditingCourseOldData(null)} className="px-6 bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition">ביטול</button>
             </div>
           </div>
         </div>
@@ -193,20 +193,20 @@ export default function AdminPage() {
       </div>
 
       {/* מעטפת ניהול מרכזית מותאמת ללילה */}
-      <div className="p-8 max-w-2xl mx-auto bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700/60 transition-all duration-300">
+      <div className="p-8 max-w-2xl mx-auto bg-white dark:bg-dark-panel rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700/60 transition-all duration-300">
         <h2 className="text-3xl font-black mb-6 text-slate-800 dark:text-white text-center transition-colors">ממשק ניהול</h2>
 
         {/* סרגל טאבים אופקי מותאם מלא ל-Dark Mode */}
-        <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl mb-8 overflow-x-auto no-scrollbar border border-transparent dark:border-slate-700/50 transition-colors">
-          <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}><UploadIcon /> העלאה</button> 
-          <button onClick={() => navigate('/admin/manage_exams', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white dark:bg-slate-700 shadow text-purple-600 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400'}`}><EditIcon /> ניהול קיימים</button>
-          <button onClick={() => navigate('/admin/manage_courses', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white dark:bg-slate-700 shadow text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}><PlusIcon /> קורסים</button>
-          <button onClick={() => navigate('/admin/reports', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white dark:bg-slate-700 shadow text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white dark:bg-slate-700 shadow text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'}`}><UsersIcon /> משתמשים</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}> <TrashNavIcon /> פח מיחזור</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white dark:bg-slate-700 shadow text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white dark:bg-slate-700 shadow text-sky-600 dark:text-sky-400' : 'text-slate-500 dark:text-slate-400'}`}><EyeIcon /> בקרת עורכים</button>}
-          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/system_update', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('system_update') ? 'bg-white dark:bg-slate-700 shadow text-pink-600 dark:text-pink-400' : 'text-slate-500 dark:text-slate-400'}`}><UpdateIcon /> עדכון גרסה</button>}
+        <div className="flex bg-slate-100 dark:bg-dark-bg/50 p-1 rounded-xl mb-8 overflow-x-auto no-scrollbar border border-transparent dark:border-slate-700/50 transition-colors">
+          <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white dark:bg-dark-border shadow text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}><UploadIcon /> העלאה</button> 
+          <button onClick={() => navigate('/admin/manage_exams', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white dark:bg-dark-border shadow text-purple-600 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400'}`}><EditIcon /> ניהול קיימים</button>
+          <button onClick={() => navigate('/admin/manage_courses', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white dark:bg-dark-border shadow text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}><PlusIcon /> קורסים</button>
+          <button onClick={() => navigate('/admin/reports', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white dark:bg-dark-border shadow text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/users', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('users') ? 'bg-white dark:bg-dark-border shadow text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'}`}><UsersIcon /> משתמשים</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/recycle_bin', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('recycle_bin') ? 'bg-white dark:bg-dark-border shadow text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}> <TrashNavIcon /> פח מיחזור</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/announcement', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('announcement') ? 'bg-white dark:bg-dark-border shadow text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'}`}><MegaphoneNavIcon /> מודעות לאתר</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/audit_logs', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('audit_logs') ? 'bg-white dark:bg-dark-border shadow text-sky-600 dark:text-sky-400' : 'text-slate-500 dark:text-slate-400'}`}><EyeIcon /> בקרת עורכים</button>}
+          {userData?.role === 'super_admin' && <button onClick={() => navigate('/admin/system_update', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('system_update') ? 'bg-white dark:bg-dark-border shadow text-pink-600 dark:text-pink-400' : 'text-slate-500 dark:text-slate-400'}`}><UpdateIcon /> עדכון גרסה</button>}
         </div>
 
         <Routes>

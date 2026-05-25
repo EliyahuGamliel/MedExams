@@ -41,7 +41,7 @@ export default function AnnouncementAdminTab() {
     return (
         <div className="space-y-6 animate-fade-in text-right">
             {/* כרטיס המודעות המרכזי מותאם לסטייל הכהה */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 max-w-lg mx-auto transition-all duration-300">
+            <div className="bg-white dark:bg-dark-panel p-6 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 max-w-lg mx-auto transition-all duration-300">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl transition-colors"><MegaphoneIcon /></div>
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white transition-colors">הודעה קופצת לאתר</h3>
@@ -54,7 +54,7 @@ export default function AnnouncementAdminTab() {
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                             placeholder="למשל: בהצלחה בתקופת המבחנים שנה ג'!"
-                            className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-24 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors"
+                            className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-24 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors"
                         />
                     </div>
 
@@ -64,7 +64,7 @@ export default function AnnouncementAdminTab() {
                             type="checkbox" 
                             checked={isActive} 
                             onChange={(e) => setIsActive(e.target.checked)}
-                            className="w-5 h-5 text-blue-600 dark:text-blue-500 rounded focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-600" 
+                            className="w-5 h-5 text-blue-600 dark:text-blue-500 rounded focus:ring-blue-500 dark:bg-dark-bg dark:border-slate-600" 
                         />
                         <div className="text-right">
                             <div className="font-bold text-slate-800 dark:text-slate-200 transition-colors">הפעל מודעה</div>

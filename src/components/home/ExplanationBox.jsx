@@ -219,7 +219,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                             userVote === 'like' 
                                                 ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-inner' 
-                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:scale-105'
+                                                : 'bg-white dark:bg-dark-panel text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:scale-105'
                                         }`}
                                     >
                                         <ThumbsUpIcon filled={userVote === 'like'} /> {likes > 0 && likes}
@@ -229,7 +229,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                             userVote === 'dislike' 
                                                 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 shadow-inner' 
-                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:scale-105'
+                                                : 'bg-white dark:bg-dark-panel text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:scale-105'
                                         }`}
                                     >
                                         <ThumbsDownIcon filled={userVote === 'dislike'} /> {dislikes > 0 && dislikes}

@@ -43,7 +43,7 @@ export default function AuditLogsTab() {
 
     return (
         /* מעטפת הטבלה המרכזית מותאמת ל-Dark Mode */
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 animate-fade-in text-right">
+        <div className="bg-white dark:bg-dark-panel p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 animate-fade-in text-right">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white transition-colors">מרכז בקרת שינויים 🕵️‍♂️</h2>
                 <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-bold transition-colors">
@@ -54,14 +54,14 @@ export default function AuditLogsTab() {
             {loading ? (
                 <div className="text-center py-10 text-slate-500 dark:text-slate-400 font-bold transition-colors">טוען יומן פעולות...</div>
             ) : logs.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 dark:bg-slate-900 rounded-xl text-slate-500 dark:text-slate-400 transition-colors">
+                <div className="text-center py-10 bg-slate-50 dark:bg-dark-bg rounded-xl text-slate-500 dark:text-slate-400 transition-colors">
                     לא נמצאו פעולות ניהוליות ב-30 הימים האחרונים.
                 </div>
             ) : (
                 <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-sm text-right">
                         {/* ראש הטבלה הותאם לקונטרסט כהה עם בורדר עדין */}
-                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-bold border-b-2 border-slate-200 dark:border-slate-700 transition-colors">
+                        <thead className="bg-slate-50 dark:bg-dark-bg/50 text-slate-600 dark:text-slate-400 font-bold border-b-2 border-slate-200 dark:border-slate-700 transition-colors">
                             <tr>
                                 <th className="p-3 rounded-tr-xl">תאריך ושעה</th>
                                 <th className="p-3">מנהל מבצע</th>

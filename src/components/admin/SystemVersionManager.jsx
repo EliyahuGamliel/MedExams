@@ -50,7 +50,7 @@ export default function SystemVersionManager() {
 
   return (
     /* מעטפת הניהול הותאמה לרקע וגבולות כהים בלילה */
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4 max-w-lg mb-8 animate-fade-in text-right duration-300 transition-colors">
+    <div className="bg-white dark:bg-dark-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4 max-w-lg mb-8 animate-fade-in text-right duration-300 transition-colors">
         <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4 transition-colors">
             <div className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 dark:text-indigo-400 p-2 rounded-xl transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
@@ -75,7 +75,7 @@ export default function SystemVersionManager() {
                     value={newVersion}
                     onChange={(e) => setNewVersion(e.target.value)}
                     placeholder="הקלד גרסה..."
-                    className="w-full p-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-950/50 transition-all text-sm font-bold text-slate-700 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900"
+                    className="w-full p-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-950/50 transition-all text-sm font-bold text-slate-700 dark:text-slate-100 bg-slate-50 dark:bg-dark-bg focus:bg-white dark:focus:bg-slate-900"
                 />
             </div>
             
@@ -83,7 +83,7 @@ export default function SystemVersionManager() {
             <button 
                 onClick={handleReleaseUpdate}
                 disabled={isUpdating || !newVersion.trim()}
-                className="w-full sm:w-auto bg-slate-800 dark:bg-slate-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-600 dark:hover:bg-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 shrink-0 border border-transparent"
+                className="w-full sm:w-auto bg-slate-800 dark:bg-dark-border text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-600 dark:hover:bg-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 shrink-0 border border-transparent"
             >
                 {isUpdating ? 'מעדכן שרת...' : 'שחרר עדכון'}
             </button>

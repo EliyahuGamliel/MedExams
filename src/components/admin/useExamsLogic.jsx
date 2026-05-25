@@ -573,7 +573,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
     // --- פונקציית עזר קריטית: חישוב צבעי הסטטוס של השאלה באקורדיון (מותאם מלא ל-Dark Mode) ---
     const getQuestionStatusColor = (q) => {
         if (q.isCanceled) {
-            return "bg-slate-100 dark:bg-slate-900/60 border-slate-300 dark:border-slate-700 opacity-80";
+            return "bg-slate-100 dark:bg-dark-bg/60 border-slate-300 dark:border-slate-700 opacity-80";
         }
         if (q.imageNeeded && !q.hasImage) {
             return "bg-red-50 dark:bg-red-950/20 border-red-500 dark:border-red-900 shadow-red-100 dark:shadow-none";
@@ -581,7 +581,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         if (q.hasImage) {
             return "bg-green-50 dark:bg-green-950/20 border-green-500 dark:border-green-900 shadow-green-100 dark:shadow-none";
         }
-        return "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700";
+        return "bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700";
     };
 
     // סגירת דיווח שגיאה של סטודנט מהרשימה

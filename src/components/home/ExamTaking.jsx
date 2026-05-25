@@ -250,25 +250,25 @@ export default function ExamTaking({ examsList }) {
   };
 
   const getSidebarButtonColor = (index) => {
-    if (!examQuestionsData || !examQuestionsData[index]) return "bg-slate-50 dark:bg-slate-800";
+    if (!examQuestionsData || !examQuestionsData[index]) return "bg-slate-50 dark:bg-dark-panel";
     const q = examQuestionsData[index];
     const status = userAnswers[index];
     const isSubmitted = finalScore !== null;
     
-    if (userExcludedQuestions[index]) return "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 opacity-50";
-    if (q.type === 'open_ended') return "bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-900 text-blue-400 dark:text-blue-500 border-dashed border-2";
+    if (userExcludedQuestions[index]) return "bg-slate-200 dark:bg-dark-border border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 opacity-50";
+    if (q.type === 'open_ended') return "bg-white dark:bg-dark-panel border-blue-200 dark:border-blue-900 text-blue-400 dark:text-blue-500 border-dashed border-2";
     if (mode === 'practice' || (mode === 'test' && !isSubmitted)) {
         if (status !== undefined && status !== null && status !== 'empty') return "bg-blue-600 border-blue-600 text-white font-bold";
-        return "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500";
+        return "bg-slate-50 dark:bg-dark-panel/40 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500";
     }
     if (mode === 'test' && isSubmitted) {
-        if (q.isCanceled) return "bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-600 text-slate-500 dark:text-slate-400 font-bold";
+        if (q.isCanceled) return "bg-slate-200 dark:bg-dark-border border-slate-400 dark:border-slate-600 text-slate-500 dark:text-slate-400 font-bold";
         if (status === 'perfect') return "bg-green-100 dark:bg-green-950/30 border-green-500 dark:border-green-800 text-green-700 dark:text-green-400 font-bold";
         if (status === 'partial') return "bg-orange-100 dark:bg-orange-950/30 border-orange-500 dark:border-orange-800 text-orange-700 dark:text-orange-400 font-bold";
         if (status === 'wrong') return "bg-red-100 dark:bg-red-950/30 border-red-500 dark:border-red-800 text-red-700 dark:text-red-400 font-bold";
-        return "bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-bold border-2";
+        return "bg-slate-200 dark:bg-dark-border border-slate-400 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-bold border-2";
     }
-    return "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400";
+    return "bg-slate-50 dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-400";
   };
 
   const activeQuestionsForNav = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index]);
@@ -295,13 +295,13 @@ export default function ExamTaking({ examsList }) {
       
       {showAppendices && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in print:hidden">
-           <div className="bg-white dark:bg-slate-800 w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border dark:border-slate-700">
-             <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center transition-colors">
+           <div className="bg-white dark:bg-dark-panel w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border dark:border-slate-700">
+             <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-dark-bg flex justify-between items-center transition-colors">
                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2"><PaperclipIcon /> נספחים למבחן</h3>
-               <button onClick={() => setShowAppendices(false)} className="bg-slate-200 dark:bg-slate-700 p-2 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition"><CloseIcon /></button>
+               <button onClick={() => setShowAppendices(false)} className="bg-slate-200 dark:bg-dark-border p-2 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition"><CloseIcon /></button>
              </div>
-             <div className="flex-1 bg-slate-100 dark:bg-slate-900 relative">
-                {loadingAppendices ? <div className="absolute inset-0 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">טוען קובץ...</div> : appendicesData ? <iframe src={appendicesData} className="w-full h-full dark:bg-slate-900" title="Appendices" /> : <div className="p-10 text-center text-slate-400">לא ניתן להציג את הקובץ.</div>}
+             <div className="flex-1 bg-slate-100 dark:bg-dark-bg relative">
+                {loadingAppendices ? <div className="absolute inset-0 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">טוען קובץ...</div> : appendicesData ? <iframe src={appendicesData} className="w-full h-full dark:bg-dark-bg" title="Appendices" /> : <div className="p-10 text-center text-slate-400">לא ניתן להציג את הקובץ.</div>}
              </div>
            </div>
         </div>
@@ -309,7 +309,7 @@ export default function ExamTaking({ examsList }) {
 
       {!loadingQuestions && (
         <>
-           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white dark:bg-slate-800 p-3 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition transform hover:scale-105 print:hidden">
+           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="fixed top-20 left-4 z-[60] bg-white dark:bg-dark-panel p-3 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition transform hover:scale-105 print:hidden">
              {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
            </button>
            
@@ -317,8 +317,8 @@ export default function ExamTaking({ examsList }) {
              <div onClick={() => setIsSidebarOpen(false)} className="fixed top-16 inset-x-0 bottom-0 bg-black/20 z-[40] backdrop-blur-sm transition-opacity print:hidden" />
            )}
            
-           <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white dark:bg-slate-800 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-transparent dark:border-slate-700 print:hidden ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-             <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 transition-colors">
+           <div className={`fixed top-16 bottom-0 left-0 z-[50] w-72 bg-white dark:bg-dark-panel shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-transparent dark:border-slate-700 print:hidden ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+             <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-dark-bg/50 transition-colors">
                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">ניווט מהיר</h3>
              </div>
              <div className="flex-1 overflow-y-auto p-4">
@@ -333,7 +333,7 @@ export default function ExamTaking({ examsList }) {
                  ))}
                </div>
              </div>
-             <div className="p-4 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700 pb-24 transition-colors">
+             <div className="p-4 bg-slate-50 dark:bg-dark-bg/40 border-t border-slate-100 dark:border-slate-700 pb-24 transition-colors">
                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-bold mb-2">
                   <span>שאלות לציון: {activeQuestionsForNav.length}</span>
                   <span>נענו: {answeredActiveCount}</span>
@@ -344,7 +344,7 @@ export default function ExamTaking({ examsList }) {
         </>
       )}
 
-      <div className="sticky top-16 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-b-xl shadow-sm border-b border-slate-100 dark:border-slate-800/80 mb-8 transition-colors print:static print:bg-transparent print:shadow-none print:border-b-2 print:border-black print:pb-4 print:mb-12">
+      <div className="sticky top-16 z-20 bg-white/90 dark:bg-dark-bg/90 backdrop-blur p-4 rounded-b-xl shadow-sm border-b border-slate-100 dark:border-slate-800/80 mb-8 transition-colors print:static print:bg-transparent print:shadow-none print:border-b-2 print:border-black print:pb-4 print:mb-12">
         <div className="flex flex-wrap gap-2 justify-between items-center">
             <div>
               <span className="font-bold text-slate-700 dark:text-slate-200 block transition-colors print:text-black print:text-xl">{selectedExam.course}</span>
@@ -354,13 +354,13 @@ export default function ExamTaking({ examsList }) {
             <div className="flex items-center gap-2 print:hidden">
               <button 
                   onClick={() => { setIsSearchOpen(!isSearchOpen); if(isSearchOpen) setSearchTerm(""); }} 
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${isSearchOpen ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`} 
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${isSearchOpen ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-dark-panel border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`} 
                   title="חיפוש"
               >
                  <SearchIcon /> חיפוש
               </button>
 
-              <button onClick={handlePrint} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
+              <button onClick={handlePrint} className="bg-slate-800 dark:bg-dark-border text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
                  <PdfIcon /> ייצא ל-PDF
               </button>
 
@@ -381,11 +381,11 @@ export default function ExamTaking({ examsList }) {
                     value={searchTerm} 
                     onChange={(e) => setSearchTerm(e.target.value)} 
                     placeholder="הקלד מילה לחיפוש במבחן..." 
-                    className="w-full bg-white dark:bg-slate-800 border-2 border-blue-100 dark:border-slate-700 p-3 pl-10 pr-4 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50 transition shadow-inner"
+                    className="w-full bg-white dark:bg-dark-panel border-2 border-blue-100 dark:border-slate-700 p-3 pl-10 pr-4 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50 transition shadow-inner"
                     autoFocus
                   />
                   {searchTerm && (
-                    <button onClick={() => setSearchTerm("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-red-500 bg-slate-100 dark:bg-slate-700 rounded-full p-1 transition">
+                    <button onClick={() => setSearchTerm("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-red-500 bg-slate-100 dark:bg-dark-border rounded-full p-1 transition">
                        <ClearIcon />
                     </button>
                   )}
@@ -454,7 +454,7 @@ export default function ExamTaking({ examsList }) {
 
       {showScoreModal && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in print:hidden">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden border border-transparent dark:border-slate-700">
+          <div className="bg-white dark:bg-dark-panel rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden border border-transparent dark:border-slate-700">
             <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${isPass ? 'from-green-400 to-emerald-600' : 'from-red-400 to-rose-600'}`}></div>
             <div className="mt-4 mb-6">
               <div className="text-6xl mb-4">{finalScore >= 90 ? '🏆' : isPass ? '😎' : '😐'}</div>
@@ -468,14 +468,14 @@ export default function ExamTaking({ examsList }) {
               </div>
             </div>
             
-            <div className="flex justify-center gap-8 mb-8 text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl transition-colors">
+            <div className="flex justify-center gap-8 mb-8 text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-dark-bg/50 p-4 rounded-2xl transition-colors">
               <div className="text-center"><span className="block text-xl font-bold text-green-600 dark:text-green-400">{modalStats.perfect}</span>נכונות</div>
-              <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+              <div className="w-px bg-slate-200 dark:bg-dark-border"></div>
               <div className="text-center"><span className="block text-xl font-bold text-red-500 dark:text-red-400">{modalStats.mistakes}</span>טעויות/חוסר</div>
             </div>
             
             <div className="space-y-3">
-              <button onClick={() => setShowScoreModal(false)} className="w-full py-4 bg-slate-800 dark:bg-slate-700 text-white dark:text-slate-100 rounded-xl font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-all shadow-md">סגור וצפה בטעויות</button>
+              <button onClick={() => setShowScoreModal(false)} className="w-full py-4 bg-slate-800 dark:bg-dark-border text-white dark:text-slate-100 rounded-xl font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-all shadow-md">סגור וצפה בטעויות</button>
             </div>
           </div>
         </div>

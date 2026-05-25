@@ -1,12 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'class', // <--- השורה הזו חובה! בלי זה Tailwind מתעלם מהקלאס dark
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}", // ודא שכל הקבצים שלך נסרקים
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // המשתנים הגנריים למצב לילה:
+        'dark-bg': '#22262b',       // צבע הרקע המרכזי שביקשת
+        'dark-panel': '#2c3138',    // כרטיסיות וכפתורים (טיפה יותר בהיר מהרקע)
+        'dark-border': '#3e454e',   // גבולות עדינים לפאנלים
+      }
+    },
   },
   plugins: [],
 }

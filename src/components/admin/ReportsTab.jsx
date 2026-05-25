@@ -9,7 +9,7 @@ export default function ReportsTab({ reportsList, onResolveReport, onNavigateToQ
       <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-4 transition-colors">דיווחי סטודנטים ({reportsList.length})</h3>
 
       {reportsList.length === 0 ? (
-        <div className="text-center p-8 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 transition-colors">
+        <div className="text-center p-8 bg-slate-50 dark:bg-dark-panel/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 transition-colors">
           אין דיווחים כרגע. הכל תקין! 🎉
         </div>
       ) : (
@@ -28,12 +28,12 @@ export default function ReportsTab({ reportsList, onResolveReport, onNavigateToQ
               
               <p className="text-sm text-slate-700 dark:text-slate-200 font-bold mb-2 line-clamp-2 transition-colors">{report.questionText}</p>
               
-              <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-red-100 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-300 mb-3 transition-colors">
+              <div className="bg-white dark:bg-dark-bg p-3 rounded-lg border border-red-100 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-300 mb-3 transition-colors">
                 <span className="font-bold text-red-500 dark:text-red-400">דיווח: </span>{report.reportText}
               </div>
 
               {/* === התוספת שלנו: פרטי המדווח === */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mb-4 bg-white/60 dark:bg-slate-900/50 w-fit px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mb-4 bg-white/60 dark:bg-dark-bg/50 w-fit px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">
                 <UserIcon />
                 <span>דווח ע"י: </span>
                 <span className="font-bold text-slate-700 dark:text-slate-300">
@@ -45,7 +45,7 @@ export default function ReportsTab({ reportsList, onResolveReport, onNavigateToQ
               <div className="flex gap-2">
                 <button
                   onClick={() => onNavigateToQuestion(report.examId)}
-                  className="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition-all shadow-sm"
+                  className="bg-white dark:bg-dark-panel text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition-all shadow-sm"
                 >
                   עבור לשאלה
                 </button>

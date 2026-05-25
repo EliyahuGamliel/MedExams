@@ -101,7 +101,7 @@ export default function CourseExams({ examsList }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
             <button 
                 onClick={() => navigate(`/exam/${selectedExamForMode.id}/test`, { replace: true, state: { fromCourse: true } })} 
-                className="relative bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl transition-all group text-right"
+                className="relative bg-white dark:bg-dark-panel p-8 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl transition-all group text-right"
             >
                 <div className="text-4xl mb-4 group-hover:scale-110 transition transform">📝</div>
                 <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 transition-colors">מצב מבחן</h3>
@@ -110,7 +110,7 @@ export default function CourseExams({ examsList }) {
             
             <button 
                 onClick={() => navigate(`/exam/${selectedExamForMode.id}/practice`, { replace: true, state: { fromCourse: true } })} 
-                className="relative bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-400 hover:shadow-xl transition-all group text-right"
+                className="relative bg-white dark:bg-dark-panel p-8 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-400 hover:shadow-xl transition-all group text-right"
             >
                 <div className="text-4xl mb-4 group-hover:scale-110 transition transform">🎯</div>
                 <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 transition-colors">מצב תרגול</h3>
@@ -149,7 +149,7 @@ export default function CourseExams({ examsList }) {
                             className={`w-full p-5 rounded-2xl border cursor-pointer transition-all flex justify-between items-center flex-wrap gap-4 sm:gap-0 group ${
                               isDone 
                                 ? 'border-green-200 dark:border-green-900 bg-green-50/20 dark:bg-green-950/10 hover:shadow-md' 
-                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-dark-panel hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-sm'
                             }`}
                           >
                               <div className="flex items-center gap-3 flex-wrap">
@@ -185,7 +185,7 @@ export default function CourseExams({ examsList }) {
                                         className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm ${
                                           isDone 
                                             ? 'bg-green-100 dark:bg-green-900/60 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900 group/btn' 
-                                            : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+                                            : 'bg-white dark:bg-dark-border text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                                         }`}
                                       >
                                         {isDone ? (
@@ -199,12 +199,12 @@ export default function CourseExams({ examsList }) {
                                       </button>
                                     )
                                   ) : (
-                                    <span className="text-[10px] bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-md transition-colors">
+                                    <span className="text-[10px] bg-slate-50 dark:bg-dark-bg text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-md transition-colors">
                                       התחבר לשמירת התקדמות
                                     </span>
                                   )}
 
-                                  <span className="text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full text-slate-500 dark:text-slate-400 font-medium shrink-0 transition-colors">
+                                  <span className="text-xs bg-slate-100 dark:bg-dark-border px-3 py-1 rounded-full text-slate-500 dark:text-slate-400 font-medium shrink-0 transition-colors">
                                       {exam.questionCount ? `${exam.questionCount} שאלות` : 'כניסה למבחן'}
                                   </span>
                               </div>

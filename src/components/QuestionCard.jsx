@@ -322,7 +322,7 @@ const QuestionCard = memo(function QuestionCard({
             const currentSelection = clozeSelections[blankIndex];
             
             let borderClass = "border-slate-300 dark:border-slate-600";
-            let bgClass = "bg-white dark:bg-slate-800";
+            let bgClass = "bg-white dark:bg-dark-panel";
             let textClass = "text-slate-700 dark:text-slate-200";
 
             const selectedOpt = options.find(o => o.id === currentSelection);
@@ -367,11 +367,11 @@ const QuestionCard = memo(function QuestionCard({
   };
 
   return (
-    <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
+    <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 dark:bg-dark-panel/40 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-dark-panel border-slate-100 dark:border-slate-700/60'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
       
       {/* מודאל דיווח */}
       {isReporting && (
-        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
+        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-dark-panel/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
            <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">מצאת טעות בשאלה?</h4>
            {reportStatus === 'success' ? (
              <div className="flex-1 flex flex-col items-center justify-center text-green-600 dark:text-green-400 font-bold text-center">
@@ -384,14 +384,14 @@ const QuestionCard = memo(function QuestionCard({
                <textarea 
                  value={reportText} 
                  onChange={(e) => setReportText(e.target.value)}
-                 className="flex-1 w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                 className="flex-1 w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100"
                  placeholder="פירוט הטעות..."
                />
                <div className="flex gap-2 mt-4">
                  <button onClick={handleReportSubmit} disabled={!reportText.trim() || reportStatus === 'submitting'} className="flex-1 bg-red-500 text-white font-bold py-2 rounded-xl text-sm hover:bg-red-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 transition">
                    {reportStatus === 'submitting' ? 'שולח...' : 'שלח דיווח'}
                  </button>
-                 <button onClick={() => setIsReporting(false)} className="px-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition">ביטול</button>
+                 <button onClick={() => setIsReporting(false)} className="px-4 bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition">ביטול</button>
                </div>
              </>
            )}
@@ -413,12 +413,12 @@ const QuestionCard = memo(function QuestionCard({
 
       <div className={`flex justify-between items-center mb-4 ${question.isCanceled ? 'mt-4' : ''}`}>
         <div className="flex items-center gap-3">
-         <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full transition-colors">
+         <span className="bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full transition-colors">
           שאלה {index + 1}
         </span>
             <button 
                 onClick={() => onToggleFlag(index)}
-                className={`print:hidden flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50' : 'text-slate-400 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-red-500 dark:hover:text-red-400 border border-transparent'}`}
+                className={`print:hidden flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isFlagged ? 'text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50' : 'text-slate-400 dark:text-slate-400 bg-slate-50 dark:bg-dark-border/50 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-red-500 dark:hover:text-red-400 border border-transparent'}`}
                 title="סמן שאלה זו כדי לחזור אליה מאוחר יותר"
             >
                 <BookmarkIcon filled={isFlagged} />
@@ -427,7 +427,7 @@ const QuestionCard = memo(function QuestionCard({
         {mode === 'test' && (
             <button 
                 onClick={() => onToggleUserExclude(index)}
-                className={`print:hidden flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50' : 'text-slate-400 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-500 dark:hover:text-purple-400 border border-transparent'}`}
+                className={`print:hidden flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isUserExcluded ? 'text-purple-600 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50' : 'text-slate-400 dark:text-slate-400 bg-slate-50 dark:bg-dark-border/50 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-500 dark:hover:text-purple-400 border border-transparent'}`}
                 title="התעלם משאלה זו בחישוב הציון"
             >
                 <EyeOffIcon />
@@ -436,7 +436,7 @@ const QuestionCard = memo(function QuestionCard({
         )}
          </div>
          {/* --- כפתור הדיווח המעודכן --- */}
-        <button onClick={handleOpenReport} className="text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2 py-1 rounded-lg border border-transparent">
+        <button onClick={handleOpenReport} className="text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 dark:bg-dark-border/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2 py-1 rounded-lg border border-transparent">
            <FlagIcon /> דווח על טעות
         </button>
       </div>
@@ -453,13 +453,13 @@ const QuestionCard = memo(function QuestionCard({
             <img 
               src={imageUrl} 
               alt="Question illustration" 
-              className="w-full max-h-96 object-contain dark:bg-slate-800" 
+              className="w-full max-h-96 object-contain dark:bg-dark-panel" 
               loading="lazy"
             />
           </div>
       )}
       {question.hasImage && !imageUrl && (
-        <div className="mb-6 h-48 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 border-dashed rounded-xl flex items-center justify-center animate-pulse text-slate-400 dark:text-slate-500">
+        <div className="mb-6 h-48 bg-slate-50 dark:bg-dark-bg/50 border border-slate-200 dark:border-slate-700 border-dashed rounded-xl flex items-center justify-center animate-pulse text-slate-400 dark:text-slate-500">
            <span className="font-bold text-sm">טוען תמונה... 🖼️</span>
         </div>
       )}
@@ -477,14 +477,14 @@ const QuestionCard = memo(function QuestionCard({
           </p>
         </div>
       ) : question.type === 'cloze' ? (
-         <div className="bg-slate-50 dark:bg-slate-900/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 transition-colors">
+         <div className="bg-slate-50 dark:bg-dark-bg/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 transition-colors">
              {renderClozeContent()}
              
              {((mode === 'practice' && clozeState.status !== 'empty') || (mode === 'test' && isSubmitted)) && !question.isCanceled && (
                 <div className={`mt-4 p-3 rounded-xl text-center font-bold text-sm animate-fade-in transition-colors
                     ${clozeState.status === 'perfect' ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 
                       clozeState.status === 'wrong' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 
-                      clozeState.status === 'empty' ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400' : 
+                      clozeState.status === 'empty' ? 'bg-slate-100 dark:bg-dark-bg text-slate-500 dark:text-slate-400' : 
                       'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-900'}`}
                 >
                     {clozeState.status === 'perfect' && "🏆 מצוין! כל ההשלמות נכונות."}
@@ -508,7 +508,7 @@ const QuestionCard = memo(function QuestionCard({
              let tagColor = "";
              
              if (isEliminated) {
-                 btnClass += "bg-slate-50/50 dark:bg-slate-900/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
+                 btnClass += "bg-slate-50/50 dark:bg-dark-bg/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
              } else if (mode === 'test' && isSubmitted) {
                 if (option.isMainCorrect) { 
                   btnClass += "bg-green-100 dark:bg-green-950/30 border-green-600 dark:border-green-500 text-green-900 dark:text-green-300 font-bold shadow-md"; 
@@ -519,7 +519,7 @@ const QuestionCard = memo(function QuestionCard({
                 } else if (isSelected) { 
                   btnClass += "bg-red-50 dark:bg-red-950/30 border-red-500 dark:border-red-600 text-red-900 dark:text-red-300 shadow-md"; 
                 } else { 
-                  btnClass += "bg-slate-50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800 opacity-50 text-slate-400 dark:text-slate-500"; 
+                  btnClass += "bg-slate-50 dark:bg-dark-bg/20 border-slate-100 dark:border-slate-800 opacity-50 text-slate-400 dark:text-slate-500"; 
                 }
              } else if (mode === 'practice') {
                 if (isSelected && option.isMainCorrect) { 
@@ -532,13 +532,13 @@ const QuestionCard = memo(function QuestionCard({
                 } else if (isSelected) { 
                   btnClass += "bg-red-50 dark:bg-red-950/30 border-red-500 dark:border-red-600 text-red-900 dark:text-red-300 shadow-md"; 
                 } else { 
-                  btnClass += "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"; 
+                  btnClass += "bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"; 
                 }
              } else {
                 if (isSelected) { 
                   btnClass += "bg-blue-600 dark:bg-blue-500 border-blue-600 dark:border-blue-500 text-white font-bold shadow-md"; 
                 } else { 
-                  btnClass += "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-400"; 
+                  btnClass += "bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-400"; 
                 }
              }
 
@@ -578,8 +578,8 @@ const QuestionCard = memo(function QuestionCard({
                         <div 
                             className={`p-1.5 rounded-full cursor-pointer transition-all border sm:opacity-0 sm:group-hover:opacity-100 ${
                                 isEliminated 
-                                ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 opacity-100 hover:bg-slate-300 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200' 
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300'
+                                ? 'bg-slate-200 dark:bg-dark-border text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 opacity-100 hover:bg-slate-300 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200' 
+                                : 'bg-slate-100 dark:bg-dark-panel text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
                             onClick={(e) => {
                                 e.preventDefault(); 
@@ -597,7 +597,7 @@ const QuestionCard = memo(function QuestionCard({
           })}
           
           {mode === 'test' && isSubmitted && selectedOptionId === null && testSelections.length === 0 && !question.isCanceled && (
-              <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-xl text-center font-bold text-sm border border-slate-200 dark:border-slate-700 transition-colors">
+              <div className="mt-4 p-3 bg-slate-100 dark:bg-dark-bg/50 text-slate-500 dark:text-slate-400 rounded-xl text-center font-bold text-sm border border-slate-200 dark:border-slate-700 transition-colors">
                   ⚪ השאלה לא נענתה
               </div>
           )}

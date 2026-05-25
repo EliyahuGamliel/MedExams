@@ -67,7 +67,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                 <button 
                   key={year} 
                   onClick={() => setHomeYear(year)} 
-                  className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700 dark:text-slate-200"
+                  className="bg-white dark:bg-dark-panel p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700 dark:text-slate-200"
                 >
                   {year}
                 </button>
@@ -75,7 +75,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
             </div>
 
             {/* קיר התהילה מותאם למצב לילה */}
-            <div className="bg-white dark:bg-slate-800 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-700 text-right relative overflow-hidden transition-all duration-300">
+            <div className="bg-white dark:bg-dark-panel rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-700 text-right relative overflow-hidden transition-all duration-300">
               <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400"></div>
               
               <button 
@@ -89,13 +89,13 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 transition-colors">לחץ כאן לראות את התורמים לפרויקט</p>
                   </div>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-300 p-2 rounded-full border border-slate-100 dark:border-slate-600 transition-colors">
+                <div className="bg-slate-50 dark:bg-dark-border text-slate-400 dark:text-slate-300 p-2 rounded-full border border-slate-100 dark:border-slate-600 transition-colors">
                   <ChevronIcon isOpen={isFameOpen} />
                 </div>
               </button>
 
               <div className={`transition-all duration-500 ease-in-out ${isFameOpen ? 'max-h-[500px] opacity-100 pb-6 px-6' : 'max-h-0 opacity-0 px-6 overflow-hidden'}`}>
-                <div className="w-full h-px bg-slate-100 dark:bg-slate-700 mb-4 transition-colors"></div>
+                <div className="w-full h-px bg-slate-100 dark:bg-dark-border mb-4 transition-colors"></div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mb-4 transition-colors">
                   תודה ענקית למי שהקדיש מזמנו לתרום לפיתוח מאגר השאלות ותיקופם:
                 </p>
@@ -131,7 +131,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
               <button 
                 key={sem} 
                 onClick={() => setHomeSemester(sem)} 
-                className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition text-lg font-bold text-slate-700 dark:text-slate-200"
+                className="bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition text-lg font-bold text-slate-700 dark:text-slate-200"
               >
                 {sem}
               </button>
@@ -152,7 +152,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
            </div>
            
            {relevantCourses.length === 0 ? (
-             <div className="text-center p-10 bg-white dark:bg-slate-800 rounded-3xl border border-dashed dark:border-slate-700 text-slate-400 dark:text-slate-500 transition-colors">עדיין לא הוגדרו קורסים.</div>
+             <div className="text-center p-10 bg-white dark:bg-dark-panel rounded-3xl border border-dashed dark:border-slate-700 text-slate-400 dark:text-slate-500 transition-colors">עדיין לא הוגדרו קורסים.</div>
            ) : (
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                {relevantCourses.map(course => {
@@ -161,7 +161,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                    <button 
                      key={course.name} 
                      onClick={() => navigate(`/course/${course.name}`)} 
-                     className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition text-right group"
+                     className="bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition text-right group"
                    >
                      <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{course.name}</h3>
                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 transition-colors">{count} מבחנים זמינים</p>

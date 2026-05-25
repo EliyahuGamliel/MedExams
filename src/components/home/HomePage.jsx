@@ -142,17 +142,17 @@ export default function HomePage() {
       navigate('/', { replace: true });
   };
 
-  if (loadingCourses || authLoading) return <div className="min-h-screen flex items-center justify-center text-blue-600 font-bold text-xl bg-slate-50 dark:bg-slate-900 transition-colors">טוען מערכת...</div>;
+  if (loadingCourses || authLoading) return <div className="min-h-screen flex items-center justify-center text-blue-600 font-bold text-xl bg-slate-50 dark:bg-dark-bg transition-colors">טוען מערכת...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans relative flex flex-col pb-20 transition-colors duration-300" dir="rtl">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg text-slate-800 dark:text-slate-100 font-sans relative flex flex-col pb-20 transition-colors duration-300" dir="rtl">
       
       {/* ה-Header הותאם למצב לילה עם רקע כהה וגבול עדין */}
-      <header className="sticky print:hidden top-0 z-[100] bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-100 dark:border-slate-800 p-4 flex justify-between items-center shadow-sm h-16 shrink-0 transition-colors">
+      <header className="sticky print:hidden top-0 z-[100] bg-white/90 dark:bg-dark-bg/90 backdrop-blur border-b border-slate-100 dark:border-slate-800 p-4 flex justify-between items-center shadow-sm h-16 shrink-0 transition-colors">
         
         <div className="w-1/3 flex items-center gap-2">
           {showBackBtn && (
-            <button onClick={handleGoBack} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold text-sm transition rounded-full">
+            <button onClick={handleGoBack} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-dark-panel text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold text-sm transition rounded-full">
               <BackIcon /> <span className="hidden sm:inline">חזור</span>
             </button>
           )}
@@ -172,7 +172,7 @@ export default function HomePage() {
           {/* --- כפתור Toggle מעוצב להחלפת מצב לילה/יום --- */}
           <button 
             onClick={() => setDarkMode(!darkMode)} 
-            className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-amber-400 hover:scale-105 transition-all shadow-sm shrink-0 border border-transparent dark:border-slate-700"
+            className="p-1.5 rounded-full bg-slate-100 dark:bg-dark-panel text-slate-500 dark:text-amber-400 hover:scale-105 transition-all shadow-sm shrink-0 border border-transparent dark:border-slate-700"
             title={darkMode ? "מצב יום" : "מצב לילה"}
           >
             {darkMode ? (
@@ -196,7 +196,7 @@ export default function HomePage() {
                   </div>
 
                   {showUserMenu && (
-                    <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-lg rounded-xl p-2 flex flex-col gap-1 min-w-[140px] z-50 animate-fade-in-quick">
+                    <div className="absolute top-full left-0 mt-2 bg-white dark:bg-dark-panel border border-slate-100 dark:border-slate-700 shadow-lg rounded-xl p-2 flex flex-col gap-1 min-w-[140px] z-50 animate-fade-in-quick">
                         <div className="text-slate-400 dark:text-slate-400 text-[10px] p-2 leading-tight text-right">שלום,<br /><b className="text-slate-700 dark:text-slate-200">{user.displayName}</b></div>
                         <hr className="border-slate-100 dark:border-slate-700 mb-1" />
                         {isAdmin && (
@@ -220,7 +220,7 @@ export default function HomePage() {
           ) : (
               <button 
                   onClick={loginWithGoogle}
-                  className="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm"
+                  className="bg-white dark:bg-dark-panel text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm"
                   title="התחברות לאזור אישי"
               >
                   <GoogleIcon /> <span className="hidden sm:inline">התחברות</span>
@@ -238,13 +238,13 @@ export default function HomePage() {
         </Routes>
       </main>
 
-      <footer className="w-full text-center py-8 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 mt-auto text-xs sm:text-sm print:hidden border-t border-transparent dark:border-slate-800/50 transition-colors">
+      <footer className="w-full text-center py-8 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-bg mt-auto text-xs sm:text-sm print:hidden border-t border-transparent dark:border-slate-800/50 transition-colors">
         <p className="mb-1 flex items-center justify-center gap-1">בפיתוח המערכת הושקעו זמן ומחשבה רבים <HeartIcon /></p>
         <p className="mb-4">נהניתם? מוזמנים לפרגן בביט: <span className="font-bold text-slate-700 dark:text-slate-300 select-all">053-2559635</span></p>
       </footer>
 
       {!isExamMode && (
-        <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 dark:text-slate-400 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden transition-colors">
+        <footer className="fixed bottom-0 left-0 right-0 z-40 w-full text-center py-2.5 text-slate-500 dark:text-slate-400 bg-slate-50/95 dark:bg-dark-bg/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden transition-colors">
           <div className="flex flex-col items-center px-4 max-w-md mx-auto gap-0.5">
             <span className="text-[15px] font-bold text-slate-600 dark:text-slate-300">
               פותח באהבה עבורכם 💙 בהצלחה במבחנים! 🎓
