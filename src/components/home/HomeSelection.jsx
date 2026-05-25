@@ -13,8 +13,28 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
   const { urlYear, urlSemester } = useParams(); 
   const [isFameOpen, setIsFameOpen] = useState(false);
 
-  const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
-  const semesters = ["סמסטר א'", "סמסטר ב'"];
+  // חפש את השורה הזו בתחילת HomeSelection
+  const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'", "שנה ה'", "שנה ו'"];
+
+  // שאיבת קטגוריות דינמיות מהדאטה-בייס (סמסטרים / מבואות / קורסים שנתיים)
+  const availableCategories = homeYear && coursesStructure[homeYear] 
+    ? Object.keys(coursesStructure[homeYear]) 
+    : [];
+
+  // מיון חכם: קודם סמסטרים רגילים, ואז השאר לפי הא"ב
+  const sortCategories = (categories) => {
+    const order = ["סמסטר א'", "סמסטר ב'", "סמסטר קיץ", "מבואות", "קורסים שנתיים"];
+    return [...categories].sort((a, b) => {
+        const idxA = order.indexOf(a);
+        const idxB = order.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b, 'he');
+    });
+  };
+
+  const sortedCategories = sortCategories(availableCategories);
 
   useEffect(() => {
     if (urlYear) {
@@ -24,10 +44,9 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
       }
     }
     if (urlSemester) {
+      // ביטלנו את בדיקת ה-includes הנוקשה כדי לאפשר כל קטגוריה חדשה (מבואות, קיץ וכו')
       const decodedSemester = decodeURIComponent(urlSemester);
-      if (semesters.includes(decodedSemester)) {
-        setHomeSemester(decodedSemester);
-      }
+      setHomeSemester(decodedSemester);
     }
   }, [urlYear, urlSemester]);
 
@@ -61,21 +80,19 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
             <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2 transition-colors">{getGreeting()}</h2>
             <p className="text-slate-500 dark:text-slate-400 mb-8 transition-colors">יש לבחור שנת לימודים כדי להתחיל</p>
             
-            {/* כפתורי בחירת שנים מותאמים למצב לילה */}
             <div className="grid grid-cols-2 gap-4 mb-10">
               {studentYears.map(year => (
                 <button 
                   key={year} 
                   onClick={() => setHomeYear(year)} 
-                  className="bg-white dark:bg-dark-panel p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700 dark:text-slate-200"
+                  className="bg-white dark:bg-dark-panel p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700 dark:text-slate-200"
                 >
                   {year}
                 </button>
               ))}
             </div>
 
-            {/* קיר התהילה מותאם למצב לילה */}
-            <div className="bg-white dark:bg-dark-panel rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-700 text-right relative overflow-hidden transition-all duration-300">
+            <div className="bg-white dark:bg-dark-panel rounded-[32px] shadow-sm border border-slate-100 dark:border-dark-border text-right relative overflow-hidden transition-all duration-300">
               <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400"></div>
               
               <button 
@@ -89,13 +106,13 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 transition-colors">לחץ כאן לראות את התורמים לפרויקט</p>
                   </div>
                 </div>
-                <div className="bg-slate-50 dark:bg-dark-border text-slate-400 dark:text-slate-300 p-2 rounded-full border border-slate-100 dark:border-slate-600 transition-colors">
+                <div className="bg-slate-50 dark:bg-dark-bg text-slate-400 dark:text-slate-300 p-2 rounded-full border border-slate-100 dark:border-dark-border transition-colors">
                   <ChevronIcon isOpen={isFameOpen} />
                 </div>
               </button>
 
               <div className={`transition-all duration-500 ease-in-out ${isFameOpen ? 'max-h-[500px] opacity-100 pb-6 px-6' : 'max-h-0 opacity-0 px-6 overflow-hidden'}`}>
-                <div className="w-full h-px bg-slate-100 dark:bg-dark-border mb-4 transition-colors"></div>
+                <div className="w-full h-px bg-slate-100 dark:border-dark-border mb-4 transition-colors"></div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mb-4 transition-colors">
                   תודה ענקית למי שהקדיש מזמנו לתרום לפיתוח מאגר השאלות ותיקופם:
                 </p>
@@ -121,26 +138,31 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
         </div>
       )}
 
-      {/* בחירת סמסטר מותאמת למצב לילה */}
+      {/* בחירת קטגוריה / סמסטר */}
       {homeYear && !homeSemester && (
         <div className="animate-fade-in-up text-center">
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 transition-colors">{homeYear}</h2>
-          <p className="text-slate-500 dark:text-slate-400 mb-8 transition-colors">בחירת סמסטר</p>
-          <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
-            {semesters.map(sem => (
-              <button 
-                key={sem} 
-                onClick={() => setHomeSemester(sem)} 
-                className="bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition text-lg font-bold text-slate-700 dark:text-slate-200"
-              >
-                {sem}
-              </button>
-            ))}
-          </div>
+          <p className="text-slate-500 dark:text-slate-400 mb-8 transition-colors">בחירת קטגוריית לימוד</p>
+          
+          {sortedCategories.length === 0 ? (
+             <div className="text-center p-10 bg-white dark:bg-dark-panel rounded-3xl border border-dashed dark:border-dark-border text-slate-400 dark:text-slate-500 transition-colors">עדיין לא הוגדרו קורסים לשנה זו.</div>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-5 max-w-md mx-auto">
+              {sortedCategories.map(sem => (
+                <button 
+                  key={sem} 
+                  onClick={() => setHomeSemester(sem)} 
+                  className="w-full sm:w-[calc(50%-1.25rem)] bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border hover:bg-blue-50 dark:hover:bg-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition text-lg font-bold text-slate-700 dark:text-slate-200"
+                >
+                  {sem}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* בחירת קורס מותאמת למצב לילה */}
+      {/* בחירת קורס */}
       {homeYear && homeSemester && (
         <div className="animate-fade-in-up">
            <div className="text-center mb-8">
@@ -152,16 +174,17 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
            </div>
            
            {relevantCourses.length === 0 ? (
-             <div className="text-center p-10 bg-white dark:bg-dark-panel rounded-3xl border border-dashed dark:border-slate-700 text-slate-400 dark:text-slate-500 transition-colors">עדיין לא הוגדרו קורסים.</div>
+             <div className="text-center p-10 bg-white dark:bg-dark-panel rounded-3xl border border-dashed dark:border-dark-border text-slate-400 dark:text-slate-500 transition-colors">עדיין לא הוגדרו קורסים בקטגוריה זו.</div>
            ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div className="flex flex-wrap justify-center gap-4">
                {relevantCourses.map(course => {
                  const count = examsList.filter(e => e.course === course.name).length;
                  return (
                    <button 
                      key={course.name} 
                      onClick={() => navigate(`/course/${course.name}`)} 
-                     className="bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition text-right group"
+                     // השינוי כאן: הוספת רוחב מחושב
+                     className="w-full sm:w-[calc(50%-0.5rem)] bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition text-right group"
                    >
                      <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{course.name}</h3>
                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 transition-colors">{count} מבחנים זמינים</p>

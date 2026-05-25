@@ -34,13 +34,14 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'"];
-  const semesters = ["סמסטר א'", "סמסטר ב'"];
+// חפש את השורה הזו בתחילת AdminPage
+  const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'", "שנה ה'", "שנה ו'"];
   const examYearsList = Array.from({ length: 20 }, (_, i) => `${2015 + i}`);
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
-  const [selectedSemester, setSelectedSemester] = useState("סמסטר א'");
+  //  שינוי מהותי: זה כבר לא מוגבל רק לסמסטרים קבועים.
+  const [selectedSemester, setSelectedSemester] = useState("סמסטר א'"); 
   const [selectedCourseId, setSelectedCourseId] = useState("");
 
   const [status, setStatus] = useState('idle');
@@ -52,19 +53,6 @@ export default function AdminPage() {
   } = useAdminAuth();
 
   const canSeeReports = userData?.role === 'super_admin' || userData?.role === 'editor';
-
-  useEffect(() => {
-      if (userData?.role === 'editor' && userData?.allowed_years) {
-          if (!userData.allowed_years[selectedStudentYear]) {
-              const firstAllowedYear = studentYears.find(year => userData.allowed_years[year] === true);
-              
-              if (firstAllowedYear) {
-                  setSelectedStudentYear(firstAllowedYear);
-                  setSelectedCourseId(""); 
-              }
-          }
-      }
-  }, [userData, selectedStudentYear]);
 
   const {
     examsList, setExamsList, reportsList, questionsEditorId, setQuestionsEditorId,
@@ -93,6 +81,32 @@ export default function AdminPage() {
     examYear, setExamYear, examMoed, setExamMoed, file, setFile, appendicesFile, setAppendicesFile,
     parsingMode, setParsingMode, bulkFiles, setBulkFiles, debugLog, setDebugLog, handleUploadExam, handleBulkUpload
   } = useUploadLogic(canEditYear, coursesList, selectedStudentYear, selectedSemester, selectedCourseId, setStatus);
+
+  useEffect(() => {
+      if (userData?.role === 'editor' && userData?.allowed_years) {
+          if (!userData.allowed_years[selectedStudentYear]) {
+              const firstAllowedYear = studentYears.find(year => userData.allowed_years[year] === true);
+              
+              if (firstAllowedYear) {
+                  setSelectedStudentYear(firstAllowedYear);
+                  setSelectedCourseId(""); 
+              }
+          }
+      }
+  }, [userData, selectedStudentYear]);
+
+
+  // פונקציה לייצור דינמי של הקטגוריות הזמינות עבור השנה שנבחרה
+  const getDynamicCategories = (year) => {
+    const defaultCategories = ["סמסטר א'", "סמסטר ב'"];
+    if (!coursesList[year]) return defaultCategories;
+    
+    const existingCategories = Object.keys(coursesList[year]);
+    // איחוד הקטגוריות הקיימות עם ברירות המחדל (ללא כפילויות)
+    return Array.from(new Set([...defaultCategories, ...existingCategories]));
+  };
+  
+  const dynamicCategories = getDynamicCategories(selectedStudentYear);
 
   const handleNavigateToReportedQuestion = (examId) => {
     navigate('/admin/manage_exams', { replace: true });
@@ -162,8 +176,29 @@ export default function AdminPage() {
             <h3 className="text-xl font-bold mb-4 text-slate-800 dark:text-white transition-colors">עריכת קורס</h3>
             <input type="text" value={editCourseName} onChange={e => setEditCourseName(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 mb-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">שנת לימוד:</label><select value={editCourseYear} onChange={e => setEditCourseYear(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100">{studentYears.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
-              <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">סמסטר:</label><select value={editCourseSemester} onChange={e => setEditCourseSemester(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100">{semesters.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">שנת לימוד:</label>
+                <select value={editCourseYear} onChange={e => setEditCourseYear(e.target.value)} className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100">
+                    {studentYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">קטגוריה / סמסטר:</label>
+                 {/* תמיכה בהוספת קטגוריות בעת עריכה */}
+                 <div className="relative">
+                    <input 
+                        type="text" 
+                        value={editCourseSemester} 
+                        onChange={e => setEditCourseSemester(e.target.value)} 
+                        list="editCategoryOptions"
+                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100" 
+                        placeholder="בחר או הקלד קטגוריה חדשה"
+                    />
+                    <datalist id="editCategoryOptions">
+                        {getDynamicCategories(editCourseYear).map(cat => <option key={cat} value={cat} />)}
+                    </datalist>
+                 </div>
+              </div>
             </div>
             <div className="flex gap-3">
               <button onClick={handleUpdateCourse} disabled={status === 'processing'} className="flex-1 bg-blue-600 dark:bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition shadow-md">{status === 'processing' ? 'שומר...' : 'שמור שינויים'}</button>
@@ -213,7 +248,8 @@ export default function AdminPage() {
           <Route path="upload" element={
             <UploadTab
               studentYears={studentYears}
-              semesters={semesters}
+              //  העברת הקטגוריות הדינמיות לקומפוננטת העלאה במקום סמסטרים קבועים
+              semesters={dynamicCategories} 
               selectedStudentYear={selectedStudentYear}
               setSelectedStudentYear={setSelectedStudentYear}
               selectedSemester={selectedSemester}
@@ -275,7 +311,8 @@ export default function AdminPage() {
               studentYears={studentYears}
               selectedSemester={selectedSemester}
               setSelectedSemester={setSelectedSemester}
-              semesters={semesters}
+              //  העברת הקטגוריות הדינמיות לקומפוננטת ניהול מבחנים
+              semesters={dynamicCategories} 
               selectedCourseId={selectedCourseId}
               setSelectedCourseId={setSelectedCourseId}
               availableCourses={availableCourses}
@@ -301,7 +338,8 @@ export default function AdminPage() {
           <Route path="manage_courses" element={
              <ManageCoursesTab
               studentYears={studentYears}
-              semesters={semesters}
+              //  העברת הקטגוריות הדינמיות לקומפוננטת ניהול קורסים
+              semesters={dynamicCategories} 
               selectedStudentYear={selectedStudentYear}
               setSelectedStudentYear={setSelectedStudentYear}
               selectedSemester={selectedSemester}

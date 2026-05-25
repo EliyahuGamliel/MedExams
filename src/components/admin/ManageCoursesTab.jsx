@@ -5,7 +5,7 @@ const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 
 export default function ManageCoursesTab({
     studentYears,
-    semesters,
+    semesters, // אלו הקטגוריות הדינמיות שמועברות מ-AdminPage להשלמה אוטומטית
     selectedStudentYear,
     setSelectedStudentYear,
     selectedSemester,
@@ -27,17 +27,25 @@ export default function ManageCoursesTab({
                     <select
                         value={selectedStudentYear}
                         onChange={e => setSelectedStudentYear(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors"
+                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors outline-none focus:ring-2 focus:ring-green-500"
                     >
                         {studentYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select
-                        value={selectedSemester}
-                        onChange={e => setSelectedSemester(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors"
-                    >
-                        {semesters.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    
+                    {/* כאן הקסם: Input עם Datalist במקום Select קשיח */}
+                    <div className="relative">
+                        <input
+                            type="text"
+                            list="semesterOptionsList"
+                            value={selectedSemester}
+                            onChange={e => setSelectedSemester(e.target.value)}
+                            placeholder="קטגוריה / סמסטר (למשל: מבואות)"
+                            className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                        <datalist id="semesterOptionsList">
+                            {semesters.map(s => <option key={s} value={s} />)}
+                        </datalist>
+                    </div>
                 </div>
                 <input
                     type="text"
@@ -57,10 +65,16 @@ export default function ManageCoursesTab({
             {/* אזור ניהול קורסים קיימים */}
             <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 transition-colors">
                 <h3 className="font-bold text-slate-700 dark:text-slate-200 text-lg mb-4 transition-colors">ניהול קורסים קיימים</h3>
-                {studentYears.map(year => (
-                    semesters.map(sem => {
-                        const courses = coursesList[year]?.[sem];
+                {studentYears.map(year => {
+                    // שולפים את כל הקטגוריות ש*באמת* קיימות בשנה הזו במסד הנתונים
+                    const yearCategories = coursesList[year] ? Object.keys(coursesList[year]) : [];
+                    
+                    if (yearCategories.length === 0) return null;
+
+                    return yearCategories.map(sem => {
+                        const courses = coursesList[year][sem];
                         if (!courses) return null;
+                        
                         return (
                             <div key={`${year}-${sem}`} className="mb-6">
                                 <h4 className="text-sm font-black text-slate-500 dark:text-slate-400 mb-2 border-b dark:border-slate-700 pb-1 transition-colors">{year} | {sem}</h4>
@@ -69,7 +83,7 @@ export default function ManageCoursesTab({
                                         <div key={id} className="bg-white dark:bg-dark-panel p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-sm transition-colors duration-300">
                                             <span className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate ml-2 transition-colors" title={course.name}>{course.name}</span>
                                             
-                                            {/* אזור כפתורי עריכה/מחיקה מותאמים ללילה */}
+                                            {/* אזור כפתורי עריכה/מחיקה */}
                                             <div className="flex items-center gap-1 shrink-0">
                                                 <button
                                                     onClick={() => onEditCourse(year, sem, id, course.name)}
@@ -91,8 +105,8 @@ export default function ManageCoursesTab({
                                 </div>
                             </div>
                         );
-                    })
-                ))}
+                    });
+                })}
             </div>
         </div>
     );

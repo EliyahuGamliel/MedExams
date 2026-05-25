@@ -34,6 +34,11 @@ exports.processExamWithGemini = onCall(
       if (parsingMode === 'standard') {
         // --- מצב רגיל (טופס 0) ---
         prompt = `Extract questions from this exam PDF to JSON. 
+        
+        CRITICAL CLEANING RULE: 
+        - REMOVE all question numbers and prefixes from the question "text" (e.g., completely delete "שאלה 1", "שאלה מספר 5:", "1."). 
+        - REMOVE all option markers and bullets from the "options" strings (e.g., completely delete "א.", "ב.", "ג.", "1.", "a)"). Return ONLY the clean text of the option.
+
         CRITICAL FOR correctIndex:
         - If there is ONE correct answer, the first option is ALWAYS the correct one. Set "correctIndex": 0.
         - If MULTIPLE answers are correct (e.g. "Select all that apply"), put ALL correct options at the beginning of the "options" array, and set "correctIndex" as an array of integers (e.g. [0, 1, 2]).
@@ -46,6 +51,10 @@ exports.processExamWithGemini = onCall(
         prompt = `You are parsing a "Review" PDF of a solved Moodle exam.
         Extract questions into a JSON array. 
         
+        CRITICAL CLEANING RULE: 
+        - REMOVE all question numbers and prefixes from the question "text" (e.g., completely delete "שאלה 1", "שאלה מספר 5:", "1."). 
+        - REMOVE all option markers and bullets from the "options" strings (e.g., completely delete "א.", "ב.", "ג.", "1.", "a)"). Return ONLY the clean text of the option.
+
         The exam contains THREE main types of logical questions. Use your intelligence to detect the type:
 
         TYPE 1: Single OR Multiple Choice (Radio Buttons / Checkboxes)
