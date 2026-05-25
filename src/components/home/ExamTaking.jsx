@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase'; 
-import { ref, get, push, set, update } from "firebase/database"; 
+import { ref, get, push, set, update, onValue } from "firebase/database"; 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -11,8 +11,7 @@ const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heigh
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
 const RefreshIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
 const PdfIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
-const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
-const ClearIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+const TimerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
 
 export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
@@ -25,10 +24,7 @@ export default function ExamTaking({ examsList }) {
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [examImages, setExamImages] = useState({}); 
-
   const [resetTick, setResetTick] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const storageKey = `exam_state_${user ? user.uid : 'guest'}_${examId}_${mode}`;
   
@@ -48,7 +44,6 @@ export default function ExamTaking({ examsList }) {
       const saved = localStorage.getItem(`${storageKey}_flagged`);
       return saved ? JSON.parse(saved) : {};
   });
-  // סטייט חדש: מסיחים שנפסלו
   const [eliminatedOptions, setEliminatedOptions] = useState(() => {
       const saved = localStorage.getItem(`${storageKey}_eliminated`);
       return saved ? JSON.parse(saved) : {};
@@ -58,32 +53,128 @@ export default function ExamTaking({ examsList }) {
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
   });
 
+  // משיכת חבילת הגדרות הלימוד מ-Firebase לחיבור החוטים
+  const [userSettings, setUserSettings] = useState({
+    timerStrategy: 'stopwatch',
+    testReviewMode: 'all',
+    practiceShowAppeals: true,
+    fontSize: 'normal',
+    autoScroll: false,
+    blankWarning: true
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const settingsRef = ref(db, `users/${user.uid}/settings`);
+    onValue(settingsRef, (snap) => {
+        if (snap.exists()) {
+            setUserSettings(prev => ({...prev, ...snap.val()}));
+        }
+    }, { onlyOnce: true });
+  }, [user]);
+
+  // --- לוגיקת טיימר חכם ומדידת זמנים ---
+  const [showTimerSetup, setShowTimerSetup] = useState(false);
+  const [manualTimeInput, setManualTimeInput] = useState(60);
+  const [timeRemaining, setTimeRemaining] = useState(null); 
+  const [timeElapsed, setTimeElapsed] = useState(0);
+
+  const isSubmitted = finalScore !== null;
+
+  useEffect(() => {
+    if (mode === 'test' && !isSubmitted) {
+        if (userSettings.timerStrategy === 'manual') {
+            const savedRem = localStorage.getItem(`${storageKey}_time_rem`);
+            if (savedRem) setTimeRemaining(parseInt(savedRem));
+            else setShowTimerSetup(true);
+        } else if (userSettings.timerStrategy === 'stopwatch') {
+            const savedElapsed = localStorage.getItem(`${storageKey}_time_elap`);
+            if (savedElapsed) setTimeElapsed(parseInt(savedElapsed));
+        }
+    }
+  }, [userSettings.timerStrategy, mode, isSubmitted, storageKey]);
+
+  useEffect(() => {
+    let interval;
+    if (mode === 'test' && !isSubmitted && !showTimerSetup && userSettings.timerStrategy !== 'none') {
+        interval = setInterval(() => {
+            if (userSettings.timerStrategy === 'stopwatch') {
+                setTimeElapsed(prev => {
+                    const newTime = prev + 1;
+                    localStorage.setItem(`${storageKey}_time_elap`, newTime);
+                    return newTime;
+                });
+            } else if (userSettings.timerStrategy === 'manual' && timeRemaining !== null) {
+                setTimeRemaining(prev => {
+                    if (prev <= 1) {
+                        clearInterval(interval);
+                        return 0;
+                    }
+                    const newTime = prev - 1;
+                    localStorage.setItem(`${storageKey}_time_rem`, newTime);
+                    return newTime;
+                });
+            }
+        }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [mode, isSubmitted, showTimerSetup, userSettings.timerStrategy, timeRemaining, storageKey]);
+
+  const handleStartManualTimer = () => {
+      const seconds = manualTimeInput * 60;
+      setTimeRemaining(seconds);
+      localStorage.setItem(`${storageKey}_time_rem`, seconds);
+      setShowTimerSetup(false);
+  };
+
+  const formatTime = (totalSeconds) => {
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // פונקציית מעבר אוטומטי לשאלה הבאה (מצב זרימה)
+  const handleCorrectAutoScroll = useCallback((currentIndex) => {
+      if (mode === 'practice' && userSettings.autoScroll) {
+          setTimeout(() => {
+              const nextIndex = currentIndex + 1;
+              const element = document.getElementById(`question-${nextIndex}`);
+              if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+          }, 1000); // השהייה קלה של שנייה כדי לקבל משוב חזותי
+      }
+  }, [mode, userSettings.autoScroll]);
+
   useEffect(() => {
       localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
       localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
       localStorage.setItem(`${storageKey}_excluded`, JSON.stringify(userExcludedQuestions));
       localStorage.setItem(`${storageKey}_flagged`, JSON.stringify(flaggedQuestions));
-      localStorage.setItem(`${storageKey}_eliminated`, JSON.stringify(eliminatedOptions)); // שמירת המסיחים שנפסלו
+      localStorage.setItem(`${storageKey}_eliminated`, JSON.stringify(eliminatedOptions));
       localStorage.setItem(`${storageKey}_stats`, JSON.stringify(modalStats));
   }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, eliminatedOptions, modalStats, storageKey]);
 
   const handleResetExam = () => {
       if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
           Object.keys(localStorage).forEach(key => {
-              if (key.includes(examId)) {
-                  localStorage.removeItem(key);
-              }
+              if (key.includes(examId)) localStorage.removeItem(key);
           });
 
           setUserAnswers({});
           setFinalScore(null);
           setUserExcludedQuestions({});
           setFlaggedQuestions({});
-          setEliminatedOptions({}); // איפוס הפסילות
+          setEliminatedOptions({}); 
           setModalStats({ total: 0, perfect: 0, mistakes: 0 });
-          setSearchTerm("");
-          setResetTick(prev => prev + 1);
+          setTimeElapsed(0);
+          setTimeRemaining(null);
+          
+          if (userSettings.timerStrategy === 'manual') setShowTimerSetup(true);
 
+          setResetTick(prev => prev + 1);
           toast.success("המבחן אופס והלוח נקי! בהצלחה 🚀");
           window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -98,15 +189,12 @@ export default function ExamTaking({ examsList }) {
   const toggleUserExclude = useCallback((index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
   const toggleFlag = useCallback((index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
   
-  // הפונקציה שמועברת לקומפוננטת השאלה לטובת פסילת מסיח בודד
   const toggleEliminateOption = useCallback((questionIndex, optionIndex) => {
       setEliminatedOptions(prev => {
           const currentEliminated = prev[questionIndex] || [];
           if (currentEliminated.includes(optionIndex)) {
-              // אם כבר נפסל - בטל פסילה
               return { ...prev, [questionIndex]: currentEliminated.filter(i => i !== optionIndex) };
           } else {
-              // הוסף לפסולים
               return { ...prev, [questionIndex]: [...currentEliminated, optionIndex] };
           }
       });
@@ -154,8 +242,8 @@ export default function ExamTaking({ examsList }) {
   }, [selectedExam]);
 
   const handleReturnToCourse = () => {
-    if (location.state?.fromCourse) { navigate(-1); } 
-    else { navigate(`/course/${selectedExam.course}`, { replace: true }); }
+    if (location.state?.fromCourse) navigate(-1);
+    else navigate(`/course/${selectedExam.course}`, { replace: true });
   };
 
   if (!selectedExam) return <div className="text-center py-20 text-xl font-bold text-slate-500 dark:text-slate-400 transition-colors">המבחן לא נמצא 😕</div>;
@@ -175,7 +263,7 @@ export default function ExamTaking({ examsList }) {
       } catch (e) {
         toast.error("שגיאה בטעינת נספחים");
         setShowAppendices(false);
-      } finally { setLoadingAppendices(false); }
+      } fill `{ loadingAppendices(false); }`
     }
   };
 
@@ -189,6 +277,19 @@ export default function ExamTaking({ examsList }) {
   const calculateScore = () => {
       const scorableQuestions = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index] );
       const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
+
+      // --- יישום הגנת שאלות ריקות (blankWarning) ---
+      const unansweredCount = scorableQuestions.filter((q) => {
+          const originalIndex = examQuestionsData.indexOf(q);
+          return !userAnswers[originalIndex] || userAnswers[originalIndex] === 'empty';
+      }).length;
+
+      if (userSettings.blankWarning && unansweredCount > 0) {
+          if (!window.confirm(`⚠️ שים לב: נותרו עוד ${unansweredCount} שאלות ללא מענה במבחן. האם את/ה בטוח שברצונך להגיש את הבחינה כעת?`)) {
+              return; // עצירת תהליך החישוב וההגשה
+          }
+      }
+
       const perfectCount = scorableQuestions.filter((q) => {
           const originalIndex = examQuestionsData.indexOf(q);
           return userAnswers[originalIndex] === 'perfect';
@@ -203,7 +304,6 @@ export default function ExamTaking({ examsList }) {
       if (user && finalScore === null) { 
           try {
               const updates = {};
-              
               updates[`user_results/${user.uid}/${selectedExam.id}`] = {
                   examId: selectedExam.id,
                   examName: selectedExam.title, 
@@ -214,9 +314,7 @@ export default function ExamTaking({ examsList }) {
                   correctAnswers: perfectCount,
                   status: 'completed'
               };
-              
               updates[`user_completed_exams/${user.uid}/${selectedExam.id}`] = true;
-
               update(ref(db), updates);
               toast.success("הציון נשמר והמבחן סומן כהושלם! 🎉");
           } catch (error) { 
@@ -232,14 +330,10 @@ export default function ExamTaking({ examsList }) {
     const originalTitle = document.title;
     document.title = `${selectedExam.course} - ${selectedExam.title}`; 
     window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 100);
+    setTimeout(() => document.title = originalTitle, 100);
   };
 
   const scrollToQuestion = (index) => {
-    setSearchTerm("");
-    setIsSearchOpen(false);
     setTimeout(() => {
         const element = document.getElementById(`question-${index}`);
         if (element) {
@@ -253,7 +347,6 @@ export default function ExamTaking({ examsList }) {
     if (!examQuestionsData || !examQuestionsData[index]) return "bg-slate-50 dark:bg-dark-panel";
     const q = examQuestionsData[index];
     const status = userAnswers[index];
-    const isSubmitted = finalScore !== null;
     
     if (userExcludedQuestions[index]) return "bg-slate-200 dark:bg-dark-border border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 opacity-50";
     if (q.type === 'open_ended') return "bg-white dark:bg-dark-panel border-blue-200 dark:border-blue-900 text-blue-400 dark:text-blue-500 border-dashed border-2";
@@ -278,21 +371,41 @@ export default function ExamTaking({ examsList }) {
   }).length;
 
   const isPass = finalScore >= 60;
-  const isSubmitted = finalScore !== null;
 
-  const displayedQuestions = examQuestionsData.map((q, i) => ({ ...q, originalIndex: i }))
+  // יישום פילטור אסטרטגיית תחקור (testReviewMode === mistakes_only)
+  const displayedQuestions = examQuestionsData
+    .map((q, i) => ({ ...q, originalIndex: i }))
     .filter(q => {
-        if (!searchTerm.trim()) return true;
-        const term = searchTerm.toLowerCase();
-        const textMatch = q.text && typeof q.text === 'string' && q.text.toLowerCase().includes(term);
-        const explanationMatch = q.explanation && typeof q.explanation === 'string' && q.explanation.toLowerCase().includes(term);
-        const optionsMatch = q.options && Array.isArray(q.options) && q.options.some(o => o.text && typeof o.text === 'string' && o.text.toLowerCase().includes(term));
-        return textMatch || explanationMatch || optionsMatch;
+        if (mode === 'test' && isSubmitted && userSettings.testReviewMode === 'mistakes_only') {
+            if (userAnswers[q.originalIndex] === 'perfect' || q.isCanceled || userExcludedQuestions[q.originalIndex]) {
+                return false;
+            }
+        }
+        return true;
     });
 
   return (
     <div className="animate-fade-in-up pb-10">
-      
+
+      {showTimerSetup && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white dark:bg-dark-panel rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border dark:border-slate-700">
+             <div className="text-5xl mb-4">⏱️</div>
+             <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">זמן למבחן</h3>
+             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">כמה דקות תרצה/י להקציב לסימולציה הנוכחית?</p>
+             <input 
+                 type="number" 
+                 value={manualTimeInput} 
+                 onChange={e => setManualTimeInput(Number(e.target.value))} 
+                 min="1" 
+                 max="300"
+                 className="w-24 text-center p-3 text-2xl font-black bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-slate-700 rounded-xl mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             />
+             <button onClick={handleStartManualTimer} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md">התחל מבחן</button>
+           </div>
+        </div>
+      )}
+
       {showAppendices && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in print:hidden">
            <div className="bg-white dark:bg-dark-panel w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border dark:border-slate-700">
@@ -352,13 +465,16 @@ export default function ExamTaking({ examsList }) {
             </div>
             
             <div className="flex items-center gap-2 print:hidden">
-              <button 
-                  onClick={() => { setIsSearchOpen(!isSearchOpen); if(isSearchOpen) setSearchTerm(""); }} 
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${isSearchOpen ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-dark-panel border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`} 
-                  title="חיפוש"
-              >
-                 <SearchIcon /> חיפוש
-              </button>
+              {mode === 'test' && userSettings.timerStrategy !== 'none' && !showTimerSetup && (
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5 border transition-colors ${
+                      userSettings.timerStrategy === 'manual' && timeRemaining <= 300 && !isSubmitted
+                      ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 animate-pulse' 
+                      : 'bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}>
+                      <TimerIcon /> 
+                      {userSettings.timerStrategy === 'stopwatch' ? formatTime(timeElapsed) : formatTime(timeRemaining || 0)}
+                  </span>
+              )}
 
               <button onClick={handlePrint} className="bg-slate-800 dark:bg-dark-border text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center gap-1.5 shadow-sm" title="שמור כ-PDF">
                  <PdfIcon /> ייצא ל-PDF
@@ -372,26 +488,6 @@ export default function ExamTaking({ examsList }) {
               <span className={`text-xs px-2 py-1.5 rounded font-bold transition-colors ${mode==='test'?'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300':'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300'}`}>{mode==='test'?'מבחן':'תרגול'}</span>
             </div>
         </div>
-
-        {isSearchOpen && (
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 print:hidden animate-fade-in">
-               <div className="relative max-w-lg mx-auto">
-                  <input 
-                    type="text" 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                    placeholder="הקלד מילה לחיפוש במבחן..." 
-                    className="w-full bg-white dark:bg-dark-panel border-2 border-blue-100 dark:border-slate-700 p-3 pl-10 pr-4 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50 transition shadow-inner"
-                    autoFocus
-                  />
-                  {searchTerm && (
-                    <button onClick={() => setSearchTerm("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-red-500 bg-slate-100 dark:bg-dark-border rounded-full p-1 transition">
-                       <ClearIcon />
-                    </button>
-                  )}
-               </div>
-            </div>
-        )}
       </div>
 
       {selectedExam.isVerified === false && (
@@ -409,10 +505,10 @@ export default function ExamTaking({ examsList }) {
             <div className="text-center py-20 print:hidden"><div className="text-2xl animate-bounce mb-2">🤔</div><div className="text-slate-500 dark:text-slate-400 font-bold">טוען שאלות...</div></div>
         ) : examQuestionsData.length === 0 ? (
             <div className="text-center py-10 text-slate-400 dark:text-slate-500">לא נמצאו שאלות במבחן זה.</div>
-        ) : displayedQuestions.length === 0 && searchTerm ? (
+        ) : displayedQuestions.length === 0 && userSettings.testReviewMode === 'mistakes_only' ? (
             <div className="text-center py-20 text-slate-500 dark:text-slate-400 animate-fade-in">
-                <div className="text-5xl mb-4">🔍</div>
-                לא נמצאו שאלות המכילות את המילה <b className="text-blue-600 dark:text-blue-400">"{searchTerm}"</b>
+                <div className="text-5xl mb-4">🎉</div>
+                כל הכבוד! לא נמצאו טעויות במבחן הזה.
             </div>
         ) : (
             displayedQuestions.map((q) => {
@@ -431,12 +527,11 @@ export default function ExamTaking({ examsList }) {
                         onToggleFlag={toggleFlag}
                         onToggleUserExclude={toggleUserExclude}
                         isUserExcluded={!!userExcludedQuestions[i]}
-                        
-                        // כאן אנחנו מעבירים את המסיחים הפסולים והפונקציה
                         eliminatedOptions={eliminatedOptions[i] || []}
                         onToggleEliminate={toggleEliminateOption}
-                        user={user}
                         resetTick={resetTick} 
+                        userSettings={userSettings}
+                        onCorrectAutoScroll={handleCorrectAutoScroll} // מסירת פונקציית הגלילה
                       />
                     </div>
                 );
@@ -475,7 +570,7 @@ export default function ExamTaking({ examsList }) {
             </div>
             
             <div className="space-y-3">
-              <button onClick={() => setShowScoreModal(false)} className="w-full py-4 bg-slate-800 dark:bg-dark-border text-white dark:text-slate-100 rounded-xl font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-all shadow-md">סגור וצפה בטעויות</button>
+              <button onClick={() => setShowScoreModal(false)} className="w-full py-4 bg-slate-800 dark:bg-dark-border text-white dark:text-slate-100 rounded-xl font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-all shadow-md">סגור וצפה במבחן</button>
             </div>
           </div>
         </div>

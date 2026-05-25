@@ -8,9 +8,12 @@ import { useAuth } from '../context/AuthContext';
 const BookmarkIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>;
 const EyeOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>;
 
-// --- אייקונים לפסילת תשובות ---
 const EliminateIconOpen = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
 const EliminateIconClosed = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>;
+
+const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
+const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
 
 const shuffleArray = (array) => {
   if (!array) return [];
@@ -30,10 +33,6 @@ const isArrayEqual = (arr1, arr2) => {
     return sorted1.every((val, index) => val === sorted2[index]);
 };
 
-const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
-const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
-const PenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
-
 const QuestionCard = memo(function QuestionCard({ 
   question, 
   index, 
@@ -50,13 +49,18 @@ const QuestionCard = memo(function QuestionCard({
   onToggleEliminate, 
   resetTick, 
   examSessionId,
-
+  userSettings,          // הגדרות המשתמש הגלובליות
+  onCorrectAutoScroll    // פונקציית הגלילה האוטומטית
 }) {  
   const { user } = useAuth();
   if (!question) return null;
 
   const isMultiSelect = Array.isArray(question.correctIndex);
   const qStorageKey = `q_state_${examId}_${mode}_${index}`;
+
+  // דינמיות של פונטים מבוססת הגדרות משתמש
+  const qFontSizeClass = userSettings?.fontSize === 'xlarge' ? 'text-3xl' : userSettings?.fontSize === 'large' ? 'text-2xl' : 'text-xl';
+  const optFontSizeClass = userSettings?.fontSize === 'xlarge' ? 'text-xl' : userSettings?.fontSize === 'large' ? 'text-lg' : 'text-base';
 
   const [selectedOptionId, setSelectedOptionId] = useState(() => {
       const saved = localStorage.getItem(`${qStorageKey}_single`);
@@ -66,17 +70,19 @@ const QuestionCard = memo(function QuestionCard({
       const saved = localStorage.getItem(`${qStorageKey}_multi`);
       return saved ? JSON.parse(saved) : [];
   });
-  
   const [practiceSelections, setPracticeSelections] = useState(() => {
       const saved = localStorage.getItem(`${qStorageKey}_prac`);
       return saved ? JSON.parse(saved) : [];
   });
-
   const [clozeSelections, setClozeSelections] = useState(() => {
       const saved = localStorage.getItem(`${qStorageKey}_cloze`);
       return saved ? JSON.parse(saved) : {};
   });
   const [clozeWrongAttempts, setClozeWrongAttempts] = useState({}); 
+
+  const [isReporting, setIsReporting] = useState(false);
+  const [reportText, setReportText] = useState("");
+  const [reportStatus, setReportStatus] = useState('idle');
 
   useEffect(() => {
       if (resetTick > 0) {
@@ -94,10 +100,6 @@ const QuestionCard = memo(function QuestionCard({
       localStorage.setItem(`${qStorageKey}_prac`, JSON.stringify(practiceSelections));
       localStorage.setItem(`${qStorageKey}_cloze`, JSON.stringify(clozeSelections));
   }, [selectedOptionId, testSelections, practiceSelections, clozeSelections, qStorageKey]);
-
-  const [isReporting, setIsReporting] = useState(false);
-  const [reportText, setReportText] = useState("");
-  const [reportStatus, setReportStatus] = useState('idle');
 
   const shuffledOptions = useMemo(() => {
     if (question.type === 'cloze' || question.type === 'open_ended') return null;
@@ -196,17 +198,34 @@ const QuestionCard = memo(function QuestionCard({
     if (mode === 'test' && isSubmitted) return;
 
     const toggleSelection = (prevList) => {
-        if (prevList.includes(optionId)) {
-            return prevList.filter(id => id !== optionId);
-        } else {
-            return [...prevList, optionId];
-        }
+        if (prevList.includes(optionId)) return prevList.filter(id => id !== optionId);
+        return [...prevList, optionId];
     };
 
     const appeals = question.appealedIndexes || [];
 
     if (mode === 'practice') {
-       setPracticeSelections(prev => toggleSelection(prev));
+       setPracticeSelections(prev => {
+          const newList = toggleSelection(prev);
+          
+          // בדיקה האם פתר נכון לצורך גלילה אוטומטית במצב תרגול זורם
+          if (isMultiSelect) {
+              const correctArr = Array.isArray(question.correctIndex) ? question.correctIndex : [question.correctIndex];
+              const allValidOptions = [...correctArr, ...appeals];
+              const isExactOriginal = isArrayEqual(newList, correctArr);
+              const isAllValidAndCorrectLength = newList.every(val => allValidOptions.includes(val)) && newList.length === correctArr.length;
+              
+              if ((isExactOriginal || isAllValidAndCorrectLength || question.isCanceled) && onCorrectAutoScroll) {
+                  onCorrectAutoScroll(index);
+              }
+          } else {
+              const isCorrect = optionId === question.correctIndex || appeals.includes(optionId) || question.isCanceled;
+              if (isCorrect && newList.includes(optionId) && onCorrectAutoScroll) {
+                  onCorrectAutoScroll(index);
+              }
+          }
+          return newList;
+       });
     } else {
        if (isMultiSelect) {
            setTestSelections(prev => {
@@ -221,13 +240,9 @@ const QuestionCard = memo(function QuestionCard({
                        const isExactOriginal = isArrayEqual(newList, correctArr);
                        const isAllValidAndCorrectLength = newList.every(val => allValidOptions.includes(val)) && newList.length === correctArr.length;
                        
-                       if (isExactOriginal || isAllValidAndCorrectLength) {
-                           status = 'perfect'; 
-                       } else if (newList.every(val => allValidOptions.includes(val))) {
-                           status = 'partial';
-                       } else {
-                           status = 'wrong';
-                       }
+                       if (isExactOriginal || isAllValidAndCorrectLength) status = 'perfect'; 
+                       else if (newList.every(val => allValidOptions.includes(val))) status = 'partial';
+                       else status = 'wrong';
                    }
                }
                if (onAnswer) onAnswer(index, status);
@@ -265,10 +280,14 @@ const QuestionCard = memo(function QuestionCard({
     if (onAnswer) {
       const { status } = calculateClozeStatus(newSelections);
       onAnswer(index, status);
+      
+      // הדק גלילה אוטומטית לשאלות קלוז' בתרגול
+      if (status === 'perfect' && onCorrectAutoScroll) {
+          onCorrectAutoScroll(index);
+      }
     }
   };
 
-  // --- הגבלת פתיחת חלון הדיווח למשתמשים מחוברים בלבד ---
   const handleOpenReport = () => {
     if (!user) {
         toast.error("רק משתמשים מחוברים יכולים לדווח על טעויות 🔒");
@@ -277,7 +296,6 @@ const QuestionCard = memo(function QuestionCard({
     setIsReporting(true);
   };
 
-  // --- שמירת הדיווח עם נתוני המשתמש ---
   const handleReportSubmit = async () => {
     if (!reportText.trim() || !user) return;
     setReportStatus('submitting');
@@ -311,7 +329,7 @@ const QuestionCard = memo(function QuestionCard({
   const renderClozeContent = () => {
     if (!question.text) return null;
     return (
-      <div className="text-lg text-slate-800 dark:text-slate-200 whitespace-pre-line leading-loose transition-colors" dir="rtl">
+      <div className={`${qFontSizeClass} text-slate-800 dark:text-slate-200 whitespace-pre-line leading-loose transition-colors`} dir="rtl">
         {question.text.split(/(\{\{\d+\}\})/g).map((part, i) => {
           const match = part.match(/\{\{(\d+)\}\}/);
           if (match) {
@@ -344,7 +362,7 @@ const QuestionCard = memo(function QuestionCard({
                     value={currentSelection ?? ""}
                     onChange={(e) => handleSelectCloze(blankIndex, parseInt(e.target.value))}
                     disabled={mode === 'test' && isSubmitted}
-                    className={`px-2 py-1 rounded-lg border-2 focus:outline-none cursor-pointer text-sm transition-all ${borderClass} ${bgClass} ${textClass}`}
+                    className={`px-2 py-1 rounded-lg border-2 focus:outline-none cursor-pointer ${optFontSizeClass} transition-all ${borderClass} ${bgClass} ${textClass}`}
                     dir="rtl"
                   >
                     <option value="" disabled>...</option>
@@ -369,7 +387,6 @@ const QuestionCard = memo(function QuestionCard({
   return (
     <div className={`rounded-3xl shadow-sm border p-6 mb-6 relative overflow-hidden transition-all ${question.isCanceled ? 'bg-slate-100/60 dark:bg-dark-panel/40 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-dark-panel border-slate-100 dark:border-slate-700/60'} ${isUserExcluded ? 'opacity-40 grayscale-[0.5]' : ''}`}>
       
-      {/* מודאל דיווח */}
       {isReporting && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-dark-panel/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
            <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">מצאת טעות בשאלה?</h4>
@@ -435,14 +452,13 @@ const QuestionCard = memo(function QuestionCard({
             </button>
         )}
          </div>
-         {/* --- כפתור הדיווח המעודכן --- */}
         <button onClick={handleOpenReport} className="text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 print:hidden transition-colors text-xs font-bold flex items-center gap-1 bg-slate-50 dark:bg-dark-border/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2 py-1 rounded-lg border border-transparent">
            <FlagIcon /> דווח על טעות
         </button>
       </div>
 
       {(question.type === 'multiple_choice' || question.type === 'open_ended') && (
-         <h3 className={`text-xl font-bold mb-4 whitespace-pre-wrap leading-relaxed transition-colors ${question.isCanceled ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
+         <h3 className={`font-bold mb-4 whitespace-pre-wrap leading-relaxed transition-colors ${qFontSizeClass} ${question.isCanceled ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
            {question.text}
            {isMultiSelect && question.type === 'multiple_choice' && <span className="block text-sm text-blue-500 dark:text-blue-400 font-normal mt-2">(זוהי שאלה מרובת בחירות - סמן את כל התשובות הנכונות)</span>}
          </h3>
@@ -496,7 +512,14 @@ const QuestionCard = memo(function QuestionCard({
          </div>
       ) : (
         <div className="space-y-2 relative">
-          {shuffledOptions?.map((option) => {
+          {shuffledOptions?.filter(option => {
+             // יישום למידה חלקה (הסרת מסיחים שגויים) במצב מבחן מוגש
+             if (mode === 'test' && isSubmitted && userSettings?.testReviewMode === 'correct_only') {
+                 const isSelected = isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id;
+                 return option.isCorrect || option.isAppealed || isSelected;
+             }
+             return true;
+          }).map((option) => {
              const isSelected = mode === 'practice' 
                 ? practiceSelections.includes(option.id) 
                 : (isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id);
@@ -506,6 +529,7 @@ const QuestionCard = memo(function QuestionCard({
              let btnClass = "w-full text-right p-4 rounded-xl border-2 mb-3 flex flex-col sm:flex-row sm:items-center justify-between transition-all group ";
              let tagText = null;
              let tagColor = "";
+             let overrideBtnClass = "";
              
              if (isEliminated) {
                  btnClass += "bg-slate-50/50 dark:bg-dark-bg/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
@@ -534,6 +558,18 @@ const QuestionCard = memo(function QuestionCard({
                 } else { 
                   btnClass += "bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"; 
                 }
+
+                // יישום הגדרת ערעורים חזותית במצב תרגול
+                if (userSettings?.practiceShowAppeals && option.isAppealed && !isSelected) {
+                    const hasFoundCorrectPractice = practiceSelections.some(id => {
+                        const opt = shuffledOptions.find(o => o.id === id);
+                        return opt?.isCorrect || opt?.isAppealed;
+                    });
+                    if (hasFoundCorrectPractice) {
+                        overrideBtnClass = "bg-orange-50 dark:bg-orange-950/20 border-orange-400 dark:border-orange-500 text-orange-900 dark:text-orange-300 shadow-md";
+                        tagText = "התקבל בערעור"; tagColor = "bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200";
+                    }
+                }
              } else {
                 if (isSelected) { 
                   btnClass += "bg-blue-600 dark:bg-blue-500 border-blue-600 dark:border-blue-500 text-white font-bold shadow-md"; 
@@ -548,12 +584,12 @@ const QuestionCard = memo(function QuestionCard({
                   onClick={() => {
                       if (!isEliminated) handleSelectStandard(option.id);
                   }} 
-                  className={`${btnClass} ${isEliminated ? 'cursor-default' : ''}`}
+                  className={`${btnClass} ${overrideBtnClass} ${isEliminated ? 'cursor-default' : ''}`}
                >
                  <div className={`flex items-start text-right ${question.isCanceled && !isSelected ? 'opacity-50' : ''}`}>
                     {isMultiSelect && <span className="inline-block shrink-0 w-4 h-4 ml-2 mt-1 border border-slate-400 dark:border-slate-500 rounded-sm text-[10px] leading-3 text-center text-slate-700 dark:text-slate-300">{isSelected && '✓'}</span>}
                     
-                    <span className={`whitespace-pre-wrap transition-all ${isEliminated ? 'line-through decoration-slate-400 dark:decoration-slate-500' : ''}`}>
+                    <span className={`whitespace-pre-wrap transition-all ${optFontSizeClass} ${isEliminated ? 'line-through decoration-slate-400 dark:decoration-slate-500' : ''}`}>
                         {option.text}
                     </span>
                  </div>

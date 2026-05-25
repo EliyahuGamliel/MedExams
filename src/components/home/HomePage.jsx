@@ -234,7 +234,7 @@ export default function HomePage() {
           <Route path="/:urlYear?/:urlSemester?" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
           <Route path="/course/:courseName" element={<CourseExams examsList={examsList} />} />
           <Route path="/exam/:examId/:mode" element={<ExamTaking examsList={examsList} />} />
-          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/profile" element={<UserProfile examsList={examsList}/>} />
         </Routes>
       </main>
 
