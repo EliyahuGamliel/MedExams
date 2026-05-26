@@ -257,22 +257,35 @@ export default function UserProfile({ examsList }) {
                         <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-3 text-center transition-colors">
                             {userSettings.timerStrategy === 'none' && 'לא יוצג זמן על המסך במהלך הסימולציה.'}
                             {userSettings.timerStrategy === 'stopwatch' && 'השעון יספור קדימה וימדוד כמה זמן לקח לך בסך הכל.'}
-                            {userSettings.timerStrategy === 'manual' && 'בתחילת כל מבחן, תקפוץ חلوנית לבחירת דקות ספירה לאחור.'}
+                            {userSettings.timerStrategy === 'manual' && 'בתחילת כל מבחן, תקפוץ חלונית לבחירת דקות ספירה לאחור.'}
                         </p>
                     </div>
 
-                    {/* 2. גודל גופן בשאלות (חדש!) */}
+                    {/* 2. גודל גופן בשאלות (כולל תצוגה מקדימה חיה) */}
                     <div className="bg-white dark:bg-dark-panel p-6 rounded-3xl border border-slate-100 dark:border-slate-700/80 shadow-sm">
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="text-xl">🔎</span>
-                            <h3 className="font-bold text-slate-800 dark:text-slate-200">גודל גופן בשאלות</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xl">🔎</span>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200">גודל גופן בשאלות</h3>
+                            </div>
+                            
+                            {/* --- תצוגה מקדימה חיה (Live Preview) --- */}
+                            <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-800/50 flex items-center justify-center min-w-[100px] h-12 shadow-inner overflow-hidden">
+                                <span className={`font-black text-blue-600 dark:text-blue-400 transition-all duration-300 ease-in-out ${
+                                    userSettings.fontSize === 'xlarge' ? 'text-3xl' : 
+                                    userSettings.fontSize === 'large' ? 'text-2xl' : 
+                                    'text-xl'
+                                }`}>
+                                    Aa אא
+                                </span>
+                            </div>
                         </div>
                         
                         <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-700/50">
                             {[
                                 { id: 'normal', label: 'גופן רגיל' },
                                 { id: 'large', label: 'גופן גדול' },
-                                { id: 'xlarge', label: 'גופן ענק' }
+                                { id: 'xlarge', label: 'גופן ע״ש ונדר' }
                             ].map(opt => (
                                 <button 
                                     key={opt.id}

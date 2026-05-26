@@ -118,7 +118,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {[
-                      "סיימון👨‍💻", "שגיא מלמד", "ורבים אחרים"
+                      "סיימון👨‍💻", "שגיא מלמד🦅", "עלמה פרנק👑", "גילעד רביב🍫", "שליו אביב🦅", "ורבים אחרים"
                   ].map((name, idx) => (
                     <span key={idx} className="bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm hover:scale-105 cursor-default transition-all">
                       <span className="text-amber-400 text-[10px]">✨</span> {name}
