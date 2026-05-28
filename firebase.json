@@ -13,18 +13,32 @@
       ]
     }
   ],
-  "hosting": {
-    "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
+  "hosting": [
+    {
+      "site": "elikomed",
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    {
+      "site": "med-exams",
+      "public": "dist",
+      "redirects": [
+        {
+          "source": "**",
+          "destination": "https://elikomed.web.app",
+          "type": 302
+        }
+      ]
+    }
+  ]
 }

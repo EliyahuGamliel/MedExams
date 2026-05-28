@@ -166,7 +166,7 @@ const isHomeRoute = location.pathname === '/' || (!location.pathname.includes('/
         </div>
         
         <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight cursor-pointer w-1/3 text-center transition-colors" onClick={handleGoHome}>
-          Eliko<span className="text-blue-600 dark:text-blue-400">Med</span>
+          Exa<span className="text-blue-600 dark:text-blue-400">Med</span>
         </h1>
         
         <div className="w-1/3 flex justify-end items-center gap-2">
