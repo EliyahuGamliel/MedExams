@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { db } from '../../firebase'; 
-import { ref, get, push, set, update, onValue } from "firebase/database"; 
+import { ref, get, push, set, update, onValue, remove } from "firebase/database"; 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import QuestionCard from '../QuestionCard'; 
 import toast from 'react-hot-toast';
@@ -19,7 +19,20 @@ export default function ExamTaking({ examsList }) {
   const location = useLocation();
   const { user } = useAuth();
 
-  const selectedExam = examsList.find(e => e.id === examId);
+  const selectedExam = useMemo(() => {
+      let exam = examsList.find(e => String(e.id) === String(examId));
+      if (!exam && examId?.startsWith('gen_')) {
+          const meta = sessionStorage.getItem(`cache_meta_${examId}`);
+          if (meta) {
+              try {
+                  exam = JSON.parse(meta);
+              } catch (e) {
+                  console.error("Error parsing generated exam meta", e);
+              }
+          }
+      }
+      return exam;
+  }, [examsList, examId]);
 
   const [examQuestionsData, setExamQuestionsData] = useState([]); 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
@@ -53,7 +66,6 @@ export default function ExamTaking({ examsList }) {
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
   });
 
-  // משיכת חבילת הגדרות הלימוד מ-Firebase לחיבור החוטים
   const [userSettings, setUserSettings] = useState({
     timerStrategy: 'stopwatch',
     testReviewMode: 'all',
@@ -73,13 +85,59 @@ export default function ExamTaking({ examsList }) {
     }, { onlyOnce: true });
   }, [user]);
 
-  // --- לוגיקת טיימר חכם ומדידת זמנים ---
   const [showTimerSetup, setShowTimerSetup] = useState(false);
   const [manualTimeInput, setManualTimeInput] = useState(60);
   const [timeRemaining, setTimeRemaining] = useState(null); 
   const [timeElapsed, setTimeElapsed] = useState(0);
 
   const isSubmitted = finalScore !== null;
+  const isSubmittedRef = useRef(isSubmitted);
+  
+  useEffect(() => {
+      isSubmittedRef.current = isSubmitted;
+  }, [isSubmitted]);
+
+  // ====================================================================
+  // 🛡️ רשת ביטחון לסימולציות - עכשיו עובדת בצורה מושלמת ובקליק אחד
+  // ====================================================================
+  useEffect(() => {
+      if (!selectedExam || !selectedExam.id.startsWith('gen_')) return;
+
+      // מונע הכנסת מלכודות כפולות לערימה אם מרעננים את הדף
+      if (!window.history.state?.trap) {
+          window.history.pushState({ trap: true }, '', window.location.href);
+      }
+
+      const handleBeforeUnload = (e) => {
+          e.preventDefault();
+          e.returnValue = '';
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      const handlePopState = () => {
+          const msg = isSubmittedRef.current
+              ? "⚠️ שים לב: זוהי סימולציה זמנית. אם תצא כעת לא תוכל לחזור לראות את השגיאות שלך בסימולציה זו. לצאת?"
+              : "⚠️ שים לב: הסימולציה תאבד אם תצא עכשיו. האם אתה בטוח שברצונך לצאת?";
+
+          if (window.confirm(msg)) {
+              // אישרנו יציאה דרך כפתור החזור הפיזי. 
+              // הדפדפן כבר דילג על המלכודת, אז עכשיו אנחנו הולכים רק צעד אחד אחורה לקורס.
+              navigate(-1);
+          } else {
+              // הסטודנט התחרט - חייבים לשתול את המלכודת שוב כדי להגן על המבחן!
+              window.history.pushState({ trap: true }, '', window.location.href);
+          }
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+          window.removeEventListener('popstate', handlePopState);
+      };
+  }, [selectedExam, navigate]);
+
+  // ====================================================================
 
   useEffect(() => {
     if (mode === 'test' && !isSubmitted) {
@@ -135,7 +193,6 @@ export default function ExamTaking({ examsList }) {
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // פונקציית מעבר אוטומטי לשאלה הבאה (מצב זרימה)
   const handleCorrectAutoScroll = useCallback((currentIndex) => {
       if (mode === 'practice' && userSettings.autoScroll) {
           setTimeout(() => {
@@ -144,7 +201,7 @@ export default function ExamTaking({ examsList }) {
               if (element) {
                   element.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
-          }, 1000); // השהייה קלה של שנייה כדי לקבל משוב חזותי
+          }, 1000); 
       }
   }, [mode, userSettings.autoScroll]);
 
@@ -187,8 +244,48 @@ export default function ExamTaking({ examsList }) {
   const [loadingAppendices, setLoadingAppendices] = useState(false);
 
   const toggleUserExclude = useCallback((index) => setUserExcludedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
-  const toggleFlag = useCallback((index) => setFlaggedQuestions(prev => ({ ...prev, [index]: !prev[index] })), []);
   
+  const toggleFlag = useCallback((index) => {
+      setFlaggedQuestions(prev => {
+          const isCurrentlyFlagged = !!prev[index];
+          const isNowFlagged = !isCurrentlyFlagged;
+          
+          setTimeout(async () => {
+              if (!user || !selectedExam || !examQuestionsData[index]) return;
+
+              const q = examQuestionsData[index];
+              const courseId = selectedExam.course;
+              const cardId = `${selectedExam.id}_q${index}`; 
+              const personalAnkiRef = ref(db, `user_personal_flashcards/${user.uid}/${courseId}/${cardId}`);
+
+              if (isNowFlagged) {
+                  try {
+                      await set(personalAnkiRef, {
+                          id: cardId,
+                          deckPath: courseId,
+                          originalQuestion: q, 
+                          imageUrl: q.imageUrl || examImages[index] || null,
+                          isActive: true,
+                          createdAt: Date.now(),
+                          sourceExam: selectedExam.title
+                      });
+                  } catch (err) {
+                      console.error("שגיאה בשמירה לחזרות:", err);
+                  }
+              } else {
+                  try {
+                      await remove(personalAnkiRef);
+                      await remove(ref(db, `user_flashcards_progress/${user.uid}/${courseId}/${cardId}`));
+                  } catch (err) {
+                      console.error("שגיאה במחיקה מחזרות:", err);
+                  }
+              }
+          }, 0);
+
+          return { ...prev, [index]: isNowFlagged };
+      });
+  }, [user, selectedExam, examQuestionsData, examImages]);
+
   const toggleEliminateOption = useCallback((questionIndex, optionIndex) => {
       setEliminatedOptions(prev => {
           const currentEliminated = prev[questionIndex] || [];
@@ -242,8 +339,23 @@ export default function ExamTaking({ examsList }) {
   }, [selectedExam]);
 
   const handleReturnToCourse = () => {
-    if (location.state?.fromCourse) navigate(-1);
-    else navigate(`/course/${selectedExam.course}`, { replace: true });
+    if (selectedExam && selectedExam.id.startsWith('gen_')) {
+        const msg = isSubmitted
+            ? "⚠️ שים לב: אם תצא כעת לא תוכל לחזור לראות את השגיאות שלך בסימולציה זו. לצאת?"
+            : "⚠️ שים לב: זוהי סימולציה זמנית. אם תצא כעת, תאבד את כל התשובות והשאלות. לצאת בכל זאת?";
+            
+        if (!window.confirm(msg)) {
+            return;
+        }
+        
+        // המשתמש אישר יציאה מהכפתור במסך! 
+        // מכיוון שיש מלכודת בהיסטוריה, אנחנו צריכים ללכת 2 צעדים אחורה כדי לדלג עליה ולנחות ישר בקורס.
+        navigate(-2);
+    } else if (selectedExam) {
+        navigate(`/course/${selectedExam.course}`, { replace: true });
+    } else {
+        navigate(-1);
+    }
   };
 
   if (!selectedExam) return <div className="text-center py-20 text-xl font-bold text-slate-500 dark:text-slate-400 transition-colors">המבחן לא נמצא 😕</div>;
@@ -263,7 +375,8 @@ export default function ExamTaking({ examsList }) {
       } catch (e) {
         toast.error("שגיאה בטעינת נספחים");
         setShowAppendices(false);
-      } fill `{ loadingAppendices(false); }`
+      } 
+      setLoadingAppendices(false);
     }
   };
 
@@ -278,7 +391,6 @@ export default function ExamTaking({ examsList }) {
       const scorableQuestions = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index] );
       const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
 
-      // --- יישום הגנת שאלות ריקות (blankWarning) ---
       const unansweredCount = scorableQuestions.filter((q) => {
           const originalIndex = examQuestionsData.indexOf(q);
           return !userAnswers[originalIndex] || userAnswers[originalIndex] === 'empty';
@@ -286,7 +398,7 @@ export default function ExamTaking({ examsList }) {
 
       if (userSettings.blankWarning && unansweredCount > 0) {
           if (!window.confirm(`⚠️ שים לב: נותרו עוד ${unansweredCount} שאלות ללא מענה במבחן. האם את/ה בטוח שברצונך להגיש את הבחינה כעת?`)) {
-              return; // עצירת תהליך החישוב וההגשה
+              return; 
           }
       }
 
@@ -301,7 +413,7 @@ export default function ExamTaking({ examsList }) {
       setFinalScore(calculatedScore);
       setModalStats({ total: scorableQuestions.length, perfect: perfectCount, mistakes: actualMistakes });
 
-      if (user && finalScore === null) { 
+      if (user && finalScore === null && !selectedExam.id.startsWith('gen_')) { 
           try {
               const updates = {};
               updates[`user_results/${user.uid}/${selectedExam.id}`] = {
@@ -372,7 +484,6 @@ export default function ExamTaking({ examsList }) {
 
   const isPass = finalScore >= 60;
 
-  // יישום פילטור אסטרטגיית תחקור (testReviewMode === mistakes_only)
   const displayedQuestions = examQuestionsData
     .map((q, i) => ({ ...q, originalIndex: i }))
     .filter(q => {
@@ -531,7 +642,7 @@ export default function ExamTaking({ examsList }) {
                         onToggleEliminate={toggleEliminateOption}
                         resetTick={resetTick} 
                         userSettings={userSettings}
-                        onCorrectAutoScroll={handleCorrectAutoScroll} // מסירת פונקציית הגלילה
+                        onCorrectAutoScroll={handleCorrectAutoScroll} 
                       />
                     </div>
                 );

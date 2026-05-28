@@ -101,7 +101,7 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                 >
                     <div className="text-right">
                         <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">מרכז Anki</h3>
-                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 transition-colors">כניסה לחפיסות השינון החכם לכלל הקורסים והנושאים</p>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 transition-colors">כניסה לחפיסות השינון החכם לכלל הקורסים השמורים</p>
                     </div>
                     <div className="text-4xl group-hover:scale-110 transition-transform">
                         🧠

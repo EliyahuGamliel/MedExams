@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../../firebase'; 
-import { ref, set, remove, onValue } from 'firebase/database'; // החלפנו כאן ל-onValue!
+import { ref, set, remove, onValue } from 'firebase/database'; 
 import { useAuth } from '../../context/AuthContext'; 
 import toast from 'react-hot-toast';
+
+// ייבוא הבאנר של מחולל המבחנים החכם
+import ExamGeneratorBanner from './ExamGeneratorBanner'; 
 
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
 const CheckedIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
@@ -125,7 +128,11 @@ export default function CourseExams({ examsList }) {
   // --- תצוגת רשימת המבחנים בקורס ---
   return (
     <div className="animate-fade-in-up">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 text-center transition-colors">{courseName}</h2>
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 text-center transition-colors">{courseName}</h2>
+      
+      {/* --- באנר מחולל המבחנים החדש שלנו! --- */}
+<ExamGeneratorBanner courseId={courseName} examsList={examsList} />
+
       <p className="text-slate-500 dark:text-slate-400 text-center mb-8 transition-colors">יש לבחור שחזור לתרגול</p>
       
       {relevantExams.length === 0 ? (
