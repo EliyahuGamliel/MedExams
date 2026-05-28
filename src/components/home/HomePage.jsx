@@ -11,6 +11,9 @@ import CourseExams from './CourseExams';
 import ExamTaking from './ExamTaking';
 import UserProfile from './UserProfile';
 
+import FlashcardReview from './anki/FlashcardReview'; 
+import AnkiHub from './anki/AnkiHub'; 
+
 const BackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
 const LockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
@@ -37,8 +40,7 @@ export default function HomePage() {
 
   const isExamMode = location.pathname.includes('/exam/');
   
-  const isHomeRoute = location.pathname === '/' || (!location.pathname.includes('/exam/') && !location.pathname.includes('/course/') && !location.pathname.includes('/profile') && !location.pathname.includes('/admin'));
-
+const isHomeRoute = location.pathname === '/' || (!location.pathname.includes('/exam/') && !location.pathname.includes('/course/') && !location.pathname.includes('/profile') && !location.pathname.includes('/admin') && !location.pathname.includes('/anki'));
   const needsExams = homeYear || !isHomeRoute;
 
   // --- אפקט לסנכרון מחלקת ה-dark על ה-HTML הראשי של הדף ---
@@ -229,14 +231,19 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 mt-8 flex-grow w-full">
-        <Routes>
-          <Route path="/:urlYear?/:urlSemester?" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
-          <Route path="/course/:courseName" element={<CourseExams examsList={examsList} />} />
-          <Route path="/exam/:examId/:mode" element={<ExamTaking examsList={examsList} />} />
-          <Route path="/profile" element={<UserProfile examsList={examsList}/>} />
-        </Routes>
-      </main>
+<main className="max-w-3xl mx-auto px-6 mt-8 flex-grow w-full">
+  <Routes>
+    {/* 1. נתיבי האנקי - חייבים להיות ראשונים! */}
+    <Route path="/anki" element={<AnkiHub />} />
+    <Route path="/course/:courseId/flashcards" element={<FlashcardReview />} />
+
+    {/* 2. הנתיבים הדינמיים והרגילים שלך */}
+    <Route path="/:urlYear?/:urlSemester?" element={<HomeSelection coursesStructure={coursesStructure} examsList={examsList} homeYear={homeYear} setHomeYear={setHomeYear} homeSemester={homeSemester} setHomeSemester={setHomeSemester} />} />
+    <Route path="/course/:courseName" element={<CourseExams examsList={examsList} />} />
+    <Route path="/exam/:examId/:mode" element={<ExamTaking examsList={examsList} />} />
+    <Route path="/profile" element={<UserProfile examsList={examsList}/>} />
+  </Routes>
+</main>
 
       <footer className="w-full text-center py-8 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-bg mt-auto text-xs sm:text-sm print:hidden border-t border-transparent dark:border-slate-800/50 transition-colors">
         <p className="mb-1 flex items-center justify-center gap-1">בפיתוח המערכת הושקעו זמן ומחשבה רבים <HeartIcon /></p>

@@ -13,15 +13,12 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
   const { urlYear, urlSemester } = useParams(); 
   const [isFameOpen, setIsFameOpen] = useState(false);
 
-  // חפש את השורה הזו בתחילת HomeSelection
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'", "שנה ה'", "שנה ו'"];
 
-  // שאיבת קטגוריות דינמיות מהדאטה-בייס (סמסטרים / מבואות / קורסים שנתיים)
   const availableCategories = homeYear && coursesStructure[homeYear] 
     ? Object.keys(coursesStructure[homeYear]) 
     : [];
 
-  // מיון חכם: קודם סמסטרים רגילים, ואז השאר לפי הא"ב
   const sortCategories = (categories) => {
     const order = ["סמסטר א'", "סמסטר ב'", "סמסטר קיץ", "מבואות", "קורסים שנתיים"];
     return [...categories].sort((a, b) => {
@@ -44,13 +41,16 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
       }
     }
     if (urlSemester) {
-      // ביטלנו את בדיקת ה-includes הנוקשה כדי לאפשר כל קטגוריה חדשה (מבואות, קיץ וכו')
       const decodedSemester = decodeURIComponent(urlSemester);
       setHomeSemester(decodedSemester);
     }
   }, [urlYear, urlSemester]);
 
   useEffect(() => {
+    if (window.location.pathname.includes('/anki') || window.location.pathname.includes('/flashcards')) {
+      return;
+    }
+
     if (homeYear && homeSemester) {
       navigate(`/${encodeURIComponent(homeYear)}/${encodeURIComponent(homeSemester)}`, { replace: true });
     } else if (homeYear) {
@@ -74,25 +74,42 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
 
   return (
     <>
+      {/* מסך ראשי: בחירת שנה + מרכז Anki ארצי */}
       {!homeYear && (
         <div className="animate-fade-in-up w-full max-w-3xl mx-auto">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2 transition-colors">{getGreeting()}</h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-8 transition-colors">יש לבחור שנת לימודים כדי להתחיל</p>
+            <p className="text-slate-500 dark:text-slate-400 mb-8 transition-colors">יש לבחור שנת לימודים או לתרגל כרטיסיות</p>
             
-            <div className="grid grid-cols-2 gap-4 mb-10">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               {studentYears.map(year => (
                 <button 
                   key={year} 
                   onClick={() => setHomeYear(year)} 
-                  className="bg-white dark:bg-dark-panel p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700 dark:text-slate-200"
+                  className="bg-white dark:bg-dark-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition text-xl font-bold text-slate-700 dark:text-slate-200"
                 >
                   {year}
                 </button>
               ))}
             </div>
 
-            <div className="bg-white dark:bg-dark-panel rounded-[32px] shadow-sm border border-slate-100 dark:border-dark-border text-right relative overflow-hidden transition-all duration-300">
+            {/* --- מרכז Anki ארצי - בעיצוב נקי שתואם לאתר --- */}
+            <div className="mb-10">
+                <button 
+                    onClick={() => navigate('/anki')}
+                    className="w-full bg-white dark:bg-dark-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition flex items-center justify-between group"
+                >
+                    <div className="text-right">
+                        <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">מרכז Anki</h3>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 transition-colors">כניסה לחפיסות השינון החכם לכלל הקורסים והנושאים</p>
+                    </div>
+                    <div className="text-4xl group-hover:scale-110 transition-transform">
+                        🧠
+                    </div>
+                </button>
+            </div>
+
+            <div className="bg-white dark:bg-dark-panel rounded-[32px] shadow-sm border border-slate-100 dark:border-dark-border text-right relative overflow-hidden transition-all duration-300 mb-8">
               <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400"></div>
               
               <button 
@@ -183,7 +200,6 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                    <button 
                      key={course.name} 
                      onClick={() => navigate(`/course/${course.name}`)} 
-                     // השינוי כאן: הוספת רוחב מחושב
                      className="w-full sm:w-[calc(50%-0.5rem)] bg-white dark:bg-dark-panel p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition text-right group"
                    >
                      <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{course.name}</h3>
