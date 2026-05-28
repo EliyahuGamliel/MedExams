@@ -41,7 +41,8 @@ const QuestionCard = memo(function QuestionCard({
   isSubmitted, 
   imageUrl, 
   examId, 
-  isFlagged, 
+  isFlagged,
+  isFlashcard, 
   onToggleFlag, 
   isUserExcluded, 
   onToggleUserExclude, 
@@ -49,8 +50,8 @@ const QuestionCard = memo(function QuestionCard({
   onToggleEliminate, 
   resetTick, 
   examSessionId,
-  userSettings,          // הגדרות המשתמש הגלובליות
-  onCorrectAutoScroll    // פונקציית הגלילה האוטומטית
+  userSettings,          
+  onCorrectAutoScroll    
 }) {  
   const { user } = useAuth();
   if (!question) return null;
@@ -58,23 +59,26 @@ const QuestionCard = memo(function QuestionCard({
   const isMultiSelect = Array.isArray(question.correctIndex);
   const qStorageKey = `q_state_${examId}_${mode}_${index}`;
 
-  // דינמיות של פונטים מבוססת הגדרות משתמש
   const qFontSizeClass = userSettings?.fontSize === 'xlarge' ? 'text-3xl' : userSettings?.fontSize === 'large' ? 'text-2xl' : 'text-xl';
   const optFontSizeClass = userSettings?.fontSize === 'xlarge' ? 'text-xl' : userSettings?.fontSize === 'large' ? 'text-lg' : 'text-base';
 
   const [selectedOptionId, setSelectedOptionId] = useState(() => {
+      if (isFlashcard) return null;
       const saved = localStorage.getItem(`${qStorageKey}_single`);
       return saved ? JSON.parse(saved) : null;
   });
   const [testSelections, setTestSelections] = useState(() => {
+      if (isFlashcard) return [];
       const saved = localStorage.getItem(`${qStorageKey}_multi`);
       return saved ? JSON.parse(saved) : [];
   });
   const [practiceSelections, setPracticeSelections] = useState(() => {
+      if (isFlashcard) return [];
       const saved = localStorage.getItem(`${qStorageKey}_prac`);
       return saved ? JSON.parse(saved) : [];
   });
   const [clozeSelections, setClozeSelections] = useState(() => {
+      if (isFlashcard) return {};
       const saved = localStorage.getItem(`${qStorageKey}_cloze`);
       return saved ? JSON.parse(saved) : {};
   });
@@ -95,11 +99,13 @@ const QuestionCard = memo(function QuestionCard({
   }, [resetTick]);
 
   useEffect(() => {
-      localStorage.setItem(`${qStorageKey}_single`, JSON.stringify(selectedOptionId));
-      localStorage.setItem(`${qStorageKey}_multi`, JSON.stringify(testSelections));
-      localStorage.setItem(`${qStorageKey}_prac`, JSON.stringify(practiceSelections));
-      localStorage.setItem(`${qStorageKey}_cloze`, JSON.stringify(clozeSelections));
-  }, [selectedOptionId, testSelections, practiceSelections, clozeSelections, qStorageKey]);
+      if (!isFlashcard) {
+          localStorage.setItem(`${qStorageKey}_single`, JSON.stringify(selectedOptionId));
+          localStorage.setItem(`${qStorageKey}_multi`, JSON.stringify(testSelections));
+          localStorage.setItem(`${qStorageKey}_prac`, JSON.stringify(practiceSelections));
+          localStorage.setItem(`${qStorageKey}_cloze`, JSON.stringify(clozeSelections));
+      }
+  }, [selectedOptionId, testSelections, practiceSelections, clozeSelections, qStorageKey, isFlashcard]);
 
   const shuffledOptions = useMemo(() => {
     if (question.type === 'cloze' || question.type === 'open_ended') return null;
@@ -144,7 +150,7 @@ const QuestionCard = memo(function QuestionCard({
                          localStorage.getItem(`${qStorageKey}_prac`) ||
                          localStorage.getItem(`${qStorageKey}_cloze`);
     
-    if (!hasSavedData) {
+    if (!hasSavedData && !isFlashcard) {
         setSelectedOptionId(null);
         setTestSelections([]);
         setPracticeSelections([]); 
@@ -157,11 +163,11 @@ const QuestionCard = memo(function QuestionCard({
             onAnswer(index, 'canceled');
         } else if (question.type === 'open_ended') {
             onAnswer(index, 'ignored');
-        } else if (!hasSavedData) {
+        } else if (!hasSavedData && !isFlashcard) {
             onAnswer(index, null);
         }
     }
-  }, [question, mode, question.isCanceled, isUserExcluded, qStorageKey, onAnswer, index]);
+  }, [question, mode, question.isCanceled, isUserExcluded, qStorageKey, onAnswer, index, isFlashcard]);
 
   const calculateClozeStatus = (currentSelections) => {
     if (!shuffledClozeOptions || shuffledClozeOptions.length === 0) return { correctCount: 0, total: 0, status: 'empty' };
@@ -208,7 +214,6 @@ const QuestionCard = memo(function QuestionCard({
        setPracticeSelections(prev => {
           const newList = toggleSelection(prev);
           
-          // בדיקה האם פתר נכון לצורך גלילה אוטומטית במצב תרגול זורם
           if (isMultiSelect) {
               const correctArr = Array.isArray(question.correctIndex) ? question.correctIndex : [question.correctIndex];
               const allValidOptions = [...correctArr, ...appeals];
@@ -281,7 +286,6 @@ const QuestionCard = memo(function QuestionCard({
       const { status } = calculateClozeStatus(newSelections);
       onAnswer(index, status);
       
-      // הדק גלילה אוטומטית לשאלות קלוז' בתרגול
       if (status === 'perfect' && onCorrectAutoScroll) {
           onCorrectAutoScroll(index);
       }
@@ -513,7 +517,6 @@ const QuestionCard = memo(function QuestionCard({
       ) : (
         <div className="space-y-2 relative">
           {shuffledOptions?.filter(option => {
-             // יישום למידה חלקה (הסרת מסיחים שגויים) במצב מבחן מוגש
              if (mode === 'test' && isSubmitted && userSettings?.testReviewMode === 'correct_only') {
                  const isSelected = isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id;
                  return option.isCorrect || option.isAppealed || isSelected;
@@ -559,7 +562,6 @@ const QuestionCard = memo(function QuestionCard({
                   btnClass += "bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"; 
                 }
 
-                // יישום הגדרת ערעורים חזותית במצב תרגול
                 if (userSettings?.practiceShowAppeals && option.isAppealed && !isSelected) {
                     const hasFoundCorrectPractice = practiceSelections.some(id => {
                         const opt = shuffledOptions.find(o => o.id === id);

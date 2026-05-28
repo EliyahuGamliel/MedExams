@@ -4,7 +4,7 @@ import { db } from '../../../firebase';
 import { ref, get, update, remove } from "firebase/database";
 import { useAuth } from '../../../context/AuthContext';
 import toast from 'react-hot-toast';
-import QuestionCard from '../../../components/QuestionCard'; // ודא שהנתיב תואם אצלך!
+import QuestionCard from '../../../components/QuestionCard'; 
 
 export default function FlashcardReview() {
     const { courseId } = useParams();
@@ -138,7 +138,6 @@ export default function FlashcardReview() {
             console.error("Failed to save progress", error);
         }
 
-        // איפוס מוחלט של מצב החשיפה כדי שהשאלה הבאה תהיה נעולה
         setIsAnswerRevealed(false);
         setResetTick(prev => prev + 1);
 
@@ -186,7 +185,6 @@ export default function FlashcardReview() {
         return remainingMins > 0 ? `${hours} שעות ו-${remainingMins} דקות` : `${hours} שעות`;
     };
 
-    // פונקציה שמופעלת ברגע שהסטודנט מסמן תשובה בקומפוננטה המקורית
     const handleStudentAnswer = () => {
         setIsAnswerRevealed(true);
     };
@@ -200,7 +198,7 @@ export default function FlashcardReview() {
             <p className="text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">סיימת את הסבב הנוכחי! ישנן <span className="font-bold text-indigo-600 dark:text-indigo-400">{laterCards.length}</span> שאלות שקבעת לחזרה קרובה.</p>
             <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900 rounded-2xl p-4 inline-block mb-8">
                <p className="text-sm font-bold text-indigo-800 dark:text-indigo-300">השאלה הבאה תהיה זמינה בעוד:</p>
-               <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1" dir="ltr">{getWaitTime()}</p>
+<p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{getWaitTime()}</p>
             </div>
             <div className="flex flex-col gap-3">
                 <button onClick={() => navigate(-1)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-8 rounded-2xl shadow-lg transition-all">חזור לאזור האישי</button>
@@ -220,12 +218,20 @@ export default function FlashcardReview() {
     );
 
     const currentCard = reviewQueue[0];
-    const q = currentCard.originalQuestion;
     const steps = calculateNextSteps(currentCard.progress);
 
     // =========================================================================
-    // הנדסה לאחור של המזהים המקוריים כדי שקופסת ההסבר לא תפנה ל-Gemini סתם!
+    // 🔥 התיקון: ניקוי השאלה מכל זכר לתשובה שהמשתמש סימן בעבר במבחן
     // =========================================================================
+    const cleanQuestion = { ...currentCard.originalQuestion };
+    delete cleanQuestion.userAnswer;
+    delete cleanQuestion.selectedOption;
+    delete cleanQuestion.selectedIndex;
+    delete cleanQuestion.userSelection;
+    delete cleanQuestion.status;
+    delete cleanQuestion.isCorrect;
+
+    // הנדסה לאחור של המזהים המקוריים
     const parts = currentCard.id.split('_q');
     const realExamId = currentCard.examDbId || parts[0];
     const realIndex = currentCard.originalIndex !== undefined ? currentCard.originalIndex : parseInt(parts[1] || '0', 10);
@@ -255,17 +261,17 @@ export default function FlashcardReview() {
             <div className="flex-1 animate-fade-in pb-8">
                 
                 <div className="mb-6 pointer-events-auto">
-                    {/* המפתח (key) מבטיח שהקומפוננטה תושמד ותיבנה מחדש בכל פעם שנעבור שאלה, כך שלא יהיה זיכרון מעצבן */}
                     <QuestionCard 
                         key={`${currentCard.id}_${resetTick}`} 
-                        question={q} 
-                        index={realIndex} // הופך את קופסת ההסבר לחכמה ומונע בקשה ל-Gemini
+                        question={cleanQuestion} // העברנו את השאלה המנוקה!
+                        index={realIndex} 
                         mode="practice" 
                         onAnswer={handleStudentAnswer} 
                         isSubmitted={isAnswerRevealed} 
-                        examId={realExamId} // חיוני למשיכת ההסבר הקיים
+                        examId={realExamId} 
                         imageUrl={currentCard.imageUrl} 
                         isFlagged={true} 
+                        isFlashcard={true}
                         onToggleFlag={handleDeletePersonalCard} 
                         onToggleUserExclude={() => {}}
                         isUserExcluded={false}
@@ -277,7 +283,6 @@ export default function FlashcardReview() {
                     />
                 </div>
 
-                {/* כפתורי הדירוג מוצגים מההתחלה - פשוט וקל כמו שביקשת */}
                 <div className="mt-8 shrink-0 pb-10">
                     <div className="animate-fade-in-up max-w-md mx-auto">
                         <h3 className="text-center text-sm font-bold text-slate-500 mb-4 uppercase tracking-wide">

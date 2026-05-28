@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext'; // הוספנו משיכת משתמש
 import { db } from '../../firebase'; 
 import { ref, get } from 'firebase/database';
 import toast from 'react-hot-toast';
 
 export default function ExamGeneratorBanner({ courseId, examsList }) {
     const navigate = useNavigate();
+    const { user } = useAuth(); // גישה לנתוני המשתמש
     
     const [questionCount, setQuestionCount] = useState(30);
     const [selectedMode, setSelectedMode] = useState('practice'); 
@@ -16,65 +18,117 @@ export default function ExamGeneratorBanner({ courseId, examsList }) {
         setIsGenerating(true);
 
         try {
-            const courseExams = examsList.filter(e => e.course === courseId);
-            if (courseExams.length === 0) {
-                toast.error("לא נמצאו מבחנים לקורס זה.");
-                setIsGenerating(false);
-                return;
+            // משיכת הגדרת מקור הסימולציה מהפרופיל
+            let simulationSource = 'all';
+            if (user) {
+                const settingsSnap = await get(ref(db, `users/${user.uid}/settings/simulationSource`));
+                if (settingsSnap.exists()) {
+                    simulationSource = settingsSnap.val();
+                }
             }
 
             let allQuestions = [];
 
-            const fetchPromises = courseExams.map(async (exam) => {
-                let qData = [];
-                let iData = {};
-
-                const cachedQuestions = sessionStorage.getItem(`cache_q_${exam.id}`);
-                const cachedImages = sessionStorage.getItem(`cache_img_${exam.id}`);
-
-                if (cachedQuestions) {
-                    qData = JSON.parse(cachedQuestions);
-                    if (cachedImages) iData = JSON.parse(cachedImages);
-                } else {
-                    const [contentSnap, imagesSnap] = await Promise.all([
-                        get(ref(db, `exam_contents/${exam.id}`)),
-                        get(ref(db, `exam_images/${exam.id}`))
-                    ]);
-                    qData = contentSnap.exists() ? contentSnap.val() : [];
-                    iData = imagesSnap.exists() ? imagesSnap.val() : {};
-                    
-                    sessionStorage.setItem(`cache_q_${exam.id}`, JSON.stringify(qData));
-                    sessionStorage.setItem(`cache_img_${exam.id}`, JSON.stringify(iData));
+            // --- פיצול לוגיקה לפי מקור השאלות ---
+            if (simulationSource === 'flagged_only') {
+                if (!user) {
+                    toast.error("יש להתחבר כדי לתרגל שאלות מסומנות.");
+                    setIsGenerating(false);
+                    return;
                 }
 
-                const questions = [];
-                qData.forEach((q, idx) => {
-                    if (q.isCanceled || q.type === 'open_ended') return;
+                const flaggedSnap = await get(ref(db, `user_personal_flashcards/${user.uid}/${courseId}`));
+                
+                if (!flaggedSnap.exists() || Object.keys(flaggedSnap.val()).length === 0) {
+                    toast.error("אין לך שאלות מסומנות בדגלון בקורס זה. שנה הגדרות או סמן שאלות.");
+                    setIsGenerating(false);
+                    return;
+                }
+
+                const flaggedData = flaggedSnap.val();
+                Object.entries(flaggedData).forEach(([cardId, card]) => {
+                    if (!card.originalQuestion) return;
                     
                     let dedupKey = "";
-                    if (q.text && q.text.length > 5) {
-                        dedupKey = q.text.replace(/[^\u0590-\u05FFa-zA-Z0-9]/g, '');
-                    } else if (q.imageUrl || iData[idx]) {
-                        dedupKey = q.imageUrl || iData[idx];
+                    if (card.originalQuestion.text && card.originalQuestion.text.length > 5) {
+                        dedupKey = card.originalQuestion.text.replace(/[^\u0590-\u05FFa-zA-Z0-9]/g, '');
+                    } else if (card.imageUrl) {
+                        dedupKey = card.imageUrl;
                     } else {
-                        return; 
+                        dedupKey = cardId;
                     }
 
-                    questions.push({
-                        ...q,
-                        originalExamId: exam.id,
-                        originalExamTitle: exam.title,
-                        originalIndex: idx,
-                        imageUrl: q.imageUrl || iData[idx] || null,
+                    allQuestions.push({
+                        ...card.originalQuestion,
+                        originalExamId: "flagged",
+                        originalExamTitle: card.sourceExam || "שאלות בדגלון",
+                        originalIndex: cardId,
+                        imageUrl: card.imageUrl || null,
                         dedupKey: dedupKey
                     });
                 });
-                return questions;
-            });
 
-            const results = await Promise.all(fetchPromises);
-            results.forEach(res => allQuestions.push(...res));
+            } else {
+                // הלוגיקה הרגילה: כל המבחנים בקורס
+                const courseExams = examsList.filter(e => e.course === courseId);
+                if (courseExams.length === 0) {
+                    toast.error("לא נמצאו מבחנים לקורס זה.");
+                    setIsGenerating(false);
+                    return;
+                }
 
+                const fetchPromises = courseExams.map(async (exam) => {
+                    let qData = [];
+                    let iData = {};
+
+                    const cachedQuestions = sessionStorage.getItem(`cache_q_${exam.id}`);
+                    const cachedImages = sessionStorage.getItem(`cache_img_${exam.id}`);
+
+                    if (cachedQuestions) {
+                        qData = JSON.parse(cachedQuestions);
+                        if (cachedImages) iData = JSON.parse(cachedImages);
+                    } else {
+                        const [contentSnap, imagesSnap] = await Promise.all([
+                            get(ref(db, `exam_contents/${exam.id}`)),
+                            get(ref(db, `exam_images/${exam.id}`))
+                        ]);
+                        qData = contentSnap.exists() ? contentSnap.val() : [];
+                        iData = imagesSnap.exists() ? imagesSnap.val() : {};
+                        
+                        sessionStorage.setItem(`cache_q_${exam.id}`, JSON.stringify(qData));
+                        sessionStorage.setItem(`cache_img_${exam.id}`, JSON.stringify(iData));
+                    }
+
+                    const questions = [];
+                    qData.forEach((q, idx) => {
+                        if (q.isCanceled || q.type === 'open_ended') return;
+                        
+                        let dedupKey = "";
+                        if (q.text && q.text.length > 5) {
+                            dedupKey = q.text.replace(/[^\u0590-\u05FFa-zA-Z0-9]/g, '');
+                        } else if (q.imageUrl || iData[idx]) {
+                            dedupKey = q.imageUrl || iData[idx];
+                        } else {
+                            return; 
+                        }
+
+                        questions.push({
+                            ...q,
+                            originalExamId: exam.id,
+                            originalExamTitle: exam.title,
+                            originalIndex: idx,
+                            imageUrl: q.imageUrl || iData[idx] || null,
+                            dedupKey: dedupKey
+                        });
+                    });
+                    return questions;
+                });
+
+                const results = await Promise.all(fetchPromises);
+                results.forEach(res => allQuestions.push(...res));
+            }
+
+            // סינון כפילויות משותף
             const uniqueMap = new Map();
             allQuestions.forEach(q => {
                 if (!uniqueMap.has(q.dedupKey)) {
@@ -85,7 +139,7 @@ export default function ExamGeneratorBanner({ courseId, examsList }) {
             let uniqueQuestions = Array.from(uniqueMap.values());
 
             if (uniqueQuestions.length === 0) {
-                toast.error("לא נמצאו שאלות תקינות במבחנים של הקורס.");
+                toast.error("לא נמצאו שאלות תקינות ליצירת הסימולציה.");
                 setIsGenerating(false);
                 return;
             }
@@ -103,9 +157,10 @@ export default function ExamGeneratorBanner({ courseId, examsList }) {
             });
 
             const generatedId = `gen_${Date.now()}`;
+            const titleSource = simulationSource === 'flagged_only' ? 'משאלות מסומנות' : 'מותאמת אישית';
             const meta = {
                 id: generatedId,
-                title: `סימולציה מותאמת אישית (${finalQuestions.length} שאלות)`,
+                title: `סימולציה ${titleSource} (${finalQuestions.length} שאלות)`,
                 course: courseId,
                 questionCount: finalQuestions.length,
                 isVerified: true

@@ -41,13 +41,14 @@ export default function AnkiHub() {
                 const personalCardsSnap = await get(ref(db, `user_personal_flashcards/${user.uid}`));
                 const personalCourses = personalCardsSnap.exists() ? personalCardsSnap.val() : {};
 
-                // 3. משיכת ההתקדמות של האלגוריתם (מתי הוא צריך לחזור על כל שאלה)
+                // 3. משיכת ההתקדמות של האלגוריתם
                 const progressSnap = await get(ref(db, `user_flashcards_progress/${user.uid}`));
                 const allProgress = progressSnap.exists() ? progressSnap.val() : {};
 
                 const now = Date.now();
                 const tree = {};
 
+                // פונקציה חכמה שמוסיפה נתיב (ולא מונה אם אין סטטוס)
                 const addCardToTree = (pathArr, status, courseId) => {
                     let currentLevel = tree;
                     let currentPath = "";
@@ -55,6 +56,7 @@ export default function AnkiHub() {
                     pathArr.forEach((node, index) => {
                         currentPath = currentPath === "" ? node : `${currentPath}::${node}`;
                         
+                        // יצירת התיקייה/קורס אם לא קיימים עדיין
                         if (!currentLevel[node]) {
                             currentLevel[node] = {
                                 name: node,
@@ -64,7 +66,12 @@ export default function AnkiHub() {
                                 children: {}
                             };
                         }
-                        currentLevel[node].counts[status]++;
+                        
+                        // רק אם נשלח סטטוס (השאלה פתוחה לתרגול), מוסיפים לספירה
+                        if (status) {
+                            currentLevel[node].counts[status]++;
+                        }
+                        
                         currentLevel = currentLevel[node].children;
                     });
                 };
@@ -74,27 +81,33 @@ export default function AnkiHub() {
                     const courseCards = personalCourses[courseId];
                     const courseProgress = allProgress[courseId] || {};
 
-                    Object.keys(courseCards).forEach(cardId => {
-                        const card = courseCards[cardId];
-                        if (!card.isActive) return;
+                    const cleanCourseId = courseId.trim();
+                    const year = courseToYear[cleanCourseId] || "כללי"; 
+                    const cleanPathArr = [year, cleanCourseId];
 
-                        const progress = courseProgress[cardId];
-                        if (progress && progress.isSuspended) return; // השאלות המוקפאות
+                    // מסנן רק כרטיסיות פעילות
+                    const activeCardIds = Object.keys(courseCards).filter(id => courseCards[id].isActive);
 
-                        let status = "new";
-                        if (!progress || !progress.lastReviewed) status = "new"; 
-                        else if (progress.interval === 0 && progress.nextReviewDate <= now) status = "learning"; 
-                        else if (progress.interval > 0 && progress.nextReviewDate <= now) status = "review"; 
-                        else return; // שאלה שעוד לא הגיע הזמן לחזור עליה - נסתרת כרגע
+                    if (activeCardIds.length > 0) {
+                        // קודם כל רושמים את הקורס בעץ (כדי שיוצג עם אפסים גם אם הכל נלמד להיום)
+                        addCardToTree(cleanPathArr, null, cleanCourseId);
 
-                        const cleanCourseId = courseId.trim();
-                        const year = courseToYear[cleanCourseId] || "כללי"; 
-                        
-                        // העץ בנוי פשוט מ: שנה -> שם הקורס
-                        const cleanPathArr = [year, cleanCourseId];
+                        // עכשיו עוברים על הכרטיסיות ומעדכנים את הספירה בהתאם למצב
+                        activeCardIds.forEach(cardId => {
+                            const progress = courseProgress[cardId];
+                            if (progress && progress.isSuspended) return; // שאלות מוקפאות לא נספרות
 
-                        addCardToTree(cleanPathArr, status, cleanCourseId);
-                    });
+                            let status = null;
+                            if (!progress || !progress.lastReviewed) status = "new"; 
+                            else if (progress.interval === 0 && progress.nextReviewDate <= now) status = "learning"; 
+                            else if (progress.interval > 0 && progress.nextReviewDate <= now) status = "review"; 
+
+                            // אם השאלה זמינה לתרגול (מעכשיו או שפוספס הזמן) – מוסיפים ספירה
+                            if (status) {
+                                addCardToTree(cleanPathArr, status, cleanCourseId);
+                            }
+                        });
+                    }
                 });
 
                 setDeckTree(tree);
@@ -137,11 +150,14 @@ export default function AnkiHub() {
             const hasChildren = Object.keys(node.children).length > 0;
             const isExpanded = expandedDecks[node.fullPath];
 
+            // צביעה באפור במקרה של 0 כרטיסיות
+            const isFinished = depth > 0 && node.counts.new === 0 && node.counts.learning === 0 && node.counts.review === 0;
+
             return (
                 <div key={node.fullPath}>
                     <div 
                         onClick={(e) => depth === 0 ? toggleDeck(e, node.fullPath) : startStudy(node.courseId, depth)}
-                        className={`flex items-center justify-between py-2.5 px-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${depth === 0 ? 'bg-slate-100/50 dark:bg-slate-800/30 font-black text-lg mt-2' : ''}`}
+                        className={`flex items-center justify-between py-2.5 px-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${depth === 0 ? 'bg-slate-100/50 dark:bg-slate-800/30 font-black text-lg mt-2' : ''} ${isFinished ? 'opacity-60 grayscale-[0.5]' : ''}`}
                         style={{ paddingRight: `${(depth * 1.5) + 1}rem` }} 
                     >
                         <div className="flex items-center gap-2">
@@ -150,7 +166,9 @@ export default function AnkiHub() {
                                     {isExpanded ? <ChevronDown /> : <ChevronLeft />}
                                 </button>
                             ) : ( <span className="w-6"></span> )}
-                            <span className={depth === 0 ? "text-blue-800 dark:text-blue-300" : "text-slate-700 dark:text-slate-200 font-bold"}>{node.name}</span>
+                            <span className={depth === 0 ? "text-blue-800 dark:text-blue-300" : "text-slate-700 dark:text-slate-200 font-bold"}>
+                                {node.name}
+                            </span>
                         </div>
 
                         <div className="flex items-center gap-4 text-sm font-black font-mono" dir="ltr">

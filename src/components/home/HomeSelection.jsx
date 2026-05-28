@@ -147,10 +147,6 @@ export default function HomeSelection({ coursesStructure, examsList, homeYear, s
                 </p>
               </div>
             </div>
-
-            <div className="mt-8 mb-4">
-              <SoftwareUpdate targetVersion="v2.1" />
-            </div>
           </div>
         </div>
       )}
