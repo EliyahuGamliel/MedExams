@@ -21,6 +21,7 @@ import { useUploadLogic } from './useUploadLogic';
 
 // --- אייקונים ---
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>;
+const LayersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>;
@@ -34,13 +35,11 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-// חפש את השורה הזו בתחילת AdminPage
   const studentYears = ["שנה א'", "שנה ב'", "שנה ג'", "שנה ד'", "שנה ה'", "שנה ו'"];
-  const examYearsList = Array.from({ length: 20 }, (_, i) => `${2015 + i}`);
+  const examYearsList = Array.from({ length: 30 }, (_, i) => `${2010 + i}`);
   const moedList = ["מועד א'", "מועד ב'", "מועד מיוחד"];
 
   const [selectedStudentYear, setSelectedStudentYear] = useState("שנה א'");
-  //  שינוי מהותי: זה כבר לא מוגבל רק לסמסטרים קבועים.
   const [selectedSemester, setSelectedSemester] = useState("סמסטר א'"); 
   const [selectedCourseId, setSelectedCourseId] = useState("");
 
@@ -234,6 +233,7 @@ export default function AdminPage() {
         {/* סרגל טאבים אופקי מותאם מלא ל-Dark Mode */}
         <div className="flex bg-slate-100 dark:bg-dark-bg/50 p-1 rounded-xl mb-8 overflow-x-auto no-scrollbar border border-transparent dark:border-slate-700/50 transition-colors">
           <button onClick={() => navigate('/admin/upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('upload') ? 'bg-white dark:bg-dark-border shadow text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}><UploadIcon /> העלאה</button> 
+          <button onClick={() => navigate('/admin/bulk_upload', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('bulk_upload') ? 'bg-white dark:bg-dark-border shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}><LayersIcon /> העלאה מרובה</button>
           <button onClick={() => navigate('/admin/manage_exams', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_exams') ? 'bg-white dark:bg-dark-border shadow text-purple-600 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400'}`}><EditIcon /> ניהול קיימים</button>
           <button onClick={() => navigate('/admin/manage_courses', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('manage_courses') ? 'bg-white dark:bg-dark-border shadow text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}><PlusIcon /> קורסים</button>
           <button onClick={() => navigate('/admin/reports', { replace: true })} className={`flex-1 p-3 rounded-lg font-bold flex items-center justify-center gap-2 whitespace-nowrap transition ${isActiveTab('reports') ? 'bg-white dark:bg-dark-border shadow text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}><FlagIcon /> דיווחים {reportsList.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-1">{reportsList.length}</span>}</button>
@@ -270,6 +270,25 @@ export default function AdminPage() {
               appendicesFile={appendicesFile}
               setAppendicesFile={setAppendicesFile}
               handleUploadExam={handleUploadExam}
+              status={status}
+              debugLog={debugLog}
+            />
+          } />
+
+          <Route path="bulk_upload" element={
+            <BulkUploadTab
+              studentYears={studentYears}
+              semesters={dynamicCategories} 
+              selectedStudentYear={selectedStudentYear}
+              setSelectedStudentYear={setSelectedStudentYear}
+              selectedSemester={selectedSemester}
+              setSelectedSemester={setSelectedSemester}
+              selectedCourseId={selectedCourseId}
+              setSelectedCourseId={setSelectedCourseId}
+              availableCourses={availableCourses}
+              bulkFiles={bulkFiles}
+              setBulkFiles={setBulkFiles}
+              handleBulkUpload={handleBulkUpload}
               status={status}
               debugLog={debugLog}
             />

@@ -45,6 +45,11 @@ exports.processExamWithGemini = onCall(
         - If the question is an OPEN ESSAY question with no options, set "type": "open_ended", "options": [], and "correctIndex": null.
         
         CRITICAL FOR IMAGES: Set "imageNeeded": true ONLY IF text explicitly refers to a missing diagram/graph.
+        CRITICAL JSON FORMATTING (DO NOT FAIL THIS):
+        1. YOU MUST RETURN ONLY A VALID JSON ARRAY.
+        2. NEVER use unescaped double quotes inside text fields. If a question or option contains quotes, you MUST escape them with a backslash (e.g. "המושג \\"דלקת\\" אומר").
+        3. Do NOT wrap the response in markdown blocks (\`\`\`json).
+      
         Return ONLY raw JSON array: [{"id": 1, "text": "Q", "options": ["Correct", "W1", "W2"], "correctIndex": 0, "imageNeeded": false}]`;
       } else {
         // --- מצב ממוחשב (Moodle) - תומך ב-3 סוגים ---
@@ -100,6 +105,11 @@ exports.processExamWithGemini = onCall(
         3. Type 3 is ONLY for questions with no options at all (the student has to write from scratch).
         4. If a question refers to an image (X-ray, Graph, Diagram) -> Set "imageNeeded": true.
 
+        CRITICAL JSON FORMATTING (DO NOT FAIL THIS):
+        1. YOU MUST RETURN ONLY A VALID JSON ARRAY.
+        2. NEVER use unescaped double quotes inside text fields. If a question or option contains quotes, you MUST escape them with a backslash (e.g. "המושג \\"דלקת\\" אומר").
+        3. Do NOT wrap the response in markdown blocks (\`\`\`json).
+        
         Return ONLY the raw JSON array.`;
       }
       
@@ -218,6 +228,93 @@ exports.generateExplanationWithGemini = onCall(
     } catch (error) {
       logger.error("Gemini Explanation Error:", error);
       throw new HttpsError("internal", "אירעה שגיאה ביצירת ההסבר. נסה שוב.");
+    }
+  }
+);
+
+const nodemailer = require("nodemailer");
+
+// הגדרת סודות חדשים עבור פרטי האימייל שלך
+const gmailEmail = defineSecret("GMAIL_EMAIL");
+const gmailPassword = defineSecret("GMAIL_APP_PASSWORD");
+
+exports.sendReportResolvedEmail = onCall(
+  {
+    cors: true,
+    secrets: [gmailEmail, gmailPassword],
+  },
+  async (request) => {
+    // אבטחה: וידוא שרק משתמש מחובר יכול להפעיל את הפונקציה (עורכים/מנהלים)
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "רק מנהלים יכולים לשלוח עדכונים.");
+    }
+const { email, name, questionText, reportText, examTitle, adminMessage, status } = request.data;
+
+    if (!email) {
+      return { success: false, message: "לא סופקה כתובת אימייל" };
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: gmailEmail.value(),
+          pass: gmailPassword.value(),
+        },
+      });
+
+      // בניית הודעת הסטטוס לפי הבחירה שלך
+      let statusHtml = "";
+      if (status === "accepted") {
+        statusHtml = `
+          <div style="background-color: #e8f5e9; padding: 15px; border-right: 4px solid #4caf50; margin: 15px 0;">
+            <strong>עדכון משמח:</strong><br/>
+            <p style="margin-top: 8px; font-size: 15px;">הדיווח שלך התקבל! הטעות אומתה, והשאלה תוקנה במערכת. תודה רבה על העזרה בשיפור המאגר.</p>
+          </div>
+        `;
+      } else {
+        statusHtml = `
+          <div style="background-color: #fff3e0; padding: 15px; border-right: 4px solid #ff9800; margin: 15px 0;">
+            <strong>עדכון לגבי הדיווח:</strong><br/>
+            <p style="margin-top: 8px; font-size: 15px;">הדיווח שלך נבדק לעומק על ידי הצוות המקצועי, אך הוחלט להשאיר את השאלה כפי שהיא.</p>
+            <p style="margin-top: 8px; font-size: 14px;"><strong>סיבת הדחייה:</strong> ${adminMessage}</p>
+          </div>
+        `;
+      }
+
+      const mailOptions = {
+        from: `"צוות האתר" <${gmailEmail.value()}>`,
+        to: email,
+        subject: status === "accepted" ? "הדיווח שלך טופל ותוקן! ✅" : "עדכון לגבי הדיווח שפתחת ℹ️",
+        html: `
+          <div dir="rtl" style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <h2 style="color: #2e6c80;">שלום ${name || 'סטודנט/ית יקר/ה'},</h2>
+            <p>רצינו לעדכן אותך שהדיווח שפתחת לגבי השאלה במבחן <strong>${examTitle}</strong> טופל.</p>
+            
+            ${statusHtml}
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-right: 4px solid #9e9e9e; margin: 15px 0;">
+              <strong>תוכן הדיווח שלך:</strong><br/>
+              <i>"${reportText}"</i>
+            </div>
+            
+            <div style="background-color: #f4f8fa; padding: 15px; border-right: 4px solid #2196f3; margin: 15px 0;">
+              <strong>טקסט השאלה:</strong><br/>
+              <i>"${questionText}"</i>
+            </div>
+
+            <p>בהצלחה בלימודים,<br/>צוות האתר.</p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      logger.info(`Email sent successfully to ${email}`);
+      return { success: true };
+
+    } catch (error) {
+      logger.error("Error sending email:", error);
+      throw new HttpsError("internal", "שגיאה בשליחת האימייל: " + error.message);
     }
   }
 );

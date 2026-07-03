@@ -4,6 +4,8 @@ import { ref, get, set, update, remove, query, orderByChild, startAt, push } fro
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { doc, deleteDoc } from 'firebase/firestore';
 
 // --- יומן בקרת מנהלים גלובלי ---
 export const logAdminAction = async (actionType, details, examId = "כללי") => {
@@ -584,18 +586,49 @@ export function useExamsLogic(setStatus, canSeeReports) {
         return "bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700";
     };
 
-    // סגירת דיווח שגיאה של סטודנט מהרשימה
-    const handleResolveReport = async (reportId) => {
-        try { 
-            await set(ref(db, `reported_errors/${reportId}`), null); 
-            logAdminAction("סגירת דיווח שגיאה", `נסגר הדיווח עם מזהה ${reportId}`);
+    const handleResolveReport = async (report, status, adminMessage = "") => {
+    if (!report || !report.id) {
+        toast.error("שגיאה: הנתונים שהועברו שגויים.");
+        return;
+    }
 
-            toast.success("הדיווח נסגר בהצלחה");
-            setReportsList(prev => prev.filter(r => r.id !== reportId));
-        } catch (e) { 
-            toast.error("שגיאה בסגירת הדיווח"); 
+    try { 
+        await set(ref(db, `reported_errors/${report.id}`), null); 
+        logAdminAction("סגירת דיווח שגיאה", `נסגר הדיווח עם מזהה ${report.id} (סטטוס: ${status})`);
+
+        if (report.reporterEmail) {
+            try {
+                const functions = getFunctions();
+                const sendEmailFn = httpsCallable(functions, 'sendReportResolvedEmail');
+                
+                const examTitle = report.examId !== "unknown" 
+                    ? report.examId.split('_').slice(0, -1).join(' ') 
+                    : 'מבחן לא ידוע';
+
+                await sendEmailFn({
+                    email: report.reporterEmail,
+                    name: report.reporterName,
+                    questionText: report.questionText,
+                    reportText: report.reportText,
+                    examTitle: examTitle,
+                    status: status, // <--- מוסיפים את הסטטוס (accepted/rejected)
+                    adminMessage: adminMessage // נשלח ריק במקרה של 'accepted'
+                });
+                console.log("נשלח מייל עדכון בהצלחה ל:", report.reporterEmail);
+            } catch (emailError) {
+                console.error("הדיווח נמחק, אך נכשלה שליחת המייל:", emailError);
+                toast.error("הדיווח נסגר, אך הייתה שגיאה בשליחת האימייל לסטודנט");
+            }
         }
-    };
+
+        toast.success("הדיווח נסגר בהצלחה");
+        setReportsList(prev => prev.filter(r => r.id !== report.id));
+        
+    } catch (e) { 
+        console.error("שגיאה בסגירת הדיווח:", e);
+        toast.error("שגיאה בסגירת הדיווח"); 
+    }
+};
 
     return {
         examsList, setExamsList,
