@@ -112,7 +112,6 @@ const QuestionCard = memo(function QuestionCard({
 
     const optionsSafe = question.options || [];
     const appeals = question.appealedIndexes || [];
-    const isCanceled = question.isCanceled === true;
 
     const optionsWithData = optionsSafe.map((opt, idx) => {
       const isMainCorrect = isMultiSelect 
@@ -122,7 +121,8 @@ const QuestionCard = memo(function QuestionCard({
       return {
         id: idx,
         text: opt,
-        isCorrect: isCanceled || isMainCorrect || appeals.includes(idx),
+        // ביטול שאלה לא הופך מסיח לנכון מבחינת סטטוס דאטה
+        isCorrect: isMainCorrect || appeals.includes(idx), 
         isAppealed: appeals.includes(idx),
         isMainCorrect: isMainCorrect
       };
@@ -348,9 +348,14 @@ const QuestionCard = memo(function QuestionCard({
             let textClass = "text-slate-700 dark:text-slate-200";
 
             const selectedOpt = options.find(o => o.id === currentSelection);
-            const isCorrect = selectedOpt?.isCorrect || question.isCanceled;
+            const isCorrect = selectedOpt?.isCorrect;
 
-            if (mode === 'test' && isSubmitted) {
+            // עדכון צבעים ל-Cloze: אפור אם מבוטל
+            if (question.isCanceled && (mode === 'practice' || (mode === 'test' && isSubmitted))) {
+                borderClass = "border-slate-300 dark:border-slate-600";
+                bgClass = "bg-slate-100 dark:bg-dark-bg";
+                textClass = "text-slate-500 dark:text-slate-400";
+            } else if (mode === 'test' && isSubmitted) {
                 if (isCorrect) { borderClass = "border-green-500"; bgClass = "bg-green-50 dark:bg-green-950/30"; textClass = "text-green-800 dark:text-green-400 font-bold"; }
                 else { borderClass = "border-red-500"; bgClass = "bg-red-50 dark:bg-red-950/30"; textClass = "text-red-800 dark:text-red-400 line-through"; }
             } else if (mode === 'practice' && currentSelection !== undefined) {
@@ -421,7 +426,7 @@ const QuestionCard = memo(function QuestionCard({
 
       {question.isCanceled && (
         <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-1 text-xs font-bold tracking-widest shadow-md">
-          שאלה מבוטלת - אינה נכללת בציון (כל תשובה נכונה)
+          שאלה מבוטלת - אינה נכללת בציון
         </div>
       )}
 
@@ -518,6 +523,7 @@ const QuestionCard = memo(function QuestionCard({
         <div className="space-y-2 relative">
           {shuffledOptions?.filter(option => {
              if (mode === 'test' && isSubmitted && userSettings?.testReviewMode === 'correct_only') {
+                 if (question.isCanceled) return true; // בשאלה מבוטלת מציגים את כל המסיחים האפורים
                  const isSelected = isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id;
                  return option.isCorrect || option.isAppealed || isSelected;
              }
@@ -536,6 +542,13 @@ const QuestionCard = memo(function QuestionCard({
              
              if (isEliminated) {
                  btnClass += "bg-slate-50/50 dark:bg-dark-bg/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
+             } else if (question.isCanceled && (mode === 'practice' || (mode === 'test' && isSubmitted))) {
+                 // צביעה אפורה וניטרלית בלבד לשאלה מבוטלת
+                 if (isSelected) {
+                     btnClass += "bg-slate-200 dark:bg-slate-800 border-slate-400 dark:border-slate-500 text-slate-700 dark:text-slate-300 font-bold shadow-sm ";
+                 } else {
+                     btnClass += "bg-slate-50 dark:bg-dark-bg/40 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 ";
+                 }
              } else if (mode === 'test' && isSubmitted) {
                 if (option.isMainCorrect) { 
                   btnClass += "bg-green-100 dark:bg-green-950/30 border-green-600 dark:border-green-500 text-green-900 dark:text-green-300 font-bold shadow-md"; 
@@ -554,8 +567,6 @@ const QuestionCard = memo(function QuestionCard({
                 } else if (isSelected && option.isAppealed) { 
                   btnClass += "bg-orange-100 dark:bg-orange-950/30 border-orange-600 dark:border-orange-500 text-orange-900 dark:text-orange-300 font-bold shadow-md"; 
                   tagText = "התקבל בערעור"; tagColor = "bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200"; 
-                } else if (isSelected && question.isCanceled) { 
-                  btnClass += "bg-green-50 dark:bg-green-950/20 border-green-400 dark:border-green-500 text-green-800 dark:text-green-300 shadow-md"; 
                 } else if (isSelected) { 
                   btnClass += "bg-red-50 dark:bg-red-950/30 border-red-500 dark:border-red-600 text-red-900 dark:text-red-300 shadow-md"; 
                 } else { 
@@ -605,6 +616,7 @@ const QuestionCard = memo(function QuestionCard({
 
                     {tagText && <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${tagColor}`}>{tagText}</span>}
                     
+                    {/* חסימת אייקוני ✅ ו-❌ כשהשאלה מבוטלת */}
                     {(mode==='practice' || (mode==='test'&&isSubmitted)) && !question.isCanceled && (
                         <>
                           {option.isCorrect && (isSelected || (mode==='test' && isSubmitted)) && <span className="text-sm">✅</span>}
