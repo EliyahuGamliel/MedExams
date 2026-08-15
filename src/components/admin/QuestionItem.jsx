@@ -185,7 +185,7 @@ const QuestionItem = memo(({
                           <input 
                             type="text" 
                             value={opt} 
-                            onChange={(e) => handleCloseOptionTextChange(realIndex, blankIndex, optIdx, e.target.value)}
+                            onChange={(e) => handleClozeOptionTextChange(realIndex, blankIndex, optIdx, e.target.value)}
                             onBlur={(e) => saveClozeOptionText(realIndex, blankIndex, optIdx, e.target.value)}
                             className={`flex-1 p-1 bg-transparent border-b border-transparent focus:border-blue-400 outline-none transition ${
                               isMainCorrect 

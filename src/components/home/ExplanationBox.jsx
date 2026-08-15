@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase'; // ודא שהנתיב ל-firebase נכון!
-import { ref, get, update } from 'firebase/database';
-// ---- הוספנו את הפונקציות של Firebase Cloud Functions במקום ה-SDK של Gemini ----
+import { db } from '../../firebase';
+import { ref, get, update, onValue, off } from 'firebase/database';
 import { getFunctions, httpsCallable } from 'firebase/functions'; 
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -11,8 +10,6 @@ const LightbulbIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" h
 const ThumbsUpIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>;
 const ThumbsDownIcon = ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>;
 const LoaderIcon = () => <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
-
-// הסרנו אתחול ה-Gemini מהלקוח כדי למנוע חשיפת מפתחות!
 
 export default function ExplanationBox({ examId, questionIndex, questionData, forceClose }) {
     const { user } = useAuth();
@@ -35,34 +32,31 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
     const jsonExplanationPath = `ai_explanations/${examId}/${questionIndex}`;
     const voteDbPath = `ai_votes/${examId}/${questionIndex}`;
 
+    // מאזינים בזמן אמת (Realtime Listener)
     useEffect(() => {
-        const fetchExistingStats = async () => {
-            const explanationCacheKey = `cache_exp_${examId}_${questionIndex}`;
-            
-            const cachedText = sessionStorage.getItem(explanationCacheKey);
-            if (cachedText) {
-                setExplanationText(cachedText);
+        const statsRef = ref(db, questionDbPath);
+        const listener = onValue(statsRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.val();
+                setLikes(data.likes || 0);
+                setDislikes(data.dislikes || 0);
+            } else {
+                setLikes(0);
+                setDislikes(0);
             }
+        });
 
-            try {
-                const snap = await get(ref(db, questionDbPath));
-                if (snap.exists()) {
-                    const data = snap.val();
-                    setLikes(data.likes || 0);
-                    setDislikes(data.dislikes || 0);
+        if (user && user.uid) {
+            get(ref(db, `${voteDbPath}/${user.uid}`)).then((voteSnap) => {
+                if (voteSnap.exists()) {
+                    setUserVote(voteSnap.val());
+                } else {
+                    setUserVote(null); // איפוס במקרה שההצבעות נמחקו
                 }
+            });
+        }
 
-                if (user && user.uid) {
-                    const voteSnap = await get(ref(db, `${voteDbPath}/${user.uid}`));
-                    if (voteSnap.exists()) {
-                        setUserVote(voteSnap.val());
-                    }
-                }
-            } catch (e) {
-                console.error("Error loading explanation stats:", e);
-            }
-        };
-        fetchExistingStats();
+        return () => off(statsRef, 'value', listener);
     }, [examId, questionIndex, questionDbPath, voteDbPath, user]);
 
     const handleToggle = async () => {
@@ -72,23 +66,19 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
         }
 
         setIsOpen(true);
-        
-        // אם ההסבר כבר קיים (ב-state או ב-cache), אין צורך לקרוא שוב לשרת
-        if (explanationText) return;
-
         setIsLoading(true);
+
         try {
-            // 1. קודם בודקים אם יש כבר הסבר מוכן ב-Firebase (כדי לחסוך קריאה יקרה ל-AI)
             const existSnap = await get(ref(db, jsonExplanationPath));
+            
             if (existSnap.exists() && existSnap.val().text) {
-                const textFromServer = existSnap.val().text;
-                setExplanationText(textFromServer);
-                sessionStorage.setItem(`cache_exp_${examId}_${questionIndex}`, textFromServer);
+                setExplanationText(existSnap.val().text);
                 setIsLoading(false);
                 return;
             }
 
-            // 2. מכינים את הנתונים לשליחה לשרת (Cloud Function)
+            setExplanationText("");
+            
             let correctAnswerText = "לא נמצאה תשובה";
             if (questionData.options) {
                 if (Array.isArray(questionData.correctIndex)) {
@@ -102,32 +92,23 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                 questionText: questionData.text || "טקסט השאלה חסר",
                 options: questionData.options || [],
                 correctAnswers: Array.isArray(questionData.correctIndex) ? questionData.correctIndex : [questionData.correctIndex],
-                correctAnswerText: correctAnswerText // שולחים גם את הטקסט למקרה שהפרומפט בשרת צריך אותו
+                correctAnswerText: correctAnswerText 
             };
 
-            // 3. הפעלת הפונקציה המאובטחת בשרת ה-Firebase
             const functions = getFunctions();
-            // ודא שהשם הזה זהה לשם הפונקציה בקובץ index.js
             const generateExplanation = httpsCallable(functions, 'generateExplanationWithGemini');
             
             const result = await generateExplanation(requestData);
             const generatedText = result.data.explanation;
 
-            // 4. שמירת התוצאה במסד הנתונים כדי שמשתמשים הבאים לא יפעילו שוב את ה-AI
             const updates = {};
             updates[`${jsonExplanationPath}/text`] = generatedText;
-            updates[`${questionDbPath}/likes`] = likes || 0;
-            updates[`${questionDbPath}/dislikes`] = dislikes || 0;
 
             await update(ref(db), updates);
-
-            // 5. עדכון ה-UI וה-Cache
             setExplanationText(generatedText);
-            sessionStorage.setItem(`cache_exp_${examId}_${questionIndex}`, generatedText);
 
         } catch (error) {
             console.error("AI Generation Error (Server):", error);
-            // אם הלקוח לא מחובר, נוכל להציג הודעה מתאימה
             if (error.code === 'unauthenticated') {
                 setExplanationText("מצטערים, רק משתמשים מחוברים יכולים לקבל הסברי AI.");
             } else {
@@ -161,14 +142,34 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
             if (type === 'dislike') newDislikes++;
         }
 
-        setLikes(newLikes);
-        setDislikes(newDislikes);
-        setUserVote(newVote);
-
         const updates = {};
-        updates[`${questionDbPath}/likes`] = newLikes;
-        updates[`${questionDbPath}/dislikes`] = newDislikes;
-        updates[`${voteDbPath}/${user.uid}`] = newVote; 
+
+        // === לוגיקת המחיקה האוטומטית ב-10 דיסלייקים ===
+        if (newDislikes >= 10) {
+            // מחיקת ההסבר עצמו (null מעיף את המפתח מהדאטה-בייס)
+            updates[`${jsonExplanationPath}/text`] = null;
+            // איפוס מונים
+            updates[`${questionDbPath}/likes`] = 0;
+            updates[`${questionDbPath}/dislikes`] = 0;
+            // מחיקת היסטוריית ההצבעות של כל המשתמשים כדי למנוע ספירה שלילית בסיבוב הבא
+            updates[voteDbPath] = null; 
+
+            setExplanationText("ההסבר נמחק אוטומטית עקב משוב שלילי מהסטודנטים (10 דיסלייקים). לחץ על הכפתור למעלה כדי לאלץ את המערכת לייצר הסבר חדש ומדויק יותר.");
+            setLikes(0);
+            setDislikes(0);
+            setUserVote(null);
+
+            toast.success("ההסבר נמחק תודות לדיווח שלך!");
+        } else {
+            // התנהגות רגילה - עדכון הצבעות
+            updates[`${questionDbPath}/likes`] = newLikes;
+            updates[`${questionDbPath}/dislikes`] = newDislikes;
+            updates[`${voteDbPath}/${user.uid}`] = newVote; 
+
+            setLikes(newLikes);
+            setDislikes(newDislikes);
+            setUserVote(newVote);
+        }
 
         try {
             await update(ref(db), updates);
@@ -188,7 +189,6 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
             </button>
 
             {isOpen && (
-                /* בועת ההסבר הותאמה ללילה עם רקע כהה חמים ועדין כדי למנוע סנוור, והגבול הוחלש */
                 <div className="mt-3 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-200/60 dark:border-amber-900/40 rounded-xl p-4 sm:p-5 text-slate-800 dark:text-slate-200 shadow-sm animate-fade-in-down relative overflow-hidden transition-all duration-300">
                     
                     <div className="absolute top-0 left-0 opacity-5 pointer-events-none transform -translate-x-4 -translate-y-4 text-slate-900 dark:text-white">
@@ -210,7 +210,6 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                                 * ההסבר נוצר אוטומטית על ידי בינה מלאכותית ועלול להכיל אי-דיוקים. מומלץ להצליב עם החומר הנלמד.
                             </div>
 
-                            {/* אזור ההצבעות והלייקים מותאם במלואו למצב לילה */}
                             <div className="mt-4 flex items-center justify-between border-t border-amber-200/50 dark:border-amber-900/30 pt-3 relative z-10 transition-colors">
                                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">האם ההסבר עזר לך?</span>
                                 <div className="flex gap-2">

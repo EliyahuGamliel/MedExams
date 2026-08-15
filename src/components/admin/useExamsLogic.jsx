@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from '../../firebase';
-import { ref, get, set, update, remove, query, orderByChild, startAt, push } from "firebase/database";
+import { ref, get, set, update, remove, query, orderByChild, startAt, push, onValue, off } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
@@ -38,6 +38,41 @@ export function useExamsLogic(setStatus, canSeeReports) {
     const [newQuestionOptionsCount, setNewQuestionOptionsCount] = useState(4);
     const [editingExamId, setEditingExamId] = useState(null);
     const [newAppendicesFile, setNewAppendicesFile] = useState(null);
+
+    // --- מאזין חכם בזמן אמת להסברי AI ---
+    // ברגע שנוצר הסבר חדש (או נמחק), הממשק של המנהל יתעדכן אוטומטית וללא ריענון!
+    useEffect(() => {
+        // אם אף מבחן לא פתוח בעורך - אין לנו למה להאזין
+        if (!questionsEditorId) return;
+
+        // מכוונים את ההאזנה לתיקיית ה-AI של המבחן הספציפי שפתוח כרגע
+        const aiRef = ref(db, `ai_explanations/${questionsEditorId}`);
+        
+        const listener = onValue(aiRef, (snap) => {
+            const aiData = snap.val() || {};
+            
+            // מעדכנים רק את דגל ההסבר בשאלות, בלי לדרוס נתונים אחרים שאולי אתה עורך כרגע
+            setExamQuestions(prevQuestions => {
+                if (!prevQuestions || prevQuestions.length === 0) return prevQuestions;
+                
+                let hasChanges = false;
+                const updatedQuestions = prevQuestions.map((q, idx) => {
+                    const hasAi = !!(aiData[idx] && aiData[idx].text);
+                    // נעדכן את ה-State המקומי רק אם הסטטוס באמת השתנה
+                    if (q.hasAiExplanation !== hasAi) {
+                        hasChanges = true;
+                        return { ...q, hasAiExplanation: hasAi };
+                    }
+                    return q;
+                });
+                
+                return hasChanges ? updatedQuestions : prevQuestions;
+            });
+        });
+
+        // ניקוי המאזין כשסוגרים את המבחן כדי לא להעמיס על הזיכרון
+        return () => off(aiRef, 'value', listener);
+    }, [questionsEditorId]);
 
     // 1. טעינת נתונים ראשונית חסכונית (מטא-דאטה של מבחנים ודיווחים)
     useEffect(() => {
@@ -216,18 +251,29 @@ export function useExamsLogic(setStatus, canSeeReports) {
 
     // --- פעולות על שאלות בתוך האדיטור (Question Editor Actions) ---
 
-    // פתיחת עורך השאלות וטעינה עצלה (Lazy Load) של השאלות מהשרת
+    // פתיחת עורך השאלות וטעינה עצלה (Lazy Load) - מעודכן למשוך גם סטטוס AI!
     const openQuestionsEditor = async (exam) => {
         setQuestionsEditorId(exam.id);
         setEditingExamId(null);
-        if (exam.questions && exam.questions.length > 0) {
-            setExamQuestions(exam.questions);
-            return;
-        }
         setStatus('processing');
+        
         try {
-            const snapshot = await get(ref(db, `exam_contents/${exam.id}`));
-            setExamQuestions(snapshot.val() || []);
+            // משיכת התוכן וההסברים של ה-AI במקביל כדי למזג ביניהם
+            const [contentsSnap, aiSnap] = await Promise.all([
+                get(ref(db, `exam_contents/${exam.id}`)),
+                get(ref(db, `ai_explanations/${exam.id}`))
+            ]);
+
+            const questions = contentsSnap.val() || exam.questions || [];
+            const aiData = aiSnap.val() || {};
+
+            // ממזגים: לכל שאלה נוסיף דגל שיאמר לנו אם יש לה הסבר AI
+            const mergedQuestions = questions.map((q, idx) => ({
+                ...q,
+                hasAiExplanation: !!(aiData[idx] && aiData[idx].text)
+            }));
+
+            setExamQuestions(mergedQuestions);
         } catch (e) { 
             toast.error("שגיאה בטעינת השאלות: " + e.message); 
         } finally { 
@@ -242,13 +288,14 @@ export function useExamsLogic(setStatus, canSeeReports) {
         const newIndex = examQuestions.length;
         const newQuestion = {
             id: newIndex, text: "שאלה חדשה... (לחץ כדי לערוך)", type: "multiple_choice",
-            options: initialOptions, correctIndex: 0, imageNeeded: false, hasImage: false, isCanceled: false
+            options: initialOptions, correctIndex: 0, imageNeeded: false, hasImage: false, isCanceled: false,
+            hasAiExplanation: false
         };
         const updatedQuestions = [...examQuestions, newQuestion];
         setExamQuestions(updatedQuestions);
         
         const updates = {};
-        updates[`exam_contents/${questionsEditorId}`] = updatedQuestions;
+        updates[`exam_contents/${questionsEditorId}`] = updatedQuestions.map(({ hasAiExplanation, ...rest }) => rest); // מסירים את הדגל לפני שמירה למסד
         updates[`uploaded_exams/${questionsEditorId}/questionCount`] = updatedQuestions.length;
         await update(ref(db), updates);
         
@@ -256,7 +303,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: updatedQuestions.length } : e));
     };
 
-    // מחיקת שאלה לצמיתות וביצוע אינדוקס מחדש (Reindex) לשאלות שאחריה
+    // מחיקת שאלה לצמיתות וביצוע אינדוקס מחדש
     const handleDeleteQuestion = async (idxToDelete) => {
         if (!window.confirm("האם למחוק שאלה זו לצמיתות?")) return;
         const filtered = examQuestions.filter((_, i) => i !== idxToDelete);
@@ -264,7 +311,8 @@ export function useExamsLogic(setStatus, canSeeReports) {
         setExamQuestions(reindexedQuestions);
         
         const updates = {};
-        updates[`exam_contents/${questionsEditorId}`] = reindexedQuestions;
+        // מעדכנים במסד ללא דגלי העזר
+        updates[`exam_contents/${questionsEditorId}`] = reindexedQuestions.map(({ hasAiExplanation, ...rest }) => rest);
         updates[`uploaded_exams/${questionsEditorId}/questionCount`] = reindexedQuestions.length;
         await update(ref(db), updates);
         
@@ -272,20 +320,29 @@ export function useExamsLogic(setStatus, canSeeReports) {
         setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: reindexedQuestions.length } : e));
     };
 
-    // מחיקה או איפוס של הסבר ה-AI המופק לטובת בנייה מחדש
+    // === מחיקה מאובטחת ומלאה של הסבר בינה מלאכותית ===
     const handleDeleteAiExplanation = async (idxToDelete) => {
         if (!questionsEditorId) return;
         if (!window.confirm("האם אתה בטוח שברצונך למחוק את הסבר ה-AI לשאלה זו? (הוא ייווצר מחדש בפעם הבאה שיבקשו אותו)")) return;
 
         try {
-            await remove(ref(db, `exam_contents/${questionsEditorId}/${idxToDelete}/explanationData`));
+            const updates = {};
+            // 1. מחיקת הטקסט מתיקיית ה-AI
+            updates[`ai_explanations/${questionsEditorId}/${idxToDelete}/text`] = null;
+            // 2. איפוס הסטטיסטיקות (לייקים) מהשאלה עצמה
+            updates[`exam_contents/${questionsEditorId}/${idxToDelete}/explanationData`] = null;
+            // 3. מחיקת כל היסטוריית ההצבעות כדי שלא יישארו זנבות
+            updates[`ai_votes/${questionsEditorId}/${idxToDelete}`] = null;
+
+            await update(ref(db), updates);
+
             logAdminAction("מחיקת הסבר AI", `נמחק הסבר הבינה המלאכותית לשאלה ${idxToDelete + 1}`, questionsEditorId);
 
+            // עדכון המסך כדי להעלים את כפתור המחיקה
             setExamQuestions(prev => {
                 const updated = [...prev];
                 if (updated[idxToDelete]) {
-                    const { explanationData, ...rest } = updated[idxToDelete];
-                    updated[idxToDelete] = rest;
+                    updated[idxToDelete] = { ...updated[idxToDelete], hasAiExplanation: false };
                 }
                 return updated;
             });
@@ -450,7 +507,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         toast.success("מיקום השלמה חדש נוסף בהצלחה! 🎉");
     };
 
-    // כיווץ והעלאה של קובץ תמונה לשאלה ספציפית (Firebase Storage + DB)
+    // כיווץ והעלאה של קובץ תמונה לשאלה ספציפית
     const handleUploadQuestionImage = async (idx, f) => {
         if (!questionsEditorId) return;
         
@@ -488,7 +545,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         }
     };
 
-    // מחיקת תמונה משאלה ספציפית (מסד נתונים + Storage)
+    // מחיקת תמונה משאלה ספציפית 
     const handleRemoveQuestionImage = async (idx) => {
         if (!questionsEditorId) return;
         const q = examQuestions[idx];
@@ -497,23 +554,19 @@ export function useExamsLogic(setStatus, canSeeReports) {
 
         setStatus('processing');
         try {
-            // 1. מחיקת התמונה מה-Storage (Firebase חכם מספיק להבין את ה-URL)
             if (q.imageUrl) {
                 const storage = getStorage();
                 const imageRef = storageRef(storage, q.imageUrl);
                 await deleteObject(imageRef).catch(e => console.log("תמונה לא נמצאה ב-Storage, ממשיך במחיקה מה-DB", e));
             }
 
-            // 2. מחיקת הנתונים מה-Database
             const updates = {};
             updates[`exam_contents/${questionsEditorId}/${idx}/imageUrl`] = null;
             updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = false;
             await update(ref(db), updates);
             
-            // 3. תיעוד הפעולה
             logAdminAction("מחיקת תמונה משאלה", `נמחקה התמונה של שאלה ${idx + 1}`, questionsEditorId);
 
-            // 4. עדכון המסך המקומי
             setExamQuestions(prev => {
                 const updated = [...prev];
                 updated[idx] = { ...updated[idx], imageUrl: null, hasImage: false };
@@ -529,7 +582,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         }
     };
 
-    // סימון תשובה נכונה (תומך במצב יחיד או במצב מרובה תשובות-מערך)
+    // סימון תשובה נכונה
     const handleSetMainCorrect = async (idx, optIdx, isMultiSelectMode = false) => {
         const q = examQuestions[idx];
         let currentCorrect = q.correctIndex;
@@ -563,7 +616,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         setExamQuestions(p => { const n = [...p]; n[idx].appealedIndexes = newer; return n; });
     };
 
-    // פסילת שאלה או שחזורה (הוצאה/הכנסה משקלול הציון הכללי של הסטודנטים)
+    // פסילת שאלה או שחזורה
     const handleToggleCancel = async (idx) => {
         const ns = !examQuestions[idx].isCanceled;
         await update(ref(db, `exam_contents/${questionsEditorId}/${idx}`), { isCanceled: ns });
@@ -572,7 +625,6 @@ export function useExamsLogic(setStatus, canSeeReports) {
         setExamQuestions(p => { const n = [...p]; n[idx].isCanceled = ns; return n; });
     };
 
-    // --- פונקציית עזר קריטית: חישוב צבעי הסטטוס של השאלה באקורדיון (מותאם מלא ל-Dark Mode) ---
     const getQuestionStatusColor = (q) => {
         if (q.isCanceled) {
             return "bg-slate-100 dark:bg-dark-bg/60 border-slate-300 dark:border-slate-700 opacity-80";
@@ -611,8 +663,8 @@ export function useExamsLogic(setStatus, canSeeReports) {
                     questionText: report.questionText,
                     reportText: report.reportText,
                     examTitle: examTitle,
-                    status: status, // <--- מוסיפים את הסטטוס (accepted/rejected)
-                    adminMessage: adminMessage // נשלח ריק במקרה של 'accepted'
+                    status: status, 
+                    adminMessage: adminMessage 
                 });
                 console.log("נשלח מייל עדכון בהצלחה ל:", report.reporterEmail);
             } catch (emailError) {

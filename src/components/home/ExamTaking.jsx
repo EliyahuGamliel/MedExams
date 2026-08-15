@@ -6,12 +6,23 @@ import QuestionCard from '../QuestionCard';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
+// פונקציית עזר גלובלית לערבול מערכים
+const shuffleArray = (array) => {
+  const newArr = [...array];
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+  }
+  return newArr;
+};
+
 const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>;
 const RefreshIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
 const PdfIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
 const TimerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+const ShuffleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>;
 
 export default function ExamTaking({ examsList }) {
   const { examId, mode } = useParams();
@@ -38,6 +49,33 @@ export default function ExamTaking({ examsList }) {
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [examImages, setExamImages] = useState({}); 
   const [resetTick, setResetTick] = useState(0);
+
+  // ==========================================
+  // משתני State חדשים לשליטה על ערבול המבחן
+  // ==========================================
+  const [isShuffled, setIsShuffled] = useState(false);
+  const [questionOrder, setQuestionOrder] = useState([]);
+
+  // אתחול סדר השאלות המקורי כשהמבחן נטען
+  useEffect(() => {
+      if (examQuestionsData.length > 0) {
+          setQuestionOrder(examQuestionsData.map((_, index) => index));
+          setIsShuffled(false);
+      }
+  }, [examQuestionsData.length]);
+
+  const handleToggleShuffle = () => {
+      if (isShuffled) {
+          // חזרה לסדר מקורי
+          setQuestionOrder(examQuestionsData.map((_, index) => index));
+          setIsShuffled(false);
+      } else {
+          // ערבול מערך האינדקסים
+          setQuestionOrder(shuffleArray(examQuestionsData.map((_, index) => index)));
+          setIsShuffled(true);
+      }
+  };
+  // ==========================================
 
   const storageKey = `exam_state_${user ? user.uid : 'guest'}_${examId}_${mode}`;
   
@@ -97,13 +135,10 @@ export default function ExamTaking({ examsList }) {
       isSubmittedRef.current = isSubmitted;
   }, [isSubmitted]);
 
-  // ====================================================================
-  // 🛡️ רשת ביטחון לסימולציות - עכשיו עובדת בצורה מושלמת ובקליק אחד
-  // ====================================================================
+  // רשת ביטחון לסימולציות
   useEffect(() => {
       if (!selectedExam || !selectedExam.id.startsWith('gen_')) return;
 
-      // מונע הכנסת מלכודות כפולות לערימה אם מרעננים את הדף
       if (!window.history.state?.trap) {
           window.history.pushState({ trap: true }, '', window.location.href);
       }
@@ -120,11 +155,8 @@ export default function ExamTaking({ examsList }) {
               : "⚠️ שים לב: הסימולציה תאבד אם תצא עכשיו. האם אתה בטוח שברצונך לצאת?";
 
           if (window.confirm(msg)) {
-              // אישרנו יציאה דרך כפתור החזור הפיזי. 
-              // הדפדפן כבר דילג על המלכודת, אז עכשיו אנחנו הולכים רק צעד אחד אחורה לקורס.
               navigate(-1);
           } else {
-              // הסטודנט התחרט - חייבים לשתול את המלכודת שוב כדי להגן על המבחן!
               window.history.pushState({ trap: true }, '', window.location.href);
           }
       };
@@ -136,8 +168,6 @@ export default function ExamTaking({ examsList }) {
           window.removeEventListener('popstate', handlePopState);
       };
   }, [selectedExam, navigate]);
-
-  // ====================================================================
 
   useEffect(() => {
     if (mode === 'test' && !isSubmitted) {
@@ -196,14 +226,18 @@ export default function ExamTaking({ examsList }) {
   const handleCorrectAutoScroll = useCallback((currentIndex) => {
       if (mode === 'practice' && userSettings.autoScroll) {
           setTimeout(() => {
-              const nextIndex = currentIndex + 1;
-              const element = document.getElementById(`question-${nextIndex}`);
-              if (element) {
-                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // חיפוש האינדקס הבא בסדר המעורבל במקום בסדר הרגיל
+              const currentVisualPosition = questionOrder.indexOf(currentIndex);
+              if (currentVisualPosition !== -1 && currentVisualPosition + 1 < questionOrder.length) {
+                  const nextOriginalIndex = questionOrder[currentVisualPosition + 1];
+                  const element = document.getElementById(`question-${nextOriginalIndex}`);
+                  if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
               }
           }, 1000); 
       }
-  }, [mode, userSettings.autoScroll]);
+  }, [mode, userSettings.autoScroll, questionOrder]);
 
   useEffect(() => {
       localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
@@ -228,6 +262,10 @@ export default function ExamTaking({ examsList }) {
           setModalStats({ total: 0, perfect: 0, mistakes: 0 });
           setTimeElapsed(0);
           setTimeRemaining(null);
+          
+          // חזרה לסדר מקורי בעת איפוס
+          setIsShuffled(false);
+          setQuestionOrder(examQuestionsData.map((_, index) => index));
           
           if (userSettings.timerStrategy === 'manual') setShowTimerSetup(true);
 
@@ -347,9 +385,6 @@ export default function ExamTaking({ examsList }) {
         if (!window.confirm(msg)) {
             return;
         }
-        
-        // המשתמש אישר יציאה מהכפתור במסך! 
-        // מכיוון שיש מלכודת בהיסטוריה, אנחנו צריכים ללכת 2 צעדים אחורה כדי לדלג עליה ולנחות ישר בקורס.
         navigate(-2);
     } else if (selectedExam) {
         navigate(`/course/${selectedExam.course}`, { replace: true });
@@ -386,6 +421,8 @@ export default function ExamTaking({ examsList }) {
           return { ...prev, [questionIndex]: status };
       });
   }, []);
+
+  
 
   const calculateScore = () => {
       const scorableQuestions = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index] );
@@ -438,6 +475,50 @@ export default function ExamTaking({ examsList }) {
       setIsSidebarOpen(true);
   };
 
+  // ====================================================================
+  // 🔄 חישוב מחדש אוטומטי של ציון (Recalculation) לאחר שהמבחן הוגש
+  // ====================================================================
+  useEffect(() => {
+      // אנחנו רוצים לחשב מחדש *רק* אם המבחן כבר הוגש ויש לנו נתונים
+      if (!isSubmitted || !examQuestionsData || examQuestionsData.length === 0) return;
+
+      // מסננים שוב את השאלות ובודקים כמה מתוכן רלוונטיות לציון כעת
+      const scorableQuestions = examQuestionsData.filter((q, index) => 
+          q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index]
+      );
+      const totalScorable = scorableQuestions.length > 0 ? scorableQuestions.length : 1; 
+
+      const perfectCount = scorableQuestions.filter((q) => {
+          const originalIndex = examQuestionsData.indexOf(q);
+          return userAnswers[originalIndex] === 'perfect';
+      }).length;
+
+      const actualMistakes = scorableQuestions.length - perfectCount;
+      const newCalculatedScore = scorableQuestions.length === 0 ? 100 : Math.round((perfectCount / totalScorable) * 100);
+
+      // האם הציון החדש או כמות השאלות באמת השתנו ממה שמוצג כרגע?
+      if (newCalculatedScore !== finalScore || modalStats.total !== scorableQuestions.length) {
+          
+          // 1. עדכון התצוגה והסטייט המקומי
+          setFinalScore(newCalculatedScore);
+          setModalStats({ total: scorableQuestions.length, perfect: perfectCount, mistakes: actualMistakes });
+
+          // 2. שמירת הציון המעודכן בפיירבייס כדי שהסטטיסטיקות הכלליות של הסטודנט יהיו מדויקות
+          if (user && selectedExam && !selectedExam.id.startsWith('gen_')) { 
+              const updates = {};
+              updates[`user_results/${user.uid}/${selectedExam.id}/score`] = newCalculatedScore;
+              updates[`user_results/${user.uid}/${selectedExam.id}/totalQuestions`] = scorableQuestions.length;
+              updates[`user_results/${user.uid}/${selectedExam.id}/correctAnswers`] = perfectCount;
+              update(ref(db), updates).catch(err => console.error("שגיאה בעדכון הציון החוזר:", err));
+          }
+
+          // 3. חיווי למשתמש שהציון עודכן
+          toast.success(`הציון חושב מחדש: ${newCalculatedScore}`, { 
+              icon: '🔄',
+              id: 'recalc-toast' // ID קבוע מונע הצפה של הודעות אם הסטודנט לוחץ מהר על כמה שאלות
+          });
+      }
+  }, [userExcludedQuestions, examQuestionsData, isSubmitted, userAnswers, finalScore, modalStats.total, user, selectedExam]);
   const handlePrint = () => {
     const originalTitle = document.title;
     document.title = `${selectedExam.course} - ${selectedExam.title}`; 
@@ -484,8 +565,9 @@ export default function ExamTaking({ examsList }) {
 
   const isPass = finalScore >= 60;
 
-  const displayedQuestions = examQuestionsData
-    .map((q, i) => ({ ...q, originalIndex: i }))
+  // שימוש במערך האינדקסים המעורבל לבניית רשימת השאלות שתוצג בפועל
+  const displayedQuestions = questionOrder
+    .map((originalIndex) => ({ ...examQuestionsData[originalIndex], originalIndex }))
     .filter(q => {
         if (mode === 'test' && isSubmitted && userSettings.testReviewMode === 'mistakes_only') {
             if (userAnswers[q.originalIndex] === 'perfect' || q.isCanceled || userExcludedQuestions[q.originalIndex]) {
@@ -546,11 +628,16 @@ export default function ExamTaking({ examsList }) {
                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">ניווט מהיר</h3>
              </div>
              <div className="flex-1 overflow-y-auto p-4">
+               {/* הסיידבר עכשיו מציג את המספרים לפי סדר הערבול! */}
                <div className="grid grid-cols-4 gap-3">
-                 {examQuestionsData.map((_, i) => (
-                   <button key={i} onClick={() => scrollToQuestion(i)} className={`relative overflow-hidden aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(i)}`}>
-                     {i + 1}
-                     {flaggedQuestions[i] && (
+                 {questionOrder.map((originalIndex, visualIndex) => (
+                   <button 
+                     key={originalIndex} 
+                     onClick={() => scrollToQuestion(originalIndex)} 
+                     className={`relative overflow-hidden aspect-square rounded-xl border flex items-center justify-center text-sm transition ${getSidebarButtonColor(originalIndex)}`}
+                   >
+                     {visualIndex + 1}
+                     {flaggedQuestions[originalIndex] && (
                         <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-red-500 border-l-transparent"></div>
                      )}
                    </button>
@@ -576,6 +663,19 @@ export default function ExamTaking({ examsList }) {
             </div>
             
             <div className="flex items-center gap-2 print:hidden">
+              {/* כפתור הערבול החדש 🔀 */}
+              <button 
+                  onClick={handleToggleShuffle} 
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 border shadow-sm ${
+                      isShuffled 
+                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
+                      : 'bg-white dark:bg-dark-panel border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`} 
+                  title={isShuffled ? "חזור לסדר המקורי של השאלות" : "ערבל את סדר השאלות במבחן"}
+              >
+                  <ShuffleIcon /> {isShuffled ? 'סדר מקורי' : 'ערבל מבחן'}
+              </button>
+
               {mode === 'test' && userSettings.timerStrategy !== 'none' && !showTimerSetup && (
                   <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5 border transition-colors ${
                       userSettings.timerStrategy === 'manual' && timeRemaining <= 300 && !isSubmitted
@@ -624,11 +724,15 @@ export default function ExamTaking({ examsList }) {
         ) : (
             displayedQuestions.map((q) => {
                 const i = q.originalIndex;
+                // חישוב מספר השאלה לתצוגה (תמיד תואם למספר שמופיע בסיידבר!)
+                const displayNum = questionOrder.indexOf(i) + 1;
+                
                 return (
                     <div key={`${i}-${resetTick}`} id={`question-${i}`} className="scroll-mt-48 print:break-inside-avoid print:pt-4">
                       <QuestionCard 
                         question={q} 
                         index={i} 
+                        displayNumber={displayNum} 
                         mode={mode} 
                         onAnswer={handleAnswerUpdate} 
                         isSubmitted={isSubmitted} 

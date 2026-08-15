@@ -7,10 +7,12 @@ const ImageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 
 // --- רכיב ניהול הסברי ה-AI מותאם ל-Dark Mode ---
-const AiExplanationManager = ({ questionIndex, explanationData, onDelete }) => {
-    if (!explanationData) return null;
+const AiExplanationManager = ({ questionIndex, hasAiExplanation, explanationData, onDelete }) => {
+    // הקומפוננטה מסתמכת על הדגל האמיתי שמגיע בזמן אמת מהשרת
+    if (!hasAiExplanation) return null;
   
-    const { likes = 0, dislikes = 0 } = explanationData;
+    // הגנה למקרה שאין עדיין נתוני לייקים
+    const { likes = 0, dislikes = 0 } = explanationData || {};
     const isHighAlert = dislikes >= 10;
   
     return (
@@ -41,7 +43,7 @@ const AiExplanationManager = ({ questionIndex, explanationData, onDelete }) => {
           }`}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-          {isHighAlert ? 'מחק הסבר מטעה' : 'אפס הסבר'}
+          {isHighAlert ? 'מחק הסבר מטעה' : 'מחק הסבר AI'}
         </button>
       </div>
     );
@@ -90,7 +92,6 @@ export default function ManageExamsTab({
 
     return (
         <div className="space-y-6 animate-fade-in text-right">
-            {/* כרטיס הטאב הכללי הותאם בגווני פסטל-סגול כהים בלילה */}
             <div className="bg-purple-50 dark:bg-purple-950/20 p-6 rounded-2xl border border-purple-100 dark:border-purple-900/40 transition-colors duration-300">
                 {questionsEditorId ? (
                     <div>
@@ -144,6 +145,7 @@ export default function ManageExamsTab({
                                                 />
                                                 <AiExplanationManager 
                                                     questionIndex={realIndex} 
+                                                    hasAiExplanation={q.hasAiExplanation}
                                                     explanationData={q.explanationData} 
                                                     onDelete={handleDeleteAiExplanation} 
                                                 />
@@ -171,7 +173,6 @@ export default function ManageExamsTab({
                             {availableCourses.map(([id, course]) => (<option key={id} value={id}>{course.name}</option>))}
                         </select>
 
-                        {/* רשימת המבחנים הקיימים בקורס */}
                         {filteredExamsForEdit.map(exam => {
                             const canEditThisExam = 
                                 userData?.role === 'super_admin' || 
