@@ -51,7 +51,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                 if (voteSnap.exists()) {
                     setUserVote(voteSnap.val());
                 } else {
-                    setUserVote(null); // איפוס במקרה שההצבעות נמחקו
+                    setUserVote(null); 
                 }
             });
         }
@@ -144,14 +144,10 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
 
         const updates = {};
 
-        // === לוגיקת המחיקה האוטומטית ב-10 דיסלייקים ===
         if (newDislikes >= 10) {
-            // מחיקת ההסבר עצמו (null מעיף את המפתח מהדאטה-בייס)
             updates[`${jsonExplanationPath}/text`] = null;
-            // איפוס מונים
             updates[`${questionDbPath}/likes`] = 0;
             updates[`${questionDbPath}/dislikes`] = 0;
-            // מחיקת היסטוריית ההצבעות של כל המשתמשים כדי למנוע ספירה שלילית בסיבוב הבא
             updates[voteDbPath] = null; 
 
             setExplanationText("ההסבר נמחק אוטומטית עקב משוב שלילי מהסטודנטים (10 דיסלייקים). לחץ על הכפתור למעלה כדי לאלץ את המערכת לייצר הסבר חדש ומדויק יותר.");
@@ -161,7 +157,6 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
 
             toast.success("ההסבר נמחק תודות לדיווח שלך!");
         } else {
-            // התנהגות רגילה - עדכון הצבעות
             updates[`${questionDbPath}/likes`] = newLikes;
             updates[`${questionDbPath}/dislikes`] = newDislikes;
             updates[`${voteDbPath}/${user.uid}`] = newVote; 
@@ -206,7 +201,7 @@ export default function ExplanationBox({ examId, questionIndex, questionData, fo
                                 {explanationText}
                             </div>
                             
-                            <div className="mt-3 text-[10px] text-slate-500/80 dark:text-slate-400/60 font-medium text-center relative z-10">
+                            <div className="mt-5 pt-3 text-[10px] text-slate-500/80 dark:text-slate-400/60 font-medium text-center relative z-10">
                                 * ההסבר נוצר אוטומטית על ידי בינה מלאכותית ועלול להכיל אי-דיוקים. מומלץ להצליב עם החומר הנלמד.
                             </div>
 

@@ -206,16 +206,26 @@ exports.generateExplanationWithGemini = onCall(
       // אפשר להשתמש במודל המהיר flash להסברים
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-      // 3. בניית הפרומפט להסבר (შנה את הטקסט בהתאם לאיך שהפרומפט שלך היה כתוב בלקוח)
+      // 3. בניית הפרומפט להסבר - גרסה נקייה ללא טבלאות
       const prompt = `
-        You are an expert tutor. 
-        Explain clearly and concisely WHY the correct answer(s) are correct, and briefly why the other options are wrong.
-        
-        Question: ${questionText}
-        Options: ${JSON.stringify(options || [])}
-        Correct Answers: ${JSON.stringify(correctAnswers || [])}
-        
-        Respond in Hebrew. Be direct, educational, and easy to read. Use formatting (like bolding) if necessary.
+You are an expert physician and senior medical lecturer. Your task is to explain the solution to the following medical board exam question for clinical medical students.
+
+Critical Instructions for the Response Structure:
+1. Focused Opening: Explain clearly and concisely (1-2 paragraphs) why the correct answer is correct. Use **bold text** for key terms and diagnoses.
+2. Differential Diagnosis (DDx): DO NOT USE TABLES. Instead, use a clear bulleted list to review the options. For each option, write its name in **bold**, followed by a clear explanation of why it is correct or incorrect. Add a clear line break between each option to ensure high readability.
+3. Clinical Pearls & Mnemonics: Always add a prominent section at the end with classic medical mnemonics related to the disease/topic to aid in memorization (e.g., CRAB for Multiple Myeloma, AEIOU for dialysis).
+4. Formatting Restrictions: The entire response MUST be written in professional Hebrew (you may keep known medical abbreviations in English). Use basic Markdown (**bold** and - bullets) ONLY. 
+DO NOT use LaTeX, math blocks, or dollar signs ($). Use standard plain text for numbers and formulas (e.g., write pH < 7.1 instead of $\text{pH} < 7.1$).
+Be direct, educational, and easy to read. Use formatting (like bolding) if necessary.
+
+Question:
+${questionText}
+
+Options:
+${JSON.stringify(options || [])}
+
+Correct Answers:
+${JSON.stringify(correctAnswers || [])}
       `;
 
       // 4. הפעלת המודל

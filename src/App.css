@@ -40,3 +40,90 @@
 .read-the-docs {
   color: #888;
 }
+
+/* ========================================= */
+/* עיצוב הסברי AI - Markdown וטבלאות משודרג  */
+/* ========================================= */
+
+/* ריווח וגובה שורה נוח לקריאה */
+.ai-explanation-markdown p {
+  margin-bottom: 1.25rem;
+  line-height: 1.7;
+}
+
+/* עיצוב כותרות (מפריד בין חלקי ההסבר) */
+.ai-explanation-markdown h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+/* עיצוב טבלאות מוקפד */
+.ai-explanation-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  text-align: right;
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); /* צל עדין לטבלה */
+}
+
+.ai-explanation-markdown th,
+.ai-explanation-markdown td {
+  border: 1px solid #cbd5e1;
+  padding: 1rem;
+  vertical-align: top; /* מיישר את הטקסט למעלה כדי שיהיה נוח לקרוא שורות ארוכות */
+}
+
+.ai-explanation-markdown th {
+  background-color: #f1f5f9;
+  font-weight: 800;
+  color: #0f172a;
+  width: 25%; /* נותן יותר מקום לעמודת ההסבר על חשבון שם המסיח */
+}
+
+/* רשימות מרווחות (למנמוניקות ולסעיפים) */
+.ai-explanation-markdown ul, 
+.ai-explanation-markdown ol {
+  list-style-type: disc; /* מחזיר את הנקודות לרשימה */
+  padding-right: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-explanation-markdown li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.ai-explanation-markdown strong {
+  font-weight: 800;
+  color: #b45309; 
+}
+
+/* ========================================= */
+/* התאמה למצב לילה (Dark Mode)               */
+/* ========================================= */
+.dark .ai-explanation-markdown h3 {
+  color: #f8fafc;
+  border-bottom-color: #334155;
+}
+.dark .ai-explanation-markdown table {
+  background-color: #1e293b; /* רקע כהה לטבלה */
+}
+.dark .ai-explanation-markdown th,
+.dark .ai-explanation-markdown td {
+  border-color: #475569;
+}
+.dark .ai-explanation-markdown th {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+.dark .ai-explanation-markdown strong {
+  color: #fbbf24;
+}
