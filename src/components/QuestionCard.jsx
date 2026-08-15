@@ -36,6 +36,7 @@ const isArrayEqual = (arr1, arr2) => {
 const QuestionCard = memo(function QuestionCard({ 
   question, 
   index, 
+  displayNumber, 
   mode, 
   onAnswer, 
   isSubmitted, 
@@ -51,10 +52,14 @@ const QuestionCard = memo(function QuestionCard({
   resetTick, 
   examSessionId,
   userSettings,          
-  onCorrectAutoScroll    
+  onCorrectAutoScroll,
+  userNote,           // תוספת הפרופ עבור הטיוטה
+  onNoteUpdate        // תוספת הפרופ לעדכון הטיוטה
 }) {  
   const { user } = useAuth();
   if (!question) return null;
+
+  const [isNoteOpen, setIsNoteOpen] = useState(Boolean(userNote)); // תוספת הסטייט לטיוטה
 
   const isMultiSelect = Array.isArray(question.correctIndex);
   const qStorageKey = `q_state_${examId}_${mode}_${index}`;
@@ -95,6 +100,7 @@ const QuestionCard = memo(function QuestionCard({
           setPracticeSelections([]);
           setClozeSelections({});
           setClozeWrongAttempts({});
+          setIsNoteOpen(false); // סגירת התיבה באיפוס
       }
   }, [resetTick]);
 
@@ -440,7 +446,7 @@ const QuestionCard = memo(function QuestionCard({
       <div className={`flex justify-between items-center mb-4 ${question.isCanceled ? 'mt-4' : ''}`}>
         <div className="flex items-center gap-3">
          <span className="bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full transition-colors">
-          שאלה {index + 1}
+          שאלה {displayNumber || (index + 1)}
         </span>
             <button 
                 onClick={() => onToggleFlag(index)}
@@ -652,6 +658,47 @@ const QuestionCard = memo(function QuestionCard({
               </div>
           )}
         </div>
+      )}
+
+      {/* טיוטה / קו חשיבה אישי */}
+      {(mode === 'test' || mode === 'practice') && (
+          <div className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-4 transition-colors print:hidden">
+              {!isNoteOpen && !isSubmitted && (
+                  <button 
+                      onClick={() => setIsNoteOpen(true)}
+                      className="text-sm font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-2 transition-colors"
+                  >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                      הוסף הערת חשיבה / טיוטה
+                  </button>
+              )}
+
+              {(isNoteOpen || (isSubmitted && userNote)) && (
+                  <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/50 rounded-xl p-3 animate-fade-in transition-colors shadow-sm">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-amber-800 dark:text-amber-500 flex items-center gap-1.5">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                              {isSubmitted ? 'קו החשיבה שלך במהלך המבחן:' : 'טיוטה וקו חשיבה (נשמר אוטומטית):'}
+                          </span>
+                          {!isSubmitted && (
+                              <button onClick={() => setIsNoteOpen(false)} className="text-amber-600 hover:text-amber-800 dark:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                              </button>
+                          )}
+                      </div>
+                      {isSubmitted ? (
+                          <div className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap">{userNote}</div>
+                      ) : (
+                          <textarea
+                              value={userNote}
+                              onChange={(e) => onNoteUpdate(index, e.target.value)}
+                              placeholder="למשל: פסלתי את א' כי... ונראה לי שג' נכון בגלל שכתוב בהרצאה..."
+                              className="w-full p-2 text-sm bg-white/50 dark:bg-black/20 border border-amber-100 dark:border-amber-900/30 rounded-lg focus:ring-2 focus:ring-amber-400 resize-y min-h-[60px] outline-none text-slate-700 dark:text-slate-200 transition-colors"
+                          />
+                      )}
+                  </div>
+              )}
+          </div>
       )}
 
       {(mode === 'practice' || (mode === 'test' && isSubmitted)) && (

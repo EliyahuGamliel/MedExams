@@ -103,6 +103,11 @@ export default function ExamTaking({ examsList }) {
       const saved = localStorage.getItem(`${storageKey}_stats`);
       return saved ? JSON.parse(saved) : { total: 0, perfect: 0, mistakes: 0 };
   });
+  // הוספת הסטייט עבור הטיוטה (userNotes) עם משיכה מהלוקאל-סטורג' הקיים
+  const [userNotes, setUserNotes] = useState(() => {
+      const saved = localStorage.getItem(`${storageKey}_notes`);
+      return saved ? JSON.parse(saved) : {};
+  });
 
   const [userSettings, setUserSettings] = useState({
     timerStrategy: 'stopwatch',
@@ -239,6 +244,7 @@ export default function ExamTaking({ examsList }) {
       }
   }, [mode, userSettings.autoScroll, questionOrder]);
 
+  // הוספת userNotes למערך השמירה ל-localStorage
   useEffect(() => {
       localStorage.setItem(`${storageKey}_answers`, JSON.stringify(userAnswers));
       localStorage.setItem(`${storageKey}_score`, JSON.stringify(finalScore));
@@ -246,7 +252,8 @@ export default function ExamTaking({ examsList }) {
       localStorage.setItem(`${storageKey}_flagged`, JSON.stringify(flaggedQuestions));
       localStorage.setItem(`${storageKey}_eliminated`, JSON.stringify(eliminatedOptions));
       localStorage.setItem(`${storageKey}_stats`, JSON.stringify(modalStats));
-  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, eliminatedOptions, modalStats, storageKey]);
+      localStorage.setItem(`${storageKey}_notes`, JSON.stringify(userNotes));
+  }, [userAnswers, finalScore, userExcludedQuestions, flaggedQuestions, eliminatedOptions, modalStats, userNotes, storageKey]);
 
   const handleResetExam = () => {
       if (window.confirm("האם למחוק את כל התשובות ולהתחיל את המבחן מחדש?")) {
@@ -260,6 +267,7 @@ export default function ExamTaking({ examsList }) {
           setFlaggedQuestions({});
           setEliminatedOptions({}); 
           setModalStats({ total: 0, perfect: 0, mistakes: 0 });
+          setUserNotes({}); // איפוס הטיוטות
           setTimeElapsed(0);
           setTimeRemaining(null);
           
@@ -422,7 +430,10 @@ export default function ExamTaking({ examsList }) {
       });
   }, []);
 
-  
+  // פונקציית עדכון הערות הטיוטה
+  const handleNoteUpdate = useCallback((questionIndex, text) => {
+      setUserNotes(prev => ({ ...prev, [questionIndex]: text }));
+  }, []);
 
   const calculateScore = () => {
       const scorableQuestions = examQuestionsData.filter((q, index) => q.type !== 'open_ended' && !q.isCanceled && !userExcludedQuestions[index] );
@@ -519,6 +530,7 @@ export default function ExamTaking({ examsList }) {
           });
       }
   }, [userExcludedQuestions, examQuestionsData, isSubmitted, userAnswers, finalScore, modalStats.total, user, selectedExam]);
+
   const handlePrint = () => {
     const originalTitle = document.title;
     document.title = `${selectedExam.course} - ${selectedExam.title}`; 
@@ -724,7 +736,6 @@ export default function ExamTaking({ examsList }) {
         ) : (
             displayedQuestions.map((q) => {
                 const i = q.originalIndex;
-                // חישוב מספר השאלה לתצוגה (תמיד תואם למספר שמופיע בסיידבר!)
                 const displayNum = questionOrder.indexOf(i) + 1;
                 
                 return (
@@ -746,7 +757,9 @@ export default function ExamTaking({ examsList }) {
                         onToggleEliminate={toggleEliminateOption}
                         resetTick={resetTick} 
                         userSettings={userSettings}
-                        onCorrectAutoScroll={handleCorrectAutoScroll} 
+                        onCorrectAutoScroll={handleCorrectAutoScroll}
+                        userNote={userNotes[i] || ""} 
+                        onNoteUpdate={handleNoteUpdate}
                       />
                     </div>
                 );
