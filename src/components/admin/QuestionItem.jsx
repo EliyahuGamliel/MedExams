@@ -36,7 +36,6 @@ const QuestionItem = memo(({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    /* מעטפת כרטיס השאלה משתלבת עם פונקציית צבעי הסטטוס וקיבלה גבול אינטראקטיבי בלילה */
     <div className={`p-4 rounded-xl border-2 transition-all text-right ${getQuestionStatusColor(q)} ${isExpanded ? 'shadow-md' : 'hover:border-blue-300 dark:hover:border-blue-500/50'}`}>
       
       {/* 1. אזור הכותרת (האקורדיון הראשי) */}
@@ -218,12 +217,12 @@ const QuestionItem = memo(({
             </div>
           )}
 
-          {/* שורת כפתורי פעולה תחתונים של הרכיב (העלאת תמונה / מחיקת תמונה / פסילת שאלה) */}
+          {/* שורת כפתורי פעולה תחתונים של הרכיב (העלאת תמונה/וידאו / מחיקת מדיה / פסילת שאלה) */}
           <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 transition-colors">
             
             <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 dark:hover:bg-blue-600 transition shadow-sm border border-transparent">
-              <ImageIcon /> {q.hasImage ? 'החלף תמונה' : 'העלה תמונה'}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadQuestionImage(realIndex, e.target.files[0])} />
+              <ImageIcon /> {q.hasImage ? 'החלף מדיה' : 'העלה מדיה'}
+              <input type="file" accept="image/*, video/mp4, video/webm, video/quicktime" className="hidden" onChange={(e) => handleUploadQuestionImage(realIndex, e.target.files[0])} />
             </label>
 
             {/* הכפתור החדש - מופיע רק אם יש תמונה לשאלה */}
@@ -232,7 +231,7 @@ const QuestionItem = memo(({
                     onClick={() => handleRemoveQuestionImage(realIndex)}
                     className="px-4 py-2 rounded-lg text-xs font-bold transition-all border bg-white dark:bg-dark-panel text-red-500 dark:text-red-400 border-red-200 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 shadow-sm"
                 >
-                    <TrashIcon /> הסר תמונה
+                    <TrashIcon /> הסר מדיה
                 </button>
             )}
 

@@ -507,17 +507,38 @@ export function useExamsLogic(setStatus, canSeeReports) {
         toast.success("מיקום השלמה חדש נוסף בהצלחה! 🎉");
     };
 
-    // כיווץ והעלאה של קובץ תמונה לשאלה ספציפית
+    // כיווץ והעלאה של קובץ תמונה (או וידאו) לשאלה ספציפית
     const handleUploadQuestionImage = async (idx, f) => {
         if (!questionsEditorId) return;
         
+        // הגנת משקל: מגביל העלאה ל-5 מגה-בייט מקסימום
+        const maxFileSize = 5 * 1024 * 1024;
+        if (f.size > maxFileSize) {
+            return toast.error("הקובץ גדול מדי! נא להעלות קובץ קצר השוקל עד 5MB.");
+        }
+
         setStatus('processing');
-        const imagePromise = async () => {
-            const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
-            const compressedFile = await imageCompression(f, options);
+        const uploadPromise = async () => {
+            let fileToUpload = f;
+
+            // בודקים אם הקובץ הוא תמונה - רק אז נפעיל את הכיווץ
+            if (f.type.startsWith('image/')) {
+                const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true, initialQuality: 0.7 };
+                fileToUpload = await imageCompression(f, options);
+            }
+
+            // חילוץ סיומת הקובץ המקורית (למשל mp4, png, jpg)
+            const extension = f.name.split('.').pop();
+
             const storage = getStorage();
-            const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${idx}_${Date.now()}`);
-            await uploadBytes(fileRef, compressedFile);
+            // מוסיפים את הסיומת לשם הקובץ בשרת כדי שפונקציית isVideo תזהה אותו!
+            const fileRef = storageRef(storage, `exam_images/${questionsEditorId}/${idx}_${Date.now()}.${extension}`);
+            
+            const metadata = {
+                contentType: f.type,
+            };
+
+            await uploadBytes(fileRef, fileToUpload, metadata);
             const downloadURL = await getDownloadURL(fileRef);
 
             const updates = {};
@@ -525,7 +546,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
             updates[`exam_contents/${questionsEditorId}/${idx}/hasImage`] = true;
             await update(ref(db), updates);
             
-            logAdminAction("העלאת תמונה לשאלה", `הועלתה תמונה חדשה לשאלה ${idx + 1}`, questionsEditorId);
+            logAdminAction("העלאת מדיה לשאלה", `הועלתה מדיה (תמונה/וידאו) חדשה לשאלה ${idx + 1}`, questionsEditorId);
 
             setExamQuestions(prev => {
                 const updated = [...prev];
@@ -535,11 +556,13 @@ export function useExamsLogic(setStatus, canSeeReports) {
         };
 
         try {
-            await toast.promise(imagePromise(), {
-                loading: 'מכווץ ומעלה תמונה...',
-                success: 'התמונה שויכה לשאלה בהצלחה! 🖼️',
-                error: 'שגיאה בהעלאת התמונה.'
+            await toast.promise(uploadPromise(), {
+                loading: f.type.startsWith('video/') ? 'מעלה סרטון לשרת...' : 'מכווץ ומעלה תמונה...',
+                success: 'המדיה שויכה לשאלה בהצלחה! 🎉',
+                error: 'שגיאה בהעלאת הקובץ.'
             });
+        } catch (error) {
+            console.error("Upload error:", error);
         } finally {
             setStatus('idle');
         }

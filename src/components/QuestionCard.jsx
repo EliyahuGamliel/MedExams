@@ -33,6 +33,16 @@ const isArrayEqual = (arr1, arr2) => {
     return sorted1.every((val, index) => val === sorted2[index]);
 };
 
+// פונקציה חכמה לזיהוי וידאו - מתעלמת מאותיות גדולות/קטנות ופרמטרים
+const isVideo = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || 
+         cleanUrl.endsWith('.webm') || 
+         cleanUrl.endsWith('.ogg') || 
+         cleanUrl.endsWith('.mov');
+};
+
 const QuestionCard = memo(function QuestionCard({ 
   question, 
   index, 
@@ -53,13 +63,13 @@ const QuestionCard = memo(function QuestionCard({
   examSessionId,
   userSettings,          
   onCorrectAutoScroll,
-  userNote,           // תוספת הפרופ עבור הטיוטה
-  onNoteUpdate        // תוספת הפרופ לעדכון הטיוטה
+  userNote,           
+  onNoteUpdate        
 }) {  
   const { user } = useAuth();
   if (!question) return null;
 
-  const [isNoteOpen, setIsNoteOpen] = useState(Boolean(userNote)); // תוספת הסטייט לטיוטה
+  const [isNoteOpen, setIsNoteOpen] = useState(Boolean(userNote)); 
 
   const isMultiSelect = Array.isArray(question.correctIndex);
   const qStorageKey = `q_state_${examId}_${mode}_${index}`;
@@ -100,7 +110,7 @@ const QuestionCard = memo(function QuestionCard({
           setPracticeSelections([]);
           setClozeSelections({});
           setClozeWrongAttempts({});
-          setIsNoteOpen(false); // סגירת התיבה באיפוס
+          setIsNoteOpen(false); 
       }
   }, [resetTick]);
 
@@ -127,7 +137,6 @@ const QuestionCard = memo(function QuestionCard({
       return {
         id: idx,
         text: opt,
-        // ביטול שאלה לא הופך מסיח לנכון מבחינת סטטוס דאטה
         isCorrect: isMainCorrect || appeals.includes(idx), 
         isAppealed: appeals.includes(idx),
         isMainCorrect: isMainCorrect
@@ -356,7 +365,6 @@ const QuestionCard = memo(function QuestionCard({
             const selectedOpt = options.find(o => o.id === currentSelection);
             const isCorrect = selectedOpt?.isCorrect;
 
-            // עדכון צבעים ל-Cloze: אפור אם מבוטל
             if (question.isCanceled && (mode === 'practice' || (mode === 'test' && isSubmitted))) {
                 borderClass = "border-slate-300 dark:border-slate-600";
                 bgClass = "bg-slate-100 dark:bg-dark-bg";
@@ -481,12 +489,27 @@ const QuestionCard = memo(function QuestionCard({
 
       {question.hasImage && imageUrl && (
           <div className="mb-6 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white flex justify-center">
-            <img 
-              src={imageUrl} 
-              alt="Question illustration" 
-              className="w-full max-h-96 object-contain dark:bg-dark-panel" 
-              loading="lazy"
-            />
+            {isVideo(imageUrl) ? (
+              <video 
+                key={imageUrl}
+                src={imageUrl} 
+                controls
+                autoPlay 
+                loop 
+                muted 
+                playsInline
+                className="w-full max-h-96 object-contain dark:bg-dark-panel"
+                onError={(e) => console.error("Video load error:", e)}
+              />
+            ) : (
+              <img 
+                key={imageUrl}
+                src={imageUrl} 
+                alt="Question illustration" 
+                className="w-full max-h-96 object-contain dark:bg-dark-panel" 
+                loading="lazy"
+              />
+            )}
           </div>
       )}
       {question.hasImage && !imageUrl && (
@@ -529,7 +552,7 @@ const QuestionCard = memo(function QuestionCard({
         <div className="space-y-2 relative">
           {shuffledOptions?.filter(option => {
              if (mode === 'test' && isSubmitted && userSettings?.testReviewMode === 'correct_only') {
-                 if (question.isCanceled) return true; // בשאלה מבוטלת מציגים את כל המסיחים האפורים
+                 if (question.isCanceled) return true; 
                  const isSelected = isMultiSelect ? testSelections.includes(option.id) : selectedOptionId === option.id;
                  return option.isCorrect || option.isAppealed || isSelected;
              }
@@ -549,7 +572,6 @@ const QuestionCard = memo(function QuestionCard({
              if (isEliminated) {
                  btnClass += "bg-slate-50/50 dark:bg-dark-bg/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
              } else if (question.isCanceled && (mode === 'practice' || (mode === 'test' && isSubmitted))) {
-                 // צביעה אפורה וניטרלית בלבד לשאלה מבוטלת
                  if (isSelected) {
                      btnClass += "bg-slate-200 dark:bg-slate-800 border-slate-400 dark:border-slate-500 text-slate-700 dark:text-slate-300 font-bold shadow-sm ";
                  } else {
@@ -622,7 +644,6 @@ const QuestionCard = memo(function QuestionCard({
 
                     {tagText && <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${tagColor}`}>{tagText}</span>}
                     
-                    {/* חסימת אייקוני ✅ ו-❌ כשהשאלה מבוטלת */}
                     {(mode==='practice' || (mode==='test'&&isSubmitted)) && !question.isCanceled && (
                         <>
                           {option.isCorrect && (isSelected || (mode==='test' && isSubmitted)) && <span className="text-sm">✅</span>}
@@ -660,7 +681,6 @@ const QuestionCard = memo(function QuestionCard({
         </div>
       )}
 
-      {/* טיוטה / קו חשיבה אישי */}
       {(mode === 'test' || mode === 'practice') && (
           <div className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-4 transition-colors print:hidden">
               {!isNoteOpen && !isSubmitted && (
