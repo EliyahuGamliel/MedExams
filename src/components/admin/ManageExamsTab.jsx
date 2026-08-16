@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import QuestionItem from './QuestionItem';
 
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
@@ -8,10 +8,8 @@ const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" heigh
 
 // --- רכיב ניהול הסברי ה-AI מותאם ל-Dark Mode ---
 const AiExplanationManager = ({ questionIndex, hasAiExplanation, explanationData, onDelete }) => {
-    // הקומפוננטה מסתמכת על הדגל האמיתי שמגיע בזמן אמת מהשרת
     if (!hasAiExplanation) return null;
   
-    // הגנה למקרה שאין עדיין נתוני לייקים
     const { likes = 0, dislikes = 0 } = explanationData || {};
     const isHighAlert = dislikes >= 10;
   
@@ -81,8 +79,13 @@ export default function ManageExamsTab({
     handleDeleteAiExplanation,
     handleAddBlankToCloze,
     handleUpdateExamYear,
-    examYearsList
+    examYearsList,
+    handleCreateBlankExam // הפונקציה החדשה הגיעה לכאן!
 }) {
+    const [newQuestionType, setNewQuestionType] = useState('multiple_choice');
+
+    const [newBlankExamYear, setNewBlankExamYear] = useState(new Date().getFullYear().toString());
+    const [newBlankExamMoed, setNewBlankExamMoed] = useState("מועד א'");
 
     const allowedStudentYears = studentYears.filter(year => {
         if (userData?.role === 'super_admin') return true;
@@ -101,15 +104,41 @@ export default function ManageExamsTab({
 
                         {status !== 'processing' && (
                             <>
-                                <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+                                <div className="flex flex-wrap justify-between items-center mb-6 gap-4 p-4 bg-white dark:bg-dark-panel rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" checked={showMissingImagesOnly} onChange={e => setShowMissingImagesOnly(e.target.checked)} className="w-4 h-4 text-red-600 rounded dark:bg-dark-bg dark:border-slate-600" />
-                                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300 transition-colors">הצג רק שאלות שחסרה להן תמונה 🚨</span>
+                                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300 transition-colors">הצג רק שאלות חסרות תמונה 🚨</span>
                                     </label>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors">מספר אפשרויות:</span>
-                                        <input type="number" min="2" max="10" value={newQuestionOptionsCount} onChange={e => setNewQuestionOptionsCount(Number(e.target.value))} className="w-12 p-1 text-center border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-dark-bg text-slate-800 dark:text-slate-100" />
-                                        <button onClick={handleAddQuestion} className="bg-green-600 dark:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 dark:hover:bg-green-600 flex items-center gap-1"><PlusIcon /> הוסף שאלה חדשה</button>
+                                    
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <select 
+                                            value={newQuestionType} 
+                                            onChange={e => setNewQuestionType(e.target.value)}
+                                            className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold bg-slate-50 dark:bg-dark-bg text-slate-800 dark:text-slate-100 transition-colors"
+                                        >
+                                            <option value="multiple_choice">🔘 אמריקאית (רב-ברירה)</option>
+                                            <option value="cloze">🧩 השלמת טקסט (Cloze)</option>
+                                            <option value="open_ended">📝 פתוחה (טקסט חופשי)</option>
+                                        </select>
+
+                                        {newQuestionType === 'multiple_choice' && (
+                                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-dark-bg px-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors">
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">מס' אפשרויות:</span>
+                                                <input 
+                                                    type="number" min="2" max="10" 
+                                                    value={newQuestionOptionsCount} 
+                                                    onChange={e => setNewQuestionOptionsCount(Number(e.target.value))} 
+                                                    className="w-10 py-1.5 text-center bg-transparent text-xs font-bold text-slate-800 dark:text-slate-100 outline-none" 
+                                                />
+                                            </div>
+                                        )}
+                                        
+                                        <button 
+                                            onClick={() => handleAddQuestion(newQuestionType)} 
+                                            className="bg-green-600 dark:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 dark:hover:bg-green-600 flex items-center gap-1 shadow-sm transition-all"
+                                        >
+                                            <PlusIcon /> הוסף שאלה
+                                        </button>
                                     </div>
                                 </div>
 
@@ -172,6 +201,52 @@ export default function ManageExamsTab({
                             <option value="">-- בחר מהרשימה --</option>
                             {availableCourses.map(([id, course]) => (<option key={id} value={id}>{course.name}</option>))}
                         </select>
+
+                        {/* תפריט יצירת מבחן ריק מאפס (מופיע רק כשנבחר קורס) */}
+                        {selectedCourseId && handleCreateBlankExam && (
+                            <div className="bg-indigo-50/80 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 p-5 rounded-2xl mb-8 shadow-sm transition-colors">
+                                <h4 className="font-bold text-indigo-800 dark:text-indigo-300 mb-4 text-sm flex items-center gap-2">
+                                    <span>✨</span> יצירת מבחן חדש מאפס
+                                </h4>
+                                <div className="flex flex-wrap items-end gap-4">
+                                    <div className="flex-1 min-w-[150px]">
+                                        <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">שנה</label>
+                                        <select 
+                                            value={newBlankExamYear} 
+                                            onChange={e => setNewBlankExamYear(e.target.value)} 
+                                            className="w-full p-2.5 text-sm rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-dark-panel text-slate-800 dark:text-slate-100 transition-colors"
+                                        >
+                                            {examYearsList?.map(y => <option key={y} value={y}>{y}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex-1 min-w-[150px]">
+                                        <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">מועד</label>
+                                        <select 
+                                            value={newBlankExamMoed} 
+                                            onChange={e => setNewBlankExamMoed(e.target.value)} 
+                                            className="w-full p-2.5 text-sm rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-dark-panel text-slate-800 dark:text-slate-100 transition-colors"
+                                        >
+                                            <option value="מועד א'">מועד א'</option>
+                                            <option value="מועד ב'">מועד ב'</option>
+                                            <option value="מועד ג'">מועד ג'</option>
+                                            <option value="מועד מיוחד">מועד מיוחד</option>
+                                            <option value="">ללא מועד</option>
+                                        </select>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            // שולפים את השם של הקורס מתוך המערך לפי ה-ID שלו
+                                            const courseName = availableCourses.find(([id]) => id === selectedCourseId)?.[1]?.name || "מבחן";
+                                            handleCreateBlankExam(selectedStudentYear, selectedSemester, selectedCourseId, courseName, newBlankExamYear, newBlankExamMoed);
+                                        }}
+                                        disabled={status === 'processing'}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        צור והתחל לערוך
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {filteredExamsForEdit.map(exam => {
                             const canEditThisExam = 

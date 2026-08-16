@@ -67,7 +67,7 @@ export default function AdminPage() {
     handleRemoveOptionFromCloze, handleClozeOptionTextChange,
     saveClozeOptionText, handleToggleClozeAppeal, handleToggleVerify,
     handleDeleteAiExplanation, handleUpdateExamYear, handleDeleteAppendices,
-    handleRemoveBlankFromCloze, handleAddBlankToCloze, handleRemoveQuestionImage
+    handleRemoveBlankFromCloze, handleAddBlankToCloze, handleRemoveQuestionImage, handleCreateBlankExam
   } = useExamsLogic(setStatus, canSeeReports);
 
   const {
@@ -296,6 +296,7 @@ export default function AdminPage() {
 
           <Route path="manage_exams" element={
             <ManageExamsTab
+            handleCreateBlankExam={handleCreateBlankExam}
               userData={userData}
               questionsEditorId={questionsEditorId}
               setQuestionsEditorId={setQuestionsEditorId}

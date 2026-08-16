@@ -281,25 +281,95 @@ export function useExamsLogic(setStatus, canSeeReports) {
         }
     };
 
-    // הוספת שאלה חדשה ריקה לסוף המבחן
-    const handleAddQuestion = async () => {
+    // פונקציה לייצור מבחן ריק לחלוטין מאפס
+    const handleCreateBlankExam = async (studentYear, semester, courseId, courseName, examYear, moed) => {
+        if (!courseId) return toast.error("יש לבחור קורס");
+        
+        setStatus('processing');
+        try {
+            const newExamId = `${courseId}_${Date.now()}`;
+            // בונה את הכותרת אוטומטית בדיוק כמו בהעלאת קובץ
+            const finalTitle = `${courseName} ${examYear} ${moed}`.trim();
+
+            const newExamMeta = {
+                id: newExamId,
+                title: finalTitle,
+                courseId: courseId,
+                studentYear: studentYear,
+                semester: semester,
+                examYear: examYear,
+                moed: moed,
+                questionCount: 0,
+                isVerified: false,
+                hasAppendices: false,
+                uploadDate: new Date().toISOString()
+            };
+
+            const updates = {};
+            // 1. שומר את הגדרות המבחן
+            updates[`uploaded_exams/${newExamId}`] = newExamMeta;
+            // 2. שומר מאגר שאלות ריק
+            updates[`exam_contents/${newExamId}`] = []; 
+
+            await update(ref(db), updates);
+
+            logAdminAction("יצירת מבחן מאפס", `נוצר מבחן ריק: ${finalTitle}`, newExamId);
+            
+            setExamsList(prev => [...prev, newExamMeta]);
+            toast.success("המבחן נוצר בהצלחה! פותח עורך...");
+            
+            // פתיחה אוטומטית של האדיטור כדי להתחיל להוסיף שאלות
+            openQuestionsEditor(newExamMeta);
+
+        } catch (error) {
+            console.error("Error creating blank exam:", error);
+            toast.error("שגיאה ביצירת המבחן.");
+        } finally {
+            setStatus('idle');
+        }
+    };
+
+    // הוספת שאלה חדשה לסוף המבחן - עכשיו עם תמיכה בסוגי שאלות שונים
+    const handleAddQuestion = async (type = "multiple_choice") => {
         if (!questionsEditorId) return;
-        const initialOptions = Array.from({ length: newQuestionOptionsCount }, (_, i) => `אפשרות ${i + 1}`);
+        
         const newIndex = examQuestions.length;
-        const newQuestion = {
-            id: newIndex, text: "שאלה חדשה... (לחץ כדי לערוך)", type: "multiple_choice",
-            options: initialOptions, correctIndex: 0, imageNeeded: false, hasImage: false, isCanceled: false,
+        
+        // שלד בסיסי שמשותף לכל סוגי השאלות
+        let newQuestion = {
+            id: newIndex, 
+            text: "שאלה חדשה... (לחץ כדי לערוך)", 
+            type: type,
+            imageNeeded: false, 
+            hasImage: false, 
+            isCanceled: false,
             hasAiExplanation: false
         };
+
+        // הוספת השדות הספציפיים לפי סוג השאלה
+        if (type === 'multiple_choice') {
+            newQuestion.options = Array.from({ length: newQuestionOptionsCount }, (_, i) => `אפשרות ${i + 1}`);
+            newQuestion.correctIndex = 0;
+        } else if (type === 'cloze') {
+            newQuestion.text = "השלם את החסר: המטופל הגיע עם תלונה על {{0}} וקיבל אבחנה של {{1}}.";
+            newQuestion.clozeOptions = [
+                { options: ["כאב ראש", "כאב בטן", "חום גבוה"], correctIndex: 0, appealedIndexes: [] },
+                { options: ["דלקת תוספתן", "מיגרנה", "שפעת"], correctIndex: 0, appealedIndexes: [] }
+            ];
+        } else if (type === 'open_ended') {
+            // לשאלה פתוחה אין מערך תשובות
+            newQuestion.text = "פרט את האבחנה המבדלת במקרה זה (שאלה פתוחה).";
+        }
+
         const updatedQuestions = [...examQuestions, newQuestion];
         setExamQuestions(updatedQuestions);
         
         const updates = {};
-        updates[`exam_contents/${questionsEditorId}`] = updatedQuestions.map(({ hasAiExplanation, ...rest }) => rest); // מסירים את הדגל לפני שמירה למסד
+        updates[`exam_contents/${questionsEditorId}`] = updatedQuestions.map(({ hasAiExplanation, ...rest }) => rest);
         updates[`uploaded_exams/${questionsEditorId}/questionCount`] = updatedQuestions.length;
         await update(ref(db), updates);
         
-        logAdminAction("הוספת שאלה חדשה", `נוספה שאלה מספר ${newIndex + 1}`, questionsEditorId);
+        logAdminAction("הוספת שאלה חדשה", `נוספה שאלה מספר ${newIndex + 1} מסוג ${type}`, questionsEditorId);
         setExamsList(prev => prev.map(e => e.id === questionsEditorId ? { ...e, questionCount: updatedQuestions.length } : e));
     };
 
@@ -734,6 +804,7 @@ export function useExamsLogic(setStatus, canSeeReports) {
         handleDeleteAiExplanation,
         handleRemoveBlankFromCloze,
         handleAddBlankToCloze,
+        handleCreateBlankExam,
         handleRemoveQuestionImage
     };
 }
